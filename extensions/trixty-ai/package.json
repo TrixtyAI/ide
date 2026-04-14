@@ -1,0 +1,146 @@
+{
+	"name": "trixty-ai",
+	"publisher": "Trixty",
+	"displayName": "Trixty AI",
+	"description": "Trixty AI assistant with dual Ollama (local) and Trixty AI (remote) provider support",
+	"version": "1.0.0",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.117.0"
+	},
+	"categories": [
+		"AI",
+		"Chat",
+		"Programming Languages"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/extension.js",
+	"enabledApiProposals": [
+		"chatParticipant",
+		"languageModels",
+		"chatProvider",
+		"inlineCompletionsAdditions"
+	],
+	"contributes": {
+		"configuration": {
+			"title": "Trixty AI",
+			"properties": {
+				"trixtyAI.provider": {
+					"type": "string",
+					"enum": ["auto", "ollama", "trixty"],
+					"enumDescriptions": [
+						"Automatically select the best available provider (Ollama if running, otherwise Trixty)",
+						"Use only Ollama (local models)",
+						"Use only Trixty AI (remote)"
+					],
+					"default": "auto",
+					"description": "AI provider to use for chat and completions"
+				},
+				"trixtyAI.ollama.endpoint": {
+					"type": "string",
+					"default": "http://localhost:11434",
+					"description": "Ollama API endpoint URL"
+				},
+				"trixtyAI.ollama.model": {
+					"type": "string",
+					"default": "codellama",
+					"description": "Default Ollama model for inline completions"
+				},
+				"trixtyAI.ollama.chatModel": {
+					"type": "string",
+					"default": "llama3",
+					"description": "Default Ollama model for chat conversations"
+				},
+				"trixtyAI.trixty.endpoint": {
+					"type": "string",
+					"default": "http://localhost:3000/api/v1",
+					"description": "Trixty AI server endpoint URL"
+				},
+				"trixtyAI.trixty.apiKey": {
+					"type": "string",
+					"default": "",
+					"description": "Trixty AI API key (obtained after login)"
+				},
+				"trixtyAI.completions.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable inline AI completions"
+				},
+				"trixtyAI.completions.debounceMs": {
+					"type": "number",
+					"default": 300,
+					"minimum": 100,
+					"maximum": 2000,
+					"description": "Debounce delay in milliseconds for inline completions"
+				},
+				"trixtyAI.nextEditSuggestions.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable next edit suggestions"
+				},
+				"trixtyAI.advanced": {
+					"type": "object",
+					"default": {},
+					"description": "Advanced Trixty AI settings"
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "trixty.ai.signIn",
+				"title": "Sign In to Trixty AI",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.signOut",
+				"title": "Sign Out from Trixty AI",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.selectModel",
+				"title": "Select AI Model",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.toggleStatusMenu",
+				"title": "Toggle Trixty AI Status Menu",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.refreshToken",
+				"title": "Refresh Trixty AI Token",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.git.generateCommitMessage",
+				"title": "Generate Commit Message with Trixty AI",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.git.resolveMergeConflicts",
+				"title": "Resolve Merge Conflicts with Trixty AI",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.open.walkthrough",
+				"title": "Open Trixty AI Walkthrough",
+				"category": "Trixty AI"
+			},
+			{
+				"command": "trixty.ai.debug.extensionState",
+				"title": "Show Trixty AI Extension State",
+				"category": "Trixty AI"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "tsc -p ./tsconfig.json",
+		"watch": "tsc -w -p ./tsconfig.json"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.117.0",
+		"typescript": "^5.7.0"
+	}
+}
