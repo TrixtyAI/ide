@@ -1,6 +1,6 @@
 {
   "name": "trixty-ide",
-  "version": "1.117.0",
+  "version": "1.0.0",
   "distro": "21295cb9c61fb628376d109be52cb7c6e5e396bd",
   "author": {
     "name": "Trixty Team"
@@ -252,10 +252,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/trixty/ide.git"
+    "url": "https://github.com/TrixtyAI/ide.git"
   },
   "bugs": {
-    "url": "https://github.com/trixty/ide/issues"
+    "url": "https://github.com/TrixtyAI/ide/issues"
   },
   "optionalDependencies": {
     "windows-foreground-love": "0.6.1"

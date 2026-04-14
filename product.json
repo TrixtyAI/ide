@@ -29,7 +29,7 @@
 	"darwinProfilePayloadUUID": "CF808BE7-53F3-46C6-A7E2-7EDB98A5E959",
 	"linuxIconName": "trixty",
 	"licenseFileName": "LICENSE.txt",
-	"reportIssueUrl": "https://github.com/trixty/ide/issues/new",
+	"reportIssueUrl": "https://github.com/TrixtyAI/ide/issues/new",
 	"nodejsRepository": "https://nodejs.org",
 	"urlProtocol": "trixty",
 	"webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/insider/ef65ac1ba57f57f2a3961bfe94aa20481caca4c6/out/vs/workbench/contrib/webview/browser/pre/",
@@ -279,7 +279,7 @@
 	"showTelemetryOptOut": false,
 	"updateUrl": "https://trixty.vercel.app",
 	"quality": "stable",
-	"githubUpdateRepo": "USER/REPO",
-	"githubUpdateToken": "github_pat_xxxx",
+	"githubUpdateRepo": "TrixtyAI/ide",
+	"githubUpdateToken": "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",
 	"updateSite": "https://trixty.vercel.app"
 }
