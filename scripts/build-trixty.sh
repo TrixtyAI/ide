@@ -10,10 +10,7 @@ cd "$WORKING_DIR"
 echo ">>> [1/4] Instalando dependencias de Node (npm)..."
 npm install
 
-echo ">>> [2/4] Compilando paquetes web & node..."
-npx gulp compile-build
-npx gulp compile-extensions-build
-npx gulp compile-extension-media-build
+
 
 # Determine Arch & Platform
 if [[ "$OSTYPE" == "darwin"* ]]; then

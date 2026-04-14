@@ -13,12 +13,7 @@ Set-Location $WorkingDir
 Write-Host ">>> [1/4] Instalando dependencias de Node (npm)..." -ForegroundColor Cyan
 npm install
 
-Write-Host ">>> [2/4] Compilando paquetes web & node..." -ForegroundColor Cyan
-npx gulp compile-build
-npx gulp compile-extensions-build
-npx gulp compile-extension-media-build
-
-Write-Host ">>> [3/4] Generando distribucion Minificada (win32-x64)..." -ForegroundColor Cyan
+Write-Host ">>> [2/4] Compilando y empaquetando Trixty IDE (win32-x64-min)..." -ForegroundColor Cyan
 npx gulp vscode-win32-x64-min
 
 Write-Host ">>> [4/4] Compilando instalador INNO User Setup..." -ForegroundColor Cyan
