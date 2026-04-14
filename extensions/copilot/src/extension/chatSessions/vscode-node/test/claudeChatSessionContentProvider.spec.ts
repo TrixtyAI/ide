@@ -153,7 +153,7 @@ function createTestRequest(prompt: string): TestChatRequest {
 
 /**
  * Adds a session item to the controller's items map so that metadata methods work.
- * This simulates what newChatSessionItemHandler does when VS Code creates a new session.
+ * This simulates what newChatSessionItemHandler does when Trixty IDE creates a new session.
  */
 function seedSessionItem(sessionId: string, metadata?: Record<string, unknown>): void {
 	const resource = ClaudeSessionUri.forSessionId(sessionId);

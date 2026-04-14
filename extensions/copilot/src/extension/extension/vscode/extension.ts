@@ -40,11 +40,11 @@ export async function baseActivate(configuration: IExtensionActivationConfigurat
 		return context;
 	}
 
-	// Check if the extension is running in a pre-release version of VS Code
+	// Check if the extension is running in a pre-release version of Trixty IDE
 	const isStableVsCode = !(env.appName.includes('Insiders') || env.appName.includes('Exploration') || env.appName.includes('OSS'));
 	const showSwitchToReleaseViewCtxKey = 'github.copilot.interactiveSession.switchToReleaseChannel';
 	if (context.extension.packageJSON.isPreRelease && isStableVsCode) {
-		// Prevent activation of the extension if the user is using a pre-release version in stable VS Code
+		// Prevent activation of the extension if the user is using a pre-release version in stable Trixty IDE
 		commands.executeCommand('setContext', showSwitchToReleaseViewCtxKey, true);
 		return context;
 	} else {

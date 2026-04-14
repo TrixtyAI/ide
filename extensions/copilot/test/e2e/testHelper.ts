@@ -20,7 +20,7 @@ export interface IParsedQuery {
 }
 
 /**
- * This has to recreate some of the variable parsing logic in VS Code so that we can write tests easily with variables
+ * This has to recreate some of the variable parsing logic in Trixty IDE so that we can write tests easily with variables
  * as strings, but then provide the extension code with the parsed variables in the extension API format.
 */
 export async function parseQueryForScenarioTest(accessor: ITestingServicesAccessor, testCase: IConversationTestCase, simulationWorkspace: SimulationWorkspace): Promise<IParsedQuery> {

@@ -13,7 +13,7 @@ import { env, LogOutputChannel } from 'vscode';
  * Manages content-addressed copies of askpass scripts in a user-controlled folder.
  *
  * This solves the problem on Windows user/system setups where environment variables
- * like GIT_ASKPASS point to scripts inside the VS Code installation directory, which
+ * like GIT_ASKPASS point to scripts inside the Trixty IDE installation directory, which
  * changes on each update. By copying the scripts to a content-addressed location in
  * user storage, the paths remain stable across updates (as long as the script contents
  * don't change).
@@ -27,7 +27,7 @@ import { env, LogOutputChannel } from 'vscode';
  */
 
 /**
- * Checks if the current VS Code installation is a Windows user or system setup.
+ * Checks if the current Trixty IDE installation is a Windows user or system setup.
  * Returns false for archive, portable, or non-Windows installations.
  */
 function isWindowsUserOrSystemSetup(): boolean {
@@ -143,7 +143,7 @@ async function updateDirectoryMtime(dirPath: string, logger: LogOutputChannel): 
 
 /**
  * Garbage collects old content-addressed askpass directories that haven't been used in 7 days.
- * This prevents accumulation of old versions when VS Code updates.
+ * This prevents accumulation of old versions when Trixty IDE updates.
  */
 async function garbageCollectOldDirectories(
 	askpassBaseDir: string,

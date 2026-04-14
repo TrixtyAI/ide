@@ -1,19 +1,19 @@
 ---
 name: launch
-description: "Launch and automate VS Code (Code OSS) using agent-browser via Chrome DevTools Protocol. Use when you need to interact with the VS Code UI, automate the chat panel, test UI features, or take screenshots of VS Code. Triggers include 'automate VS Code', 'interact with chat', 'test the UI', 'take a screenshot', 'launch Code OSS with debugging'."
+description: "Launch and automate Trixty IDE (Code OSS) using agent-browser via Chrome DevTools Protocol. Use when you need to interact with the Trixty IDE UI, automate the chat panel, test UI features, or take screenshots of Trixty IDE. Triggers include 'automate Trixty IDE', 'interact with chat', 'test the UI', 'take a screenshot', 'launch Code OSS with debugging'."
 metadata:
   allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 ---
 
-# VS Code Automation
+# Trixty IDE Automation
 
-Automate VS Code (Code OSS) using agent-browser. VS Code is built on Electron/Chromium and exposes a Chrome DevTools Protocol (CDP) port that agent-browser can connect to, enabling the same snapshot-interact workflow used for web pages.
+Automate Trixty IDE (Code OSS) using agent-browser. Trixty IDE is built on Electron/Chromium and exposes a Chrome DevTools Protocol (CDP) port that agent-browser can connect to, enabling the same snapshot-interact workflow used for web pages.
 
 ## Prerequisites
 
 - **`agent-browser` must be installed.** It's listed in devDependencies — run `npm install` in the repo root. Use `npx agent-browser` if it's not on your PATH, or install globally with `npm install -g agent-browser`.
-- **For Code OSS (VS Code dev build):** The repo must be built before launching. `./scripts/code.sh` runs the build automatically if needed, or set `VSCODE_SKIP_PRELAUNCH=1` to skip the compile step if you've already built.
-- **CSS selectors are internal implementation details.** Selectors like `.interactive-input-part`, `.interactive-input-editor`, and `.part.auxiliarybar` used in `eval` commands are VS Code internals that may change across versions. If they stop working, use `agent-browser snapshot -i` to re-discover the current DOM structure.
+- **For Code OSS (Trixty IDE dev build):** The repo must be built before launching. `./scripts/code.sh` runs the build automatically if needed, or set `VSCODE_SKIP_PRELAUNCH=1` to skip the compile step if you've already built.
+- **CSS selectors are internal implementation details.** Selectors like `.interactive-input-part`, `.interactive-input-editor`, and `.part.auxiliarybar` used in `eval` commands are Trixty IDE internals that may change across versions. If they stop working, use `agent-browser snapshot -i` to re-discover the current DOM structure.
 
 ## Core Workflow
 
@@ -85,12 +85,12 @@ agent-browser tab 2
 agent-browser tab --url "*settings*"
 ```
 
-## Launching Code OSS (VS Code Dev Build)
+## Launching Code OSS (Trixty IDE Dev Build)
 
-The VS Code repository includes `scripts/code.sh` which launches Code OSS from source. It passes all arguments through to the Electron binary, so `--remote-debugging-port` works directly:
+The Trixty IDE repository includes `scripts/code.sh` which launches Code OSS from source. It passes all arguments through to the Electron binary, so `--remote-debugging-port` works directly:
 
 ```bash
-cd <repo-root>  # the root of your VS Code checkout
+cd <repo-root>  # the root of your Trixty IDE checkout
 ./scripts/code.sh --remote-debugging-port=9224
 ```
 
@@ -108,7 +108,7 @@ agent-browser snapshot -i
 
 **Tips:**
 - Set `VSCODE_SKIP_PRELAUNCH=1` to skip the compile step if you've already built: `VSCODE_SKIP_PRELAUNCH=1 ./scripts/code.sh --remote-debugging-port=9224` (from the repo root)
-- Code OSS uses the default user data directory. Unlike VS Code Insiders, you don't typically need `--user-data-dir` since there's usually only one Code OSS instance running.
+- Code OSS uses the default user data directory. Unlike Trixty IDE Insiders, you don't typically need `--user-data-dir` since there's usually only one Code OSS instance running.
 - If you see "Sent env to running instance. Terminating..." it means Code OSS is already running and forwarded your args to the existing instance. Quit Code OSS and relaunch with the flag, or use `--user-data-dir=/tmp/code-oss-debug` to force a new instance.
 
 ## Launching the Agents App (Agents Window)
@@ -116,7 +116,7 @@ agent-browser snapshot -i
 The Agents app is a separate workbench mode launched with the `--agents` flag. It uses a dedicated user data directory to avoid conflicts with the main Code OSS instance.
 
 ```bash
-cd <repo-root>  # the root of your VS Code checkout
+cd <repo-root>  # the root of your Trixty IDE checkout
 ./scripts/code.sh --agents --remote-debugging-port=9224
 ```
 
@@ -132,25 +132,25 @@ agent-browser snapshot -i
 ```
 
 **Tips:**
-- The `--agents` flag launches the Agents workbench instead of the standard VS Code workbench.
+- The `--agents` flag launches the Agents workbench instead of the standard Trixty IDE workbench.
 - Set `VSCODE_SKIP_PRELAUNCH=1` to skip the compile step if you've already built.
 
-## Launching VS Code Extensions for Debugging
+## Launching Trixty IDE Extensions for Debugging
 
-To debug a VS Code extension via agent-browser, launch VS Code Insiders with `--extensionDevelopmentPath` and `--remote-debugging-port`. Use `--user-data-dir` to avoid conflicting with an already-running instance.
+To debug a Trixty IDE extension via agent-browser, launch Trixty IDE Insiders with `--extensionDevelopmentPath` and `--remote-debugging-port`. Use `--user-data-dir` to avoid conflicting with an already-running instance.
 
 ```bash
 # Build the extension first
 cd <extension-repo-root>  # e.g., the root of your extension checkout
 npm run compile
 
-# Launch VS Code Insiders with the extension and CDP
+# Launch Trixty IDE Insiders with the extension and CDP
 code-insiders \
   --extensionDevelopmentPath="<extension-repo-root>" \
   --remote-debugging-port=9223 \
   --user-data-dir=/tmp/vscode-ext-debug
 
-# Wait for VS Code to start, retry until connected
+# Wait for Trixty IDE to start, retry until connected
 for i in 1 2 3 4 5; do agent-browser connect 9223 2>/dev/null && break || sleep 3; done
 
 # Verify you're connected to the right target (not about:blank)
@@ -162,9 +162,9 @@ agent-browser snapshot -i
 **Key flags:**
 - `--extensionDevelopmentPath=<path>` — loads your extension from source (must be compiled first)
 - `--remote-debugging-port=9223` — enables CDP (use 9223 to avoid conflicts with other apps on 9222)
-- `--user-data-dir=<path>` — uses a separate profile so it starts a new process instead of sending to an existing VS Code instance
+- `--user-data-dir=<path>` — uses a separate profile so it starts a new process instead of sending to an existing Trixty IDE instance
 
-**Without `--user-data-dir`**, VS Code detects the running instance, forwards the args to it, and exits immediately — you'll see "Sent env to running instance. Terminating..." and CDP never starts.
+**Without `--user-data-dir`**, Trixty IDE detects the running instance, forwards the args to it, and exits immediately — you'll see "Sent env to running instance. Terminating..." and CDP never starts.
 
 ## Restarting After Code Changes
 
@@ -200,11 +200,11 @@ agent-browser snapshot -i
 
 ## Interacting with Monaco Editor (Chat Input, Code Editors)
 
-VS Code uses Monaco Editor for all text inputs including the Copilot Chat input. Monaco editors require specific agent-browser techniques — standard `click`, `fill`, and `keyboard type` commands may not work depending on the VS Code build.
+Trixty IDE uses Monaco Editor for all text inputs including the Copilot Chat input. Monaco editors require specific agent-browser techniques — standard `click`, `fill`, and `keyboard type` commands may not work depending on the Trixty IDE build.
 
 ### The Universal Pattern: Focus via Keyboard Shortcut + `press`
 
-This works on **all** VS Code builds (Code OSS, Insiders, stable):
+This works on **all** Trixty IDE builds (Code OSS, Insiders, stable):
 
 ```bash
 # 1. Open and focus the chat input with the keyboard shortcut
@@ -243,11 +243,11 @@ agent-browser press Enter
 - **Linux:** `Ctrl+Alt+I` → `agent-browser press Control+Alt+i`
 - **Windows:** `Ctrl+Alt+I` → `agent-browser press Control+Alt+i`
 
-This shortcut focuses the chat input and sets `document.activeElement` to a `DIV` with class `native-edit-context` — VS Code's native text editing surface that correctly processes key events from `agent-browser press`.
+This shortcut focuses the chat input and sets `document.activeElement` to a `DIV` with class `native-edit-context` — Trixty IDE's native text editing surface that correctly processes key events from `agent-browser press`.
 
 ### `type @ref` — Works on Some Builds
 
-On VS Code Insiders (extension debug mode), `type @ref` handles focus and input in one step:
+On Trixty IDE Insiders (extension debug mode), `type @ref` handles focus and input in one step:
 
 ```bash
 agent-browser snapshot -i
@@ -263,7 +263,7 @@ However, **`type @ref` silently fails on Code OSS** — the command completes wi
 
 ### Compatibility Matrix
 
-| Method | VS Code Insiders | Code OSS |
+| Method | Trixty IDE Insiders | Code OSS |
 |--------|-----------------|----------|
 | `press` per key (after focus shortcut) | ✅ Works | ✅ Works |
 | `type @ref` | ✅ Works | ❌ Silent fail |
@@ -316,7 +316,7 @@ agent-browser press Control+a
 agent-browser press Backspace
 ```
 
-### Screenshot Tips for VS Code
+### Screenshot Tips for Trixty IDE
 
 On ultrawide monitors, the chat sidebar may be in the far-right corner of the CDP screenshot. Options:
 - Use `agent-browser screenshot --full` to capture the entire window
@@ -338,13 +338,13 @@ On ultrawide monitors, the chat sidebar may be in the far-right corner of the CD
 
 ### Elements not appearing in snapshot
 
-- VS Code uses multiple webviews. Use `agent-browser tab` to list targets and switch to the right one
+- Trixty IDE uses multiple webviews. Use `agent-browser tab` to list targets and switch to the right one
 - Use `agent-browser snapshot -i -C` to include cursor-interactive elements (divs with onclick handlers)
 
 ### Cannot type in Monaco Editor inputs
 
 - Use `agent-browser press` for individual keystrokes after focusing the input. Focus the chat input with the keyboard shortcut (macOS: `Ctrl+Cmd+I`, Linux/Windows: `Ctrl+Alt+I`).
-- `type @ref`, `keyboard type`, and `keyboard inserttext` work on VS Code Insiders but **silently fail on Code OSS** — they complete without error but no text appears. The `press`-per-key approach works universally.
+- `type @ref`, `keyboard type`, and `keyboard inserttext` work on Trixty IDE Insiders but **silently fail on Code OSS** — they complete without error but no text appears. The `press`-per-key approach works universally.
 - See the "Interacting with Monaco Editor" section above for the full compatibility matrix.
 
 ## Cleanup

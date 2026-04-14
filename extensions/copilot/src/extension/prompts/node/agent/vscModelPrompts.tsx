@@ -452,7 +452,7 @@ class VSCModelPromptD extends PromptElement<DefaultAgentPromptProps> {
 	async render(state: void, sizing: PromptSizing) {
 		const tools = detectToolCapabilities(this.props.availableTools);
 		return <InstructionMessage>
-			You are an expert AI programming assistant, working with a user in the VS Code editor.<br />
+			You are an expert AI programming assistant, working with a user in the Trixty IDE editor.<br />
 			<br />
 			<Tag name='parallel_tool_use_instructions'>
 				The `multi_tool_use` wrapper may not be available in every environment. If it is available, follow the parallel tool use instructions below.<br />

@@ -111,9 +111,9 @@ export class CodeBlockTrackingChatResponseStream implements ChatResponseStream {
 
 	/**
 	 * If you are adding a new ChatResponseStream type, please make sure to either:
-	 * - Update the date on the vscode engine version in package.json to a date when the API will be available in VS Code (sufficient if it's a purely additive/backwards-compatible change)
+	 * - Update the date on the vscode engine version in package.json to a date when the API will be available in Trixty IDE (sufficient if it's a purely additive/backwards-compatible change)
 	 * - Or bump the proposed API version (required if the change is not backwards compatible (changes the shape of an existing API))
-	 * to ensure that this extension version only runs in versions of VS Code that contain the necessary API support.
+	 * to ensure that this extension version only runs in versions of Trixty IDE that contain the necessary API support.
 	 */
 
 	button = this.forward(this._wrapped.button.bind(this._wrapped));

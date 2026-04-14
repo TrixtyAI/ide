@@ -243,7 +243,7 @@ export interface IProductConfiguration {\n\tgithubUpdateRepo?: string;\n\tgithub
 	readonly embedded?: IEmbeddedProductConfiguration;
 
 	/**
-	 * When running as an embedded app, the parent VS Code's policy
+	 * When running as an embedded app, the parent Trixty IDE's policy
 	 * identity (win32RegValueName / darwinBundleIdentifier) so that
 	 * enterprise policies deployed to the parent also apply here.
 	 */

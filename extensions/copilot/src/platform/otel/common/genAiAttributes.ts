@@ -121,7 +121,7 @@ export const CopilotChatAttr = {
 	PROMPT_CONTEXT: 'copilot_chat.prompt_context',
 	/** Custom instructions section */
 	PROMPT_INSTRUCTIONS: 'copilot_chat.prompt_instructions',
-	/** VS Code chat session ID from CapturingToken — the definitive session identifier */
+	/** Trixty IDE chat session ID from CapturingToken — the definitive session identifier */
 	CHAT_SESSION_ID: 'copilot_chat.chat_session_id',
 	/** Parent chat session ID for linking child sessions (e.g., title, categorization) to their parent */
 	PARENT_CHAT_SESSION_ID: 'copilot_chat.parent_chat_session_id',

@@ -28,7 +28,7 @@ async function main() {
 		// Disable other extensions while testing,
 		launchArgs.push('--disable-extensions');
 
-		// use a temporary folder so we can run multiple instances of the same VS Code together
+		// use a temporary folder so we can run multiple instances of the same Trixty IDE together
 		// see https://github.com/microsoft/vscode/issues/137678
 		launchArgs.push('--user-data-dir', tempdir);
 
@@ -71,7 +71,7 @@ async function main() {
 			testOptions.version = argv.stable ? 'stable' : 'insiders';
 		}
 
-		// Download VS Code, unzip it and run the integration test
+		// Download Trixty IDE, unzip it and run the integration test
 		exitCode = await runTests(testOptions);
 	} catch (err) {
 		console.error('Failed to run tests', err);

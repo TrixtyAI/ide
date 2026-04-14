@@ -107,7 +107,7 @@ impl CodeVersionManager {
 		}
 	}
 
-	/// Tries to find the binary entrypoint for VS Code installed in the path.
+	/// Tries to find the binary entrypoint for Trixty IDE installed in the path.
 	pub async fn get_entrypoint_for_install_dir(path: &Path) -> Option<PathBuf> {
 		use tokio::sync::mpsc;
 
@@ -441,7 +441,7 @@ mod tests {
 
 	#[test]
 	fn test_detect_installed_program() {
-		// developers can run this test and debug output manually; VS Code will not
+		// developers can run this test and debug output manually; Trixty IDE will not
 		// be installed in CI, so the test only makes sure it doesn't error out
 		let result = detect_installed_program(&log::Logger::test());
 		println!("result: {result:?}");

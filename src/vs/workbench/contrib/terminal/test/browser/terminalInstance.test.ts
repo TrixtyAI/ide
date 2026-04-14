@@ -221,7 +221,7 @@ suite('Workbench - TerminalInstance', () => {
 			strictEqual(instance.shellType, PosixShellType.Zsh);
 		});
 
-		test('custom key event handler should handle commands in DEFAULT_COMMANDS_TO_SKIP_SHELL in VS Code and not xterm when sendKeybindingsToShell is disabled', async () => {
+		test('custom key event handler should handle commands in DEFAULT_COMMANDS_TO_SKIP_SHELL in Trixty IDE and not xterm when sendKeybindingsToShell is disabled', async () => {
 			const instance = await createTerminalInstance();
 			const keybindingService = instance['_keybindingService'];
 			const originalSoftDispatch = keybindingService.softDispatch;

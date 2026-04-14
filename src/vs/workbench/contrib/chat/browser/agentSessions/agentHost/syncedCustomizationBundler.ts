@@ -17,11 +17,11 @@ import { IAgentHostFileSystemService, SYNCED_CUSTOMIZATION_SCHEME } from '../../
 // Re-export so existing consumers don't need to change their import source.
 export { SYNCED_CUSTOMIZATION_SCHEME };
 
-const DISPLAY_NAME = 'VS Code Synced Data';
+const DISPLAY_NAME = 'Trixty IDE Synced Data';
 
 const MANIFEST_CONTENT = JSON.stringify({
 	name: DISPLAY_NAME,
-	description: 'Customization data synced from VS Code',
+	description: 'Customization data synced from Trixty IDE',
 }, null, '\t');
 
 /**
@@ -145,7 +145,7 @@ export class SyncedCustomizationBundler extends Disposable {
 			ref: {
 				uri: this._rootUri.toString() as ProtocolURI,
 				displayName: DISPLAY_NAME,
-				description: `${syncable.length} customization(s) synced from VS Code`,
+				description: `${syncable.length} customization(s) synced from Trixty IDE`,
 				nonce,
 			},
 		};

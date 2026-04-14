@@ -16,7 +16,7 @@ dotnet --info
 ```
 
 ## Configuration
-To configure the MCP server for use with Visual Studio or VS Code, use the following snippet and include it in your `mcp.json`:
+To configure the MCP server for use with Visual Studio or Trixty IDE, use the following snippet and include it in your `mcp.json`:
 
 ```jsonc
 {
@@ -64,7 +64,7 @@ The format of the configuration file can differ for different environments. Belo
 | Environment | Documentation |
 |-------------|--------------|
 | Visual Studio | [File locations for automatic discovery of MCP configuration](https://learn.microsoft.com/visualstudio/ide/mcp-servers?view=vs-2022#file-locations-for-automatic-discovery-of-mcp-configuration) |
-| VS Code | [MCP configuration in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server) |
+| Trixty IDE | [MCP configuration in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server) |
 | GitHub Copilot Coding Agent | [Setting up MCP servers in a repository](https://docs.github.com/en/copilot/how-tos/agents/copilot-coding-agent/extending-copilot-coding-agent-with-mcp#setting-up-mcp-servers-in-a-repository)
 
 ## Support

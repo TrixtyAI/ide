@@ -6,7 +6,7 @@ parameters:
 steps:
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'VS Code Development WIF'
+      azureSubscription: 'Trixty IDE Development WIF'
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: npm run setup

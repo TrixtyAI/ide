@@ -19,14 +19,14 @@ import { GitHubMcpDefinitionProvider } from '../../../githubMcp/common/githubMcp
 
 const toolInvalidCharRe = /[^a-z0-9_-]/gi;
 
-/** The user-facing display label of an MCP server (from VS Code settings). */
+/** The user-facing display label of an MCP server (from Trixty IDE settings). */
 export type MCPDisplayName = string;
 /** The short server name as used in agent definition files (the prefix of `fullReferenceName`). */
 export type MCPServerName = string;
 
 /**
  * A mapping from friendly MCP server names (as defined in custom agent files)
- * to VS Code MCP server display labels.
+ * to Trixty IDE MCP server display labels.
  */
 export type McpServerMappings = Map<MCPServerName, MCPDisplayName>;
 
@@ -189,7 +189,7 @@ export class CopilotCLIMCPHandler implements ICopilotCLIMCPHandler {
 
 /**
  * Builds a mapping from friendly MCP server names (as defined in custom agent files)
- * to VS Code MCP server labels.
+ * to Trixty IDE MCP server labels.
  *
  * Iterates through tools that have an MCP source (detected via structural typing using
  * {@link hasKey}) and a `fullReferenceName` in the format `<server name>/<tool name>`,
@@ -220,7 +220,7 @@ export function buildMcpServerMappings(tools: ReadonlyMap<LanguageModelToolInfor
  * server config.
  *
  * @param customAgents The list of custom agents whose tools will be remapped in place.
- * @param mcpServerMappings Maps friendly server names (from agent files) → VS Code MCP display labels.
+ * @param mcpServerMappings Maps friendly server names (from agent files) → Trixty IDE MCP display labels.
  * @param mcpServers The MCP server config, keyed by gateway name.
  * @param selectedAgent Optional selected agent to also remap.
  */

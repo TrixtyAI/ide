@@ -300,7 +300,7 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 							updatedInput: hookResult.updatedInput,
 						} : undefined,
 					};
-					// Attach trace context for span parenting (not in the VS Code API type)
+					// Attach trace context for span parenting (not in the Trixty IDE API type)
 					(invocationOptions as { parentTraceContext?: { traceId: string; spanId: string } }).parentTraceContext = parentTraceContext;
 
 					const transcriptSessionId = promptContext.conversation?.sessionId;

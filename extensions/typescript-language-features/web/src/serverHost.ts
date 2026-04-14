@@ -363,7 +363,7 @@ function createServerHost(
 
 		const isNm = looksLikeNodeModules(path)
 			&& !path.startsWith('/vscode-global-typings/')
-			// Handle the case where a local folder has been opened in VS Code
+			// Handle the case where a local folder has been opened in Trixty IDE
 			// In these cases we do not want to use the mapped node_module
 			&& !path.startsWith('/file/');
 

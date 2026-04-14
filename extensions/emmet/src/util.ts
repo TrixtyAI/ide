@@ -117,7 +117,7 @@ export function validate(allowStylesheet: boolean = true): boolean {
 }
 
 export function getMappingForIncludedLanguages(): Record<string, string> {
-	// Explicitly map languages that have built-in grammar in VS Code to their parent language
+	// Explicitly map languages that have built-in grammar in Trixty IDE to their parent language
 	// to get emmet completion support
 	// For other languages, users will have to use `emmet.includeLanguages` or
 	// language specific extensions can provide emmet completion support

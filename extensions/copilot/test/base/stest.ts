@@ -245,7 +245,7 @@ export interface ISimulationSuiteDescriptor {
 	readonly nonExtensionConfigurations?: NonExtensionConfiguration[] | undefined;
 
 	/**
-	 * Set to true to run in a real VS Code extension host.
+	 * Set to true to run in a real Trixty IDE extension host.
 	 */
 	readonly extHost?: ExtHostDescriptor;
 }

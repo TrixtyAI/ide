@@ -1109,7 +1109,7 @@ export interface PythonTerminalRunApi {
 	 * If a terminal is available, it will be used to run the script or module.
 	 *
 	 * Note:
-	 *  - If you restart VS Code, this will create a new terminal, this is a limitation of VS Code.
+	 *  - If you restart Trixty IDE, this will create a new terminal, this is a limitation of Trixty IDE.
 	 *  - If you close the terminal, this will create a new terminal.
 	 *  - In cases of multi-root/project scenario, it will create a separate terminal for each project.
 	 */

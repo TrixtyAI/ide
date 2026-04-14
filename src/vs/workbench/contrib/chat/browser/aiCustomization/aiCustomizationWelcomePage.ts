@@ -20,7 +20,7 @@ export interface IWelcomePageCallbacks {
 	closeEditor(): void;
 	/**
 	 * Prefill the chat input with a query. In the sessions window this
-	 * uses the sessions chat widget; in core VS Code it opens the chat view.
+	 * uses the sessions chat widget; in core Trixty IDE it opens the chat view.
 	 */
 	prefillChat(query: string, options?: { isPartialQuery?: boolean }): void;
 }

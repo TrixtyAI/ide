@@ -19,7 +19,7 @@ export const walkThroughSnippet = 'walkThroughSnippet';
 export const vscodeNotebookCell = 'vscode-notebook-cell';
 export const officeScript = 'office-script';
 
-/** Used for code blocks in chat by vs code core */
+/** Used for code blocks in chat by Trixty IDE core */
 export const chatCodeBlock = 'vscode-chat-code-block';
 
 export function getSemanticSupportedSchemes() {

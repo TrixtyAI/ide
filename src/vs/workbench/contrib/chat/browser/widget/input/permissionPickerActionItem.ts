@@ -25,7 +25,7 @@ import { ChatInputPickerActionViewItem, IChatInputPickerOptions } from './chatIn
 import { IOpenerService } from '../../../../../../platform/opener/common/opener.js';
 import { URI } from '../../../../../../base/common/uri.js';
 
-// Track whether warnings have been shown this VS Code session
+// Track whether warnings have been shown this Trixty IDE session
 const shownWarnings = new Set<ChatPermissionLevel>();
 
 function hasShownElevatedWarning(level: ChatPermissionLevel): boolean {

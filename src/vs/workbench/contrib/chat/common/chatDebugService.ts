@@ -221,7 +221,7 @@ export interface IChatDebugService extends IDisposable {
 	importLog(data: Uint8Array): Promise<URI | undefined>;
 
 	/**
-	 * Returns true if the event was logged by VS Code core
+	 * Returns true if the event was logged by Trixty IDE core
 	 * (not sourced from an external provider).
 	 */
 	isCoreEvent(event: IChatDebugEvent): boolean;

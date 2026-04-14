@@ -83,7 +83,7 @@ class IdeMcpServerContributor implements IClaudeMcpServerContributor {
 
 		const getDiagnosticsTool = tool(
 			'getDiagnostics',
-			'Get language diagnostics from VS Code. Returns errors, warnings, information, and hints for files in the workspace.',
+			'Get language diagnostics from Trixty IDE. Returns errors, warnings, information, and hints for files in the workspace.',
 			{
 				uri: z.string().optional().describe('Optional file URI to get diagnostics for. If not provided, gets diagnostics for all files.'),
 			},

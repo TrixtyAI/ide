@@ -412,8 +412,8 @@ export class InlineChatCustomNotebookInfoRenderer extends PromptElement<InlineCh
 			<>
 				{
 					<UserMessage>
-						I am working on a {notebookTypeName} notebook in VS Code.<br />
-						{notebookTypeName} notebooks in VS Code are documents that contain a mix of rich Markdown, executable code snippets, <br />
+						I am working on a {notebookTypeName} notebook in Trixty IDE.<br />
+						{notebookTypeName} notebooks in Trixty IDE are documents that contain a mix of rich Markdown, executable code snippets, <br />
 						and accompanying rich output. These are all separated into distinct cells and can be interleaved in any order <br />
 						A {notebookTypeName} notebook contains multiple cells.<br />
 					</UserMessage>

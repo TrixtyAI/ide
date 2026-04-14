@@ -153,7 +153,7 @@ export class TestExecutionInExtension {
 			publisher: packageJsonContents.publisher,
 			engines: packageJsonContents.engines,
 			displayName: 'Simulation Extension',
-			description: 'An extension installed in the VS Code server for the simulation test runs',
+			description: 'An extension installed in the Trixty IDE server for the simulation test runs',
 			enabledApiProposals: packageJsonContents.enabledApiProposals,
 			version: `0.0.${Date.now()}`,
 			activationEvents: ['*'],

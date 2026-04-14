@@ -6,7 +6,7 @@ steps:
   # Setup copilot test environment (tokens, env vars)
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'VS Code Development WIF'
+      azureSubscription: 'Trixty IDE Development WIF'
       ${{ if eq(parameters.OS, 'win32') }}:
         scriptType: 'pscore'
       ${{ else }}:
@@ -16,14 +16,14 @@ steps:
       workingDirectory: $(Build.SourcesDirectory)/extensions/copilot
     displayName: Setup copilot test environment
 
-  # Compute the path to the VS Code build executable
+  # Compute the path to the Trixty IDE build executable
   - ${{ if eq(parameters.OS, 'linux') }}:
     - script: |
         set -e
         APP_ROOT=$(agent.builddirectory)/VSCode-linux-$(VSCODE_ARCH)
         APP_NAME=$(node -p "require(\"$APP_ROOT/resources/app/product.json\").applicationName")
         echo "##vso[task.setvariable variable=VSCODE_UNDER_TEST]$APP_ROOT/$APP_NAME"
-      displayName: Compute VS Code build path
+      displayName: Compute Trixty IDE build path
 
   - ${{ if eq(parameters.OS, 'darwin') }}:
     - script: |
@@ -33,7 +33,7 @@ steps:
         ProductJsonPath=$(find "$APP_ROOT" -name "product.json" -type f | head -n 1)
         BINARY_NAME=$(jq -r '.nameShort' "$ProductJsonPath")
         echo "##vso[task.setvariable variable=VSCODE_UNDER_TEST]$APP_ROOT/$APP_NAME/Contents/MacOS/$BINARY_NAME"
-      displayName: Compute VS Code build path
+      displayName: Compute Trixty IDE build path
 
   - ${{ if eq(parameters.OS, 'win32') }}:
     - powershell: |
@@ -42,7 +42,7 @@ steps:
         $AppProductJson = Get-Content -Raw -Path "$AppRoot\$ProductJsonPath" | ConvertFrom-Json
         $AppNameShort = $AppProductJson.nameShort
         Write-Host "##vso[task.setvariable variable=VSCODE_UNDER_TEST]$AppRoot\$AppNameShort.exe"
-      displayName: Compute VS Code build path
+      displayName: Compute Trixty IDE build path
 
   # Compile copilot extension for tests
   - script: npm run compile

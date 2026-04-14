@@ -80,7 +80,7 @@ export class GetNewWorkspaceTool implements ICopilotTool<INewWorkspaceToolParams
 
 				if ((await this.fileSystemService.readDirectory(newWorkspaceUri)).length > 0) {
 					return new LanguageModelToolResult([
-						new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+						new LanguageModelTextPart('The user has not opened a valid workspace folder in Trixty IDE. Ask them to open an empty folder before continuing.')
 					]);
 				}
 
@@ -101,13 +101,13 @@ export class GetNewWorkspaceTool implements ICopilotTool<INewWorkspaceToolParams
 			}
 
 			return new LanguageModelToolResult([
-				new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+				new LanguageModelTextPart('The user has not opened a valid workspace folder in Trixty IDE. Ask them to open an empty folder before continuing.')
 			]);
 		}
 
 		if (!workspaceUri) {
 			return new LanguageModelToolResult([
-				new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+				new LanguageModelTextPart('The user has not opened a valid workspace folder in Trixty IDE. Ask them to open an empty folder before continuing.')
 			]);
 		}
 
@@ -133,7 +133,7 @@ export class NewWorkspaceCreationResult extends PromptElement<NewWorkspaceElemen
 
 		if (!workspaceUri) {
 			return <TextChunk>
-				The user has not opened an empty workspace folder in VS Code. Ask them to open an empty folder before continuing.<br />
+				The user has not opened an empty workspace folder in Trixty IDE. Ask them to open an empty folder before continuing.<br />
 			</TextChunk>;
 		}
 
@@ -218,7 +218,7 @@ DEVELOPMENT RULES:
 - Use '.' as the working directory unless user specifies otherwise.
 - Avoid adding media or external links unless explicitly requested.
 - Use placeholders only with a note that they should be replaced.
-- Use VS Code API tool only for VS Code extension projects.
+- Use Trixty IDE API tool only for Trixty IDE extension projects.
 - Once the project is created, it is already opened in Visual Studio Code—do not suggest commands to open this project in Visual Studio again.
 - If the project setup information has additional rules, follow them strictly.
 
@@ -238,7 +238,7 @@ PROJECT CONTENT RULES:
 - If you need to use any media assets as placeholders, let the user know that these are placeholders and should be replaced with the actual assets later.
 - Ensure all generated components serve a clear purpose within the user's requested workflow.
 - If a feature is assumed but not confirmed, prompt the user for clarification before including it.
-- If you are working on a VS Code extension, use the VS Code API tool with a query to find relevant VS Code API references and samples related to that query.
+- If you are working on a Trixty IDE extension, use the Trixty IDE API tool with a query to find relevant Trixty IDE API references and samples related to that query.
 
 TASK COMPLETION RULES:
 - Your task is complete when:

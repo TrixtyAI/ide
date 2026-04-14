@@ -17,7 +17,7 @@ const ignoreUriSchemes = new Set([
 	'search-editor', // search results virtual document
 	'comment', // very little context available and suggestions are often bad
 	'git', // virtual file tracked by git
-	'chat-editing-snapshot-text-model', // VS Code Chat temporary editing snapshot
+	'chat-editing-snapshot-text-model', // Trixty IDE Chat temporary editing snapshot
 ]);
 
 export function wrapDoc(doc: vscode.TextDocument): ITextDocument | undefined {

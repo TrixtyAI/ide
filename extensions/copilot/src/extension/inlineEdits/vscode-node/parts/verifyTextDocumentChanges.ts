@@ -9,7 +9,7 @@ import { Disposable } from '../../../../util/vs/base/common/lifecycle';
 import { editFromTextDocumentContentChangeEvents } from './common';
 
 /**
- * Verifies that VS Code content change API reports consistent document edits.
+ * Verifies that Trixty IDE content change API reports consistent document edits.
  * Tracks document states and verifies that applying reported edits to the previous state
  * produces the new document state. Reports mismatches via telemetry.
  */

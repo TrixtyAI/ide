@@ -61,7 +61,7 @@ function convertJupyterOutputToBuffer(mime: string, value: unknown): NotebookCel
 			return NotebookCellOutputItem.text(stringValue, mime);
 		} else if (mime.startsWith('image/') && typeof value === 'string' && mime !== 'image/svg+xml') {
 			// Images in Jupyter are stored in base64 encoded format.
-			// VS Code expects bytes when rendering images.
+			// Trixty IDE expects bytes when rendering images.
 			if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
 				return new NotebookCellOutputItem(Buffer.from(value, 'base64'), mime);
 			} else {
@@ -170,7 +170,7 @@ function splitMultilineString(source: string | string[]): string[] {
 function translateCellErrorOutput(output: vscode.NotebookCellOutput) {
 	// it should have at least one output item
 	const firstItem = output.items[0];
-	// Bug in VS Code.
+	// Bug in Trixty IDE.
 	if (!firstItem.data) {
 		return {
 			output_type: 'error',
@@ -185,7 +185,7 @@ function translateCellErrorOutput(output: vscode.NotebookCellOutput) {
 		output_type: 'error',
 		ename: value.name,
 		evalue: value.message,
-		// VS Code needs an `Error` object which requires a `stack` property as a string.
+		// Trixty IDE needs an `Error` object which requires a `stack` property as a string.
 		// Its possible the format could change when converting from `traceback` to `string` and back again to `string`
 		// When .NET stores errors in output (with their .NET kernel),
 		// stack is empty, hence store the message instead of stack (so that somethign gets displayed in ipynb).
@@ -250,7 +250,7 @@ function convertOutputMimeToJupyterOutput(mime: string, value: Uint8Array) {
 			return splitMultilineString(stringValue);
 		} else if (mime.startsWith('image/') && mime !== 'image/svg+xml') {
 			// Images in Jupyter are stored in base64 encoded format.
-			// VS Code expects bytes when rendering images.
+			// Trixty IDE expects bytes when rendering images.
 			if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
 				return Buffer.from(value).toString('base64');
 			} else {

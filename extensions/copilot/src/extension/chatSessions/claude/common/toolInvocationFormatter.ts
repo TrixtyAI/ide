@@ -37,7 +37,7 @@ function extractToolResultContent(content: Anthropic.Messages.ToolResultBlockPar
 
 /**
  * Completes a tool invocation by populating toolSpecificData with the result.
- * This enables VS Code's chat UI to display tool outputs.
+ * This enables Trixty IDE's chat UI to display tool outputs.
  */
 export function completeToolInvocation(
 	toolUse: Anthropic.Beta.Messages.BetaToolUseBlock,

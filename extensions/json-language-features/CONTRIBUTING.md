@@ -5,14 +5,14 @@
 	- Dependencies for `/extension/json-language-features/`
 	- Dependencies for `/extension/json-language-features/server/`
 	- devDependencies such as `gulp`
-- Open `/extensions/json-language-features/` as the workspace in VS Code
+- Open `/extensions/json-language-features/` as the workspace in Trixty IDE
 - In `/extensions/json-language-features/` run `npm run compile`(or `npm run watch`) to build the client and server
 - Run the [`Launch Extension`](https://github.com/microsoft/vscode/blob/master/extensions/json-language-features/.vscode/launch.json) debug target in the Debug View. This will:
-	- Launch a new VS Code instance with the `json-language-features` extension loaded
+	- Launch a new Trixty IDE instance with the `json-language-features` extension loaded
 - Open a `.json` file to activate the extension. The extension will start the JSON language server process.
 - Add `"json.trace.server": "verbose"` to the settings to observe the communication between client and server in the `JSON Language Server` output.
 - Debug the extension and the language server client by setting breakpoints in`json-language-features/client/`
-- Debug the language server process by using `Attach to Node Process` command in the  VS Code window opened on `json-language-features`.
+- Debug the language server process by using `Attach to Node Process` command in the  Trixty IDE window opened on `json-language-features`.
   - Pick the process that contains `jsonServerMain` in the command line. Hover over `code-insiders` resp `code` processes to see the full process command line.
   - Set breakpoints in `json-language-features/server/`
 - Run `Reload Window` command in the launched instance to reload the extension

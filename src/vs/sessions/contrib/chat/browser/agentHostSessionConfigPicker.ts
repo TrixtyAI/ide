@@ -126,7 +126,7 @@ function renderPickerTrigger(slot: HTMLElement, disabled: boolean, disposables: 
  */
 const AUTO_APPROVE_PROPERTY = 'autoApprove';
 
-// Track whether auto-approve warnings have been shown this VS Code session
+// Track whether auto-approve warnings have been shown this Trixty IDE session
 const shownAutoApproveWarnings = new Set<string /* enum value */>();
 
 function hasShownAutoApproveWarning(value: string): boolean {

@@ -150,7 +150,7 @@ Related to #8888 and microsoft/vscode#12345.
 
 Steps to reproduce:
 
-1. Open VS Code
+1. Open Trixty IDE
 2. ...
 ```
 
@@ -168,7 +168,7 @@ Related to https://github.com/microsoft/vscode-copilot/issues/8888 and microsoft
 
 Steps to reproduce:
 
-1. Open VS Code
+1. Open Trixty IDE
 2. ...
 ```
 

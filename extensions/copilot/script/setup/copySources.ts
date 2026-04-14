@@ -39,7 +39,7 @@ async function doIt(filepaths: string[]) {
 	try {
 		await fs.promises.access(VS_ROOT);
 	} catch {
-		console.error(`❌ VS Code root not found at ${VS_ROOT}`);
+		console.error(`❌ Trixty IDE root not found at ${VS_ROOT}`);
 		process.exit(1);
 	}
 

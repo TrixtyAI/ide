@@ -19,7 +19,7 @@ const requestLogStorage = new AsyncLocalStorage<CapturingToken>();
 /**
  * Correlation map for preserving CapturingToken across IPC boundaries.
  *
- * When requests cross the VS Code IPC boundary (e.g., BYOK providers),
+ * When requests cross the Trixty IDE IPC boundary (e.g., BYOK providers),
  * AsyncLocalStorage context is lost. This map allows correlating requests
  * by storing the token before IPC and retrieving it on the other side.
  */

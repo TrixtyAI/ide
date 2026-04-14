@@ -23,7 +23,7 @@ import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { URI } from '../../../../base/common/uri.js';
 import { CopilotChatSessionsProvider } from '../../copilotChatSessions/browser/copilotChatSessionsProvider.js';
 
-// Track whether warnings have been shown this VS Code session
+// Track whether warnings have been shown this Trixty IDE session
 const shownWarnings = new Set<ChatPermissionLevel>();
 
 interface IPermissionItem {

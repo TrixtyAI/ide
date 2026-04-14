@@ -8,7 +8,7 @@ This repository includes configuration for a development container for working w
 
 ## Quick start - local
 
-If you already have VS Code and Docker installed, you can click the badge above or [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/microsoft/vscode) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+If you already have Trixty IDE and Docker installed, you can click the badge above or [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/microsoft/vscode) to get started. Clicking these links will cause Trixty IDE to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
 
 1. Install Docker Desktop or Docker for Linux on your local machine. (See [docs](https://aka.ms/vscode-remote/containers/getting-started) for additional details.)
 
@@ -30,7 +30,7 @@ If you already have VS Code and Docker installed, you can click the badge above 
 
 6. After the container is running:
     1. If you have the `DISPLAY` or `WAYLAND_DISPLAY` environment variables set locally (or in WSL on Windows), desktop apps in the container will be shown in local windows.
-    2. If these are not set, open a web browser and go to [http://localhost:6080](http://localhost:6080), or use a [VNC Viewer][def] to connect to `localhost:5901` and enter `vscode` as the password. Anything you start in VS Code, or the integrated terminal, will appear here.
+    2. If these are not set, open a web browser and go to [http://localhost:6080](http://localhost:6080), or use a [VNC Viewer][def] to connect to `localhost:5901` and enter `vscode` as the password. Anything you start in Trixty IDE, or the integrated terminal, will appear here.
 
 Next: **[Try it out!](#try-it)**
 
@@ -48,19 +48,19 @@ Next: **[Try it out!](#try-it)**
 
 4. In the new tab, you should see noVNC. Click **Connect** and enter `vscode` as the password.
 
-Anything you start in VS Code, or the integrated terminal, will appear here.
+Anything you start in Trixty IDE, or the integrated terminal, will appear here.
 
 Next: **[Try it out!](#try-it)**
 
-### Using VS Code with GitHub Codespaces
+### Using Trixty IDE with GitHub Codespaces
 
-You may see improved VNC responsiveness when accessing a codespace from VS Code client since you can use a [VNC Viewer][def]. Here's how to do it.
+You may see improved VNC responsiveness when accessing a codespace from Trixty IDE client since you can use a [VNC Viewer][def]. Here's how to do it.
 
 1. Install [Visual Studio Code Stable](https://code.visualstudio.com/) or [Insiders](https://code.visualstudio.com/insiders/) and the [GitHub Codespaces extension](https://marketplace.visualstudio.com/items?itemName=GitHub.codespaces).
 
     > **Note:** The GitHub Codespaces extension requires the Visual Studio Code distribution of Code - OSS.
 
-2. After the VS Code is up and running, press <kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> or <kbd>F1</kbd>, choose **Codespaces: Create New Codespace**, and use the following settings:
+2. After the Trixty IDE is up and running, press <kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> or <kbd>F1</kbd>, choose **Codespaces: Create New Codespace**, and use the following settings:
 
 - `microsoft/vscode` for the repository.
 - Select any branch (e.g. **main**) - you can select a different one later.
@@ -70,7 +70,7 @@ You may see improved VNC responsiveness when accessing a codespace from VS Code 
 
     > **Tip:** You may also need change your VNC client's **Picture Quality** setting to **High** to get a full color desktop.
 
-4. Anything you start in VS Code, or the integrated terminal, will appear here.
+4. Anything you start in Trixty IDE, or the integrated terminal, will appear here.
 
 Next: **[Try it out!](#try-it)**
 
@@ -82,7 +82,7 @@ This container uses the [Fluxbox](http://fluxbox.org/) window manager to keep th
 
 To start working with Code - OSS, follow these steps:
 
-1. In your local VS Code client, open a terminal (<kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>\`</kbd>) and type the following commands:
+1. In your local Trixty IDE client, open a terminal (<kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>\`</kbd>) and type the following commands:
 
    ```bash
    npm i
@@ -97,9 +97,9 @@ Next, let's try debugging.
 
 1. Shut down Code - OSS by clicking the box in the upper right corner of the Code - OSS window through your browser or VNC viewer.
 
-2. Go to your local VS Code client, and use the **Run / Debug** view to launch the **VS Code** configuration. (Typically the default, so you can likely just press <kbd>F5</kbd>).
+2. Go to your local Trixty IDE client, and use the **Run / Debug** view to launch the **Trixty IDE** configuration. (Typically the default, so you can likely just press <kbd>F5</kbd>).
 
-   > **Note:** If launching times out, you can increase the value of `timeout` in the "VS Code", "Attach Main Process", "Attach Extension Host", and "Attach to Shared Process" configurations in [launch.json](../.vscode/launch.json). However, running `./scripts/code.sh` first will set up Electron which will usually solve timeout issues.
+   > **Note:** If launching times out, you can increase the value of `timeout` in the "Trixty IDE", "Attach Main Process", "Attach Extension Host", and "Attach to Shared Process" configurations in [launch.json](../.vscode/launch.json). However, running `./scripts/code.sh` first will set up Electron which will usually solve timeout issues.
 
 3. After a bit, Code - OSS will appear with the debugger attached!
 
@@ -107,6 +107,6 @@ Enjoy!
 
 ### Notes
 
-The container comes with VS Code Insiders installed. To run it from an Integrated Terminal use `VSCODE_IPC_HOOK_CLI= /usr/bin/code-insiders .`.
+The container comes with Trixty IDE Insiders installed. To run it from an Integrated Terminal use `VSCODE_IPC_HOOK_CLI= /usr/bin/code-insiders .`.
 
 [def]: https://www.realvnc.com/en/connect/download/viewer/

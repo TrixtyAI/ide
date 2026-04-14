@@ -494,7 +494,7 @@ export class RemoteAgentHostContribution extends Disposable implements IWorkbenc
 
 	/**
 	 * Authenticate using protectedResources from agent info in root state.
-	 * Resolves tokens via the standard VS Code authentication service.
+	 * Resolves tokens via the standard Trixty IDE authentication service.
 	 */
 	private async _authenticateWithConnection(loggedConnection: LoggingAgentConnection, agents: readonly IAgentInfo[]): Promise<void> {
 		try {
@@ -518,7 +518,7 @@ export class RemoteAgentHostContribution extends Disposable implements IWorkbenc
 
 	/**
 	 * Resolve a bearer token for a set of authorization servers using the
-	 * standard VS Code authentication service provider resolution.
+	 * standard Trixty IDE authentication service provider resolution.
 	 */
 	private _resolveTokenForResource(resourceServer: URI, authorizationServers: readonly string[], scopes: readonly string[]): Promise<string | undefined> {
 		return resolveTokenForResource(resourceServer, authorizationServers, scopes, this._authenticationService, this._logService, '[RemoteAgentHost]');

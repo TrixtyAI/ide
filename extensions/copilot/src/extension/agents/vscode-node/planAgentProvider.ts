@@ -56,7 +56,7 @@ export class PlanAgentProvider extends Disposable implements vscode.ChatCustomAg
 		super();
 
 		// Listen for settings changes to refresh agents
-		// Note: When settings change, we fire onDidChangeCustomAgents which causes VS Code to re-fetch
+		// Note: When settings change, we fire onDidChangeCustomAgents which causes Trixty IDE to re-fetch
 		// the agent definition. However, handoff buttons already rendered may not work as
 		// these capture the model at render time.
 		this._register(this.configurationService.onDidChangeConfiguration(e => {

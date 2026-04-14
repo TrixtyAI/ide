@@ -31,13 +31,18 @@ jobs:
         shell: pwsh
         run: .\scripts\build-trixty.ps1
 
+      - name: Prepare Artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp ../*.exe dist/ 2>/dev/null || true
+          cp ../*.zip dist/ 2>/dev/null || true
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: trixty-win32-x64
-          path: |
-            ../*.exe
-            ../*.zip
+          path: dist/
 
   build-linux:
     name: Build Linux x64
@@ -68,14 +73,18 @@ jobs:
       - name: Build Trixty IDE
         run: bash ./scripts/build-trixty.sh
 
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p dist
+          cp ../*.tar.gz dist/ 2>/dev/null || true
+          cp ../*.deb dist/ 2>/dev/null || true
+          cp ../*.rpm dist/ 2>/dev/null || true
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: trixty-linux-x64
-          path: |
-            ../*.tar.gz
-            ../*.deb
-            ../*.rpm
+          path: dist/
 
   build-macos:
     name: Build macOS arm64
@@ -101,13 +110,17 @@ jobs:
       - name: Build Trixty IDE
         run: bash ./scripts/build-trixty.sh
 
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p dist
+          cp ../*.dmg dist/ 2>/dev/null || true
+          cp ../*.zip dist/ 2>/dev/null || true
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: trixty-macos-arm64
-          path: |
-            ../*.dmg
-            ../*.zip
+          path: dist/
 
   create-release:
     name: Create GitHub Release

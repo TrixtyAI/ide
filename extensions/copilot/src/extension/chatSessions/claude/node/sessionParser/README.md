@@ -18,7 +18,7 @@ Claude Code stores conversation sessions in `~/.claude/projects/{workspace-slug}
 sessionParser/
 ├── claudeSessionSchema.ts      # Type-safe validators using IValidator pattern
 ├── claudeSessionParser.ts      # Core parsing and session building logic
-├── claudeCodeSessionService.ts # VS Code service with caching and file discovery
+├── claudeCodeSessionService.ts # Trixty IDE service with caching and file discovery
 └── test/                       # Unit tests
     ├── claudeSessionSchema.spec.ts
     └── claudeSessionParser.spec.ts

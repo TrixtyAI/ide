@@ -6,7 +6,7 @@
 	"version": "1.0.0",
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.0.9"
+    "vscode": "^1.0.10"
 	},
 	"categories": [
 		"AI",
@@ -55,7 +55,7 @@
 				},
 				"trixtyAI.trixty.endpoint": {
 					"type": "string",
-					"default": "http://localhost:3000/api/v1",
+					"default": "https://trixty.vercel.app/api/v1",
 					"description": "Trixty AI server endpoint URL"
 				},
 				"trixtyAI.trixty.apiKey": {
@@ -140,7 +140,7 @@
 		"watch": "tsc -w -p ./tsconfig.json"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.0.9",
+    "@types/vscode": "^1.0.10",
 		"typescript": "^5.7.0"
 	}
 }

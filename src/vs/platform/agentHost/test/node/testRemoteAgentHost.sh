@@ -145,7 +145,7 @@ cd "$ROOT"
 
 # Start the server directly using Node (not via code-agent-host.sh which
 # spawns a subprocess tree that's harder to manage in background mode).
-# Use system node rather than the VS Code-managed node binary which may
+# Use system node rather than the Trixty IDE-managed node binary which may
 # not have been downloaded yet.
 SERVER_ENTRY="$ROOT/out/vs/platform/agentHost/node/agentHostServerMain.js"
 

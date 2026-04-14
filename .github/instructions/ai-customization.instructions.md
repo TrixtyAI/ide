@@ -1,5 +1,5 @@
 ---
-description: Architecture documentation for VS Code AI Customization view. Use when working in `src/vs/workbench/contrib/chat/browser/aiCustomization`
+description: Architecture documentation for Trixty IDE AI Customization view. Use when working in `src/vs/workbench/contrib/chat/browser/aiCustomization`
 applyTo: 'src/vs/workbench/contrib/chat/browser/aiCustomization/**'
 ---
 

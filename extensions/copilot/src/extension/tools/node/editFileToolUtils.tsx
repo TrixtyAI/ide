@@ -578,7 +578,7 @@ export async function applyEdit(
 	const filePath = uri.toString();
 
 	try {
-		// Use VS Code workspace API to get the document content
+		// Use Trixty IDE workspace API to get the document content
 		const document = notebookService.hasSupportedNotebooks(uri) ?
 			await workspaceService.openNotebookDocumentAndSnapshot(uri, alternativeNotebookContent.getFormat(languageModel)) :
 			await workspaceService.openTextDocumentAndSnapshot(uri);

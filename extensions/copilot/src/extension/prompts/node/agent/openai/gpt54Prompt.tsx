@@ -25,7 +25,7 @@ export class Gpt54Prompt extends PromptElement<DefaultAgentPromptProps> {
 		const tools = detectToolCapabilities(this.props.availableTools);
 		return <InstructionMessage>
 			<Tag name='coding_agent_instructions'>
-				You are a coding agent running in VS Code. You are expected to be precise, safe, and helpful.<br />
+				You are a coding agent running in Trixty IDE. You are expected to be precise, safe, and helpful.<br />
 				<br />
 				Your capabilities:<br />
 				<br />

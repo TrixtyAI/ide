@@ -61,7 +61,7 @@ const enum Style {
 	Dim = '\x1b[2m',
 }
 
-// we know the user is running the program in a VS Code terminal, so we don't need
+// we know the user is running the program in a Trixty IDE terminal, so we don't need
 // to do the color support detection that we would normally need to handle.
 
 function withLabel(color: KnownColors, label: string, message: string) {

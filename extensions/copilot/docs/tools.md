@@ -10,7 +10,7 @@ This is aimed at adding tools to vscode-copilot-chat, but much of it would apply
 
 ### Do we need a new tool?
 
-First, consider whether a new built-in tool is needed. Tools should be built-in if they are related to core VS Code functionality or the core search/edit/terminal agent loop and are needed for common OOB scenarios. Consider whether the tool can be contributed from another extension instead. If the task can be done through normal terminal commands, then it may not need its own tool.
+First, consider whether a new built-in tool is needed. Tools should be built-in if they are related to core Trixty IDE functionality or the core search/edit/terminal agent loop and are needed for common OOB scenarios. Consider whether the tool can be contributed from another extension instead. If the task can be done through normal terminal commands, then it may not need its own tool.
 
 ### Static part
 

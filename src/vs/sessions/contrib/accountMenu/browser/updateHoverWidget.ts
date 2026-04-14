@@ -42,7 +42,7 @@ export class UpdateHoverWidget {
 		const container = document.createElement('div');
 		container.classList.add('sessions-update-hover');
 
-		// Header: e.g. "Downloading VS Code Insiders"
+		// Header: e.g. "Downloading Trixty IDE Insiders"
 		const header = document.createElement('div');
 		header.classList.add('sessions-update-hover-header');
 		header.textContent = this.getUpdateHeaderLabel(state.type);

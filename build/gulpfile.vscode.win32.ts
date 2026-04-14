@@ -118,9 +118,9 @@ function buildWin32Setup(arch: string, target: string): task.CallbackTask {
 			: undefined;
 
 		if (embedded) {
-			// VS Code's sibling is the embedded app.
+			// Trixty IDE's sibling is the embedded app.
 			productJson['win32SiblingExeBasename'] = embedded.nameShort;
-			// The embedded app's sibling is VS Code.
+			// The embedded app's sibling is Trixty IDE.
 			if (productJson['embedded']) {
 				productJson['embedded']['win32SiblingExeBasename'] = product.nameShort;
 			}

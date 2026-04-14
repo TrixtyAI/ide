@@ -64,7 +64,7 @@ export class Logger {
 	 * @param message An optional message for context (e.g. "Request error"). Must not contain customer data. **Do not include stack trace or messages from the error object.**
 	 */
 	exception(accessor: ServicesAccessor, error: unknown, origin: string) {
-		// ignore VS Code cancellations
+		// ignore Trixty IDE cancellations
 		if (error instanceof Error && error.name === 'Canceled' && error.message === 'Canceled') { return; }
 
 		let message = origin;

@@ -76,7 +76,7 @@ export class GeminiNativeBYOKLMProvider extends AbstractLanguageModelChatProvide
 
 	async provideLanguageModelChatResponse(model: ExtendedLanguageModelChatInformation<LanguageModelChatConfiguration>, messages: Array<LanguageModelChatMessage | LanguageModelChatMessage2>, options: ProvideLanguageModelChatResponseOptions, progress: Progress<LanguageModelResponsePart2>, token: CancellationToken): Promise<any> {
 		// Restore CapturingToken context if correlation ID was passed through modelOptions.
-		// This handles the case where AsyncLocalStorage context was lost crossing VS Code IPC.
+		// This handles the case where AsyncLocalStorage context was lost crossing Trixty IDE IPC.
 		const correlationId = (options as { modelOptions?: OTelModelOptions }).modelOptions?._capturingTokenCorrelationId;
 		const capturingToken = correlationId ? retrieveCapturingTokenByCorrelation(correlationId) : undefined;
 
@@ -122,7 +122,7 @@ export class GeminiNativeBYOKLMProvider extends AbstractLanguageModelChatProvide
 					}
 				});
 
-			// Convert VS Code tools to Gemini function declarations
+			// Convert Trixty IDE tools to Gemini function declarations
 			const tools: Tool[] = (options.tools ?? []).length > 0 ? [{
 				functionDeclarations: (options.tools ?? []).map(tool => {
 					if (!tool.inputSchema) {
@@ -144,11 +144,11 @@ export class GeminiNativeBYOKLMProvider extends AbstractLanguageModelChatProvide
 				})
 			}] : [];
 
-			// Bridge VS Code cancellation token to Gemini abortSignal for early network termination
+			// Bridge Trixty IDE cancellation token to Gemini abortSignal for early network termination
 			const abortController = new AbortController();
 			const cancelSub = token.onCancellationRequested(() => {
 				abortController.abort();
-				this._logService.trace('Gemini request aborted via VS Code cancellation token');
+				this._logService.trace('Gemini request aborted via Trixty IDE cancellation token');
 			});
 
 			const params: GenerateContentParameters = {

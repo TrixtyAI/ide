@@ -85,7 +85,7 @@ if (-not $env:VSCODE_PYTHON_AUTOACTIVATE_GUARD) {
 		}
 		catch {
 			$activationError = $_
-			Write-Host "`e[0m`e[7m * `e[0;103m VS Code Python powershell activation failed with exit code $($activationError.Exception.Message) `e[0m"
+			Write-Host "`e[0m`e[7m * `e[0;103m Trixty IDE Python powershell activation failed with exit code $($activationError.Exception.Message) `e[0m"
 		}
 	}
 	# Remove any leftover Python activation env vars.
@@ -182,7 +182,7 @@ if ($Global:__VSCodeState.IsA11yMode -eq "1") {
 	if (-not $hasScreenReaderParam -and $PSVersionTable.PSVersion -ge "7.0") {
 		# The loaded PSReadLine lacks EnableScreenReaderMode (only available in 2.4.4-beta4+).
 		# PowerShell 7.0+ skips autoloading PSReadLine when the OS reports a screen reader active.
-		# When only VS Code's accessibility mode is enabled (no OS screen reader),
+		# When only Trixty IDE's accessibility mode is enabled (no OS screen reader),
 		# it's still loaded and must be removed to load our bundled copy.
 		# Skip this on Windows PowerShell 5.1 where removing the built-in PSReadLine 2.0.0
 		# and replacing it can cause input handling issues (e.g. repeated Enter key presses).
@@ -190,7 +190,7 @@ if ($Global:__VSCodeState.IsA11yMode -eq "1") {
 			Remove-Module PSReadLine -Force
 		}
 
-		# Import VS Code's bundled PSReadLine 2.4.3 which has EnableScreenReaderMode
+		# Import Trixty IDE's bundled PSReadLine 2.4.3 which has EnableScreenReaderMode
 		$specialPsrlPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'psreadline'
 		if (Test-Path $specialPsrlPath) {
 			Import-Module $specialPsrlPath
@@ -253,7 +253,7 @@ else {
 	[Console]::Write("$([char]0x1b)]633;P;IsWindows=$IsWindows`a")
 }
 
-# Set always on key handlers which map to default VS Code keybindings
+# Set always on key handlers which map to default Trixty IDE keybindings
 function Set-MappedKeyHandler {
 	param ([string[]] $Chord, [string[]]$Sequence)
 	try {

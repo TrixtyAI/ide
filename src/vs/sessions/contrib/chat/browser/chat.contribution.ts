@@ -56,7 +56,7 @@ export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 	constructor() {
 		super({
 			id: OpenSessionWorktreeInVSCodeAction.ID,
-			title: localize2('openInVSCode', 'Open in VS Code'),
+			title: localize2('openInVSCode', 'Open in Trixty IDE'),
 			icon: Codicon.vscodeInsiders,
 			precondition: IsActiveSessionBackgroundProviderContext,
 			menu: [{
@@ -94,7 +94,7 @@ export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 		// Unwrap agent-host URIs to get the original file path on the remote
 		const folderUri = rawFolderUri.scheme === AGENT_HOST_SCHEME ? fromAgentHostUri(rawFolderUri) : rawFolderUri;
 
-		// Resolve VS Code remote authority from the session's provider
+		// Resolve Trixty IDE remote authority from the session's provider
 		const remoteAuthority = resolveRemoteAuthority(
 			activeSession.providerId, sessionsProvidersService, remoteAgentHostService);
 
@@ -133,11 +133,11 @@ export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 registerAction2(OpenSessionWorktreeInVSCodeAction);
 
 /**
- * Resolves the VS Code remote authority for the given session provider,
+ * Resolves the Trixty IDE remote authority for the given session provider,
  * e.g. `ssh-remote+myhost` or `tunnel+myTunnel`.
  *
  * Returns `undefined` for local or WebSocket-only providers where no
- * VS Code remote extension can handle the connection.
+ * Trixty IDE remote extension can handle the connection.
  */
 export function resolveRemoteAuthority(
 	providerId: string,

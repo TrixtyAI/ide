@@ -144,7 +144,7 @@ export async function openProjectConfigForFile(
 	const rootPath = client.getWorkspaceRootForResource(resource);
 	if (!rootPath) {
 		vscode.window.showInformationMessage(
-			vscode.l10n.t("Please open a folder in VS Code to use a TypeScript or JavaScript project"));
+			vscode.l10n.t("Please open a folder in Trixty IDE to use a TypeScript or JavaScript project"));
 		return;
 	}
 

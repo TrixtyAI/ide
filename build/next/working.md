@@ -4,9 +4,9 @@
 
 ## Important: Validating Changes
 
-**The `VS Code - Build` task is NOT needed to validate changes in the `build/` folder!**
+**The `Trixty IDE - Build` task is NOT needed to validate changes in the `build/` folder!**
 
-Build scripts in `build/` are TypeScript files that run directly with `tsx` (e.g., `npx tsx build/next/index.ts`). They are not compiled by the main VS Code build.
+Build scripts in `build/` are TypeScript files that run directly with `tsx` (e.g., `npx tsx build/next/index.ts`). They are not compiled by the main Trixty IDE build.
 
 To test changes:
 ```bash
@@ -310,7 +310,7 @@ console.log(c.originalPositionFor({line: 1, column: XXXX}));
 
 ## Self-hosting Setup
 
-The default `VS Code - Build` task now runs three parallel watchers:
+The default `Trixty IDE - Build` task now runs three parallel watchers:
 
 | Task | What it does | Script |
 |------|-------------|--------|
@@ -322,6 +322,6 @@ The default `VS Code - Build` task now runs three parallel watchers:
 
 - **`compilation.ts`**: `ICompileTaskOptions` gained `noEmit?: boolean`. When set, `overrideOptions.noEmit = true` is passed to tsb. `watchTask()` accepts an optional 4th parameter `{ noEmit?: boolean }`.
 - **`gulpfile.ts`**: `watchClientTask` no longer runs `rimraf('out')` (the transpiler owns that). Passes `{ noEmit: true }` to `watchTask`.
-- **`index.ts`**: Watch mode emits `Starting transpilation...` / `Finished transpilation with N errors after X ms` for VS Code problem matcher.
+- **`index.ts`**: Watch mode emits `Starting transpilation...` / `Finished transpilation with N errors after X ms` for Trixty IDE problem matcher.
 - **`tasks.json`**: Old "Core - Build" split into "Core - Transpile" + "Core - Typecheck" with separate problem matchers (owners: `esbuild` vs `typescript`).
 - **`package.json`**: Added `watch-client-transpile`, `watch-client-transpiled`, `kill-watch-client-transpiled` scripts.

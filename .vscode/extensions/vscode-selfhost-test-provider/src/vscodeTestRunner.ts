@@ -20,7 +20,7 @@ const escapeRe = (s: string) => s.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 const TEST_ELECTRON_SCRIPT_PATH = 'test/unit/electron/index.js';
 const TEST_BROWSER_SCRIPT_PATH = 'test/unit/browser/index.js';
 
-const ATTACH_CONFIG_NAME = 'Attach to VS Code';
+const ATTACH_CONFIG_NAME = 'Attach to Trixty IDE';
 const DEBUG_TYPE = 'pwa-chrome';
 
 export abstract class VSCodeTestRunner {

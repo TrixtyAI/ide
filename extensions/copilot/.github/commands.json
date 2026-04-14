@@ -16,7 +16,7 @@
 		"name": "*question",
 		"action": "close",
 		"reason": "not_planned",
-		"comment": "We closed this issue because it is a question about using VS Code rather than an issue or feature request. Please search for help on [StackOverflow](https://aka.ms/vscodestackoverflow), where the community has already answered thousands of similar questions. You may find their [guide on asking a new question](https://aka.ms/vscodestackoverflowquestion) helpful if your question has not already been asked. See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting).\n\nHappy Coding!"
+		"comment": "We closed this issue because it is a question about using Trixty IDE rather than an issue or feature request. Please search for help on [StackOverflow](https://aka.ms/vscodestackoverflow), where the community has already answered thousands of similar questions. You may find their [guide on asking a new question](https://aka.ms/vscodestackoverflowquestion) helpful if your question has not already been asked. See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting).\n\nHappy Coding!"
 	},
 	{
 		"type": "label",
@@ -30,14 +30,14 @@
 		"name": "*extension-candidate",
 		"action": "close",
 		"reason": "not_planned",
-		"comment": "We try to keep VS Code lean and we think the functionality you're asking for is great for a VS Code extension. Maybe you can already find one that suits you in the [VS Code Marketplace](https://aka.ms/vscodemarketplace). Just in case, in a few simple steps you can get started [writing your own extension](https://aka.ms/vscodewritingextensions). See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting).\n\nHappy Coding!"
+		"comment": "We try to keep Trixty IDE lean and we think the functionality you're asking for is great for a Trixty IDE extension. Maybe you can already find one that suits you in the [Trixty IDE Marketplace](https://aka.ms/vscodemarketplace). Just in case, in a few simple steps you can get started [writing your own extension](https://aka.ms/vscodewritingextensions). See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting).\n\nHappy Coding!"
 	},
 	{
 		"type": "label",
 		"name": "*not-reproducible",
 		"action": "close",
 		"reason": "not_planned",
-		"comment": "We closed this issue because we are unable to reproduce the problem with the steps you describe. Chances are we've already fixed your problem in a recent version of VS Code. If not, please ask us to reopen the issue and provide us with more detail. Our [issue reporting guidelines](https://aka.ms/vscodeissuereporting) might help you with that.\n\nHappy Coding!"
+		"comment": "We closed this issue because we are unable to reproduce the problem with the steps you describe. Chances are we've already fixed your problem in a recent version of Trixty IDE. If not, please ask us to reopen the issue and provide us with more detail. Our [issue reporting guidelines](https://aka.ms/vscodeissuereporting) might help you with that.\n\nHappy Coding!"
 	},
 	{
 		"type": "label",
@@ -64,7 +64,7 @@
 		"name": "*caused-by-extension",
 		"action": "close",
 		"reason": "not_planned",
-		"comment": "This issue is caused by an extension, please file it with the repository (or contact) the extension has linked in its overview in VS Code or the [marketplace](https://aka.ms/vscodemarketplace) for VS Code. See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting). If you don't know which extension is causing the problem, you can run `Help: Start extension bisect` from the command palette (F1) to help identify the problem extension.\n\nHappy Coding!"
+		"comment": "This issue is caused by an extension, please file it with the repository (or contact) the extension has linked in its overview in Trixty IDE or the [marketplace](https://aka.ms/vscodemarketplace) for Trixty IDE. See also our [issue reporting guidelines](https://aka.ms/vscodeissuereporting). If you don't know which extension is causing the problem, you can run `Help: Start extension bisect` from the command palette (F1) to help identify the problem extension.\n\nHappy Coding!"
 	},
 	{
 		"type": "label",
@@ -191,7 +191,7 @@
 		"name": "*workspace-trust-docs",
 		"action": "close",
 		"reason": "not_planned",
-		"comment": "This issue appears to be the result of the new workspace trust feature shipped in June 2021. This security-focused feature has major impact on the functionality of VS Code. Due to the volume of issues, we ask that you take some time to review our [comprehensive documentation](https://aka.ms/vscode-workspace-trust) on the feature. If your issue is still not resolved, please let us know."
+		"comment": "This issue appears to be the result of the new workspace trust feature shipped in June 2021. This security-focused feature has major impact on the functionality of Trixty IDE. Due to the volume of issues, we ask that you take some time to review our [comprehensive documentation](https://aka.ms/vscode-workspace-trust) on the feature. If your issue is still not resolved, please let us know."
 	},
 	{
 		"type": "label",

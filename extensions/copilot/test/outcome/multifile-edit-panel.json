@@ -81,7 +81,7 @@
 		]
 	},
 	{
-		"name": "multifile-edit [panel] [typescript] - add a command and dependency to a VS Code extension",
+		"name": "multifile-edit [panel] [typescript] - add a command and dependency to a Trixty IDE extension",
 		"requests": [
 			"09b5e04b5144b7cf4550850e25f818786066f0abf865541f903a54470608bb16",
 			"0a38294168a86632a2250cdcc01685167ef45ad2924f72101a43256805faf356",

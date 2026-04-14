@@ -1,8 +1,8 @@
 ### Developing
-Prior to beginning these steps, please make sure you are running the latest version of VS Code Insiders.
+Prior to beginning these steps, please make sure you are running the latest version of Trixty IDE Insiders.
 - Follow the steps [here](../../../CONTRIBUTING.md#first-time-setup)
     - You may need to run `npm run compile` as well
-- Add the following to your VS Code `settings.json` (File -> Preferences -> Settings):
+- Add the following to your Trixty IDE `settings.json` (File -> Preferences -> Settings):
     ```
     "github.copilot.chat.languageContext.typescript.enabled": true,
 	"github.copilot.advanced.contextProviders": ["typescript-ai-context-provider"]

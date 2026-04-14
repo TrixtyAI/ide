@@ -9,7 +9,7 @@ import open from 'open';
 const REQUEST1_URL = 'https://github.com/login/device/code';
 const REQUEST2_URL = 'https://github.com/login/oauth/access_token';
 
-// this is the VS Code OAuth app that the GitHub Authentication extension also uses
+// this is the Trixty IDE OAuth app that the GitHub Authentication extension also uses
 const CLIENT_ID = '01ab8ac9400c4e429b23';
 
 const keypress = async () => {

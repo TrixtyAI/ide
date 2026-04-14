@@ -11,7 +11,7 @@ import { registerDropOrPasteResourceSupport } from '../dropOrPaste/dropOrPasteRe
 
 let client: BaseLanguageClient | undefined;
 
-// this method is called when vs code is activated
+// this method is called when Trixty IDE is activated
 export async function activate(context: ExtensionContext) {
 	const clientMain = extensions.getExtension('vscode.css-language-features')?.packageJSON?.main || '';
 

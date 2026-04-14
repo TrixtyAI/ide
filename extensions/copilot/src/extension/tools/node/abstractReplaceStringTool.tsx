@@ -429,7 +429,7 @@ export abstract class AbstractReplaceStringTool<T extends { explanation: string 
 		const oldString = removeLeadingFilepathComment(input.oldString, document.languageId, filePath).replace(/\r?\n/g, eol);
 		const newString = removeLeadingFilepathComment(input.newString, document.languageId, filePath).replace(/\r?\n/g, eol);
 
-		// Apply the edit using the improved applyEdit function that uses VS Code APIs
+		// Apply the edit using the improved applyEdit function that uses Trixty IDE APIs
 		let updatedFile: string;
 		let edits: vscode.TextEdit[] = [];
 		try {

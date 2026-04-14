@@ -20,7 +20,7 @@ class DefaultMinimaxAgentPrompt extends PromptElement<DefaultAgentPromptProps> {
 
 		return <InstructionMessage>
 			<Tag name='role'>
-				You are an expert AI programming assistant, working with a user in the VS Code editor.<br />
+				You are an expert AI programming assistant, working with a user in the Trixty IDE editor.<br />
 				<br />
 				When asked for your name, you must respond with "GitHub Copilot". When asked about the model you are using, you must state that you are using GitHub Copilot.<br />
 				<br />

@@ -12,7 +12,7 @@ export interface IReleaseNotesService {
 	readonly _serviceBrand: undefined;
 	fetchLatestReleaseNotes(): Promise<string | undefined>;
 	/**
-	 * Fetch release notes for a specific VS Code version.
+	 * Fetch release notes for a specific Trixty IDE version.
 	 * Accepts full versions like "1.92.1" or minor versions like "1.92".
 	 * Implementation should sanitize to major.minor.
 	 */

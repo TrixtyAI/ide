@@ -135,7 +135,7 @@ export type RequestContext = {
 	requestId: string;
 
 	/**
-	 * The opportunity ID provided by VS Code core.
+	 * The opportunity ID provided by Trixty IDE core.
 	 */
 	opportunityId?: string;
 

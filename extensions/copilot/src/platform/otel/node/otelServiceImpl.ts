@@ -413,7 +413,7 @@ export class NodeOTelService implements IOTelService {
 
 		// If an explicit parent trace context is provided, create the span as its child.
 		// This ensures correct parent-child hierarchy even when async context propagation
-		// doesn't carry the active span (common in the VS Code extension host).
+		// doesn't carry the active span (common in the Trixty IDE extension host).
 		if (options?.parentTraceContext && this._otelApi) {
 			const parentCtx = this._createRemoteContext(options.parentTraceContext);
 			const span = this._tracer!.startSpan(name, spanOpts, parentCtx);

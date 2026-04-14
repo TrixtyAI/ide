@@ -184,7 +184,7 @@ Use `run_in_terminal` with PowerShell commands:
 
 ## Network Issue Investigation
 
-If you suspect network connectivity or authentication problems (e.g., repeated request timeouts, 401/403 errors, or model endpoint failures in the logs), run the VS Code command `github.copilot.debug.collectDiagnostics` using the `run_vscode_command` tool. The command returns the full diagnostics report as a string, so you can read the result directly from the tool output. The report includes:
+If you suspect network connectivity or authentication problems (e.g., repeated request timeouts, 401/403 errors, or model endpoint failures in the logs), run the Trixty IDE command `github.copilot.debug.collectDiagnostics` using the `run_vscode_command` tool. The command returns the full diagnostics report as a string, so you can read the result directly from the tool output. The report includes:
 - Authentication and token status
 - Network reachability checks
 - Proxy and certificate configuration

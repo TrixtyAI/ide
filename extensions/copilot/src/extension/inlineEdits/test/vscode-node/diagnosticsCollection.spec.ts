@@ -13,7 +13,7 @@ import { StringText } from '../../../../util/vs/editor/common/core/text/abstract
 import { Diagnostic } from '../../vscode-node/features/diagnosticsBasedCompletions/diagnosticsCompletions';
 import { DiagnosticsCollection } from '../../vscode-node/features/diagnosticsCompletionProcessor';
 
-// Helper function to create a Diagnostic from a mock VS Code diagnostic
+// Helper function to create a Diagnostic from a mock Trixty IDE diagnostic
 function createDiagnostic(message: string, range: OffsetRange): Diagnostic {
 	return new Diagnostic(new DiagnosticData(
 		URI.parse('file:///test/document.ts'),

@@ -43,7 +43,7 @@ RUN if [ "$TARGETARCH" != "arm" ] || [ "$BASE_IMAGE" != "ubuntu:24.04" ]; then \
 		mkdir -p /run/dbus; \
 	fi
 
-# VS Code dependencies
+# Trixty IDE dependencies
 RUN apt-get install -y libasound2 || apt-get install -y libasound2t64 && \
 	apt-get install -y libgtk-3-0 || apt-get install -y libgtk-3-0t64 && \
 	apt-get install -y libcurl4 || apt-get install -y libcurl4t64 && \

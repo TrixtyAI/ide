@@ -686,7 +686,7 @@ class PolicyDiagnosticsAction extends Action2 {
 
 		const configurationRegistry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration);
 
-		let content = '# VS Code Policy Diagnostics\n\n';
+		let content = '# Trixty IDE Policy Diagnostics\n\n';
 		content += '*WARNING: This file may contain sensitive information.*\n\n';
 		content += '## System Information\n\n';
 		content += '| Property | Value |\n';

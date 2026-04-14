@@ -175,7 +175,7 @@ async function main() {
 			throw new Error('Cache layer files can only be added or deleted, never modified');
 		}
 		if (!layerCheckResult.verifiedCheck || !layerCheckResult.collaboratorCheck) {
-			throw new Error('Cache layer files can only be added by VS Code team members with signed commits');
+			throw new Error('Cache layer files can only be added by Trixty IDE team members with signed commits');
 		}
 	} catch (error) {
 		console.log('::error::⛔', error);

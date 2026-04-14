@@ -24,8 +24,8 @@ export interface IClaudeSlashCommandHandler {
 	readonly description: string;
 
 	/**
-	 * Optional VS Code command ID for Command Palette registration.
-	 * If provided, the command will be registered as a VS Code command
+	 * Optional Trixty IDE command ID for Command Palette registration.
+	 * If provided, the command will be registered as a Trixty IDE command
 	 * and can be invoked via the Command Palette.
 	 *
 	 * @example "copilot.claude.hooks"
@@ -69,7 +69,7 @@ const handlerRegistry: IClaudeSlashCommandHandlerCtor[] = [];
  * 2. Call `registerClaudeSlashCommand(YourHandler)` at module load time
  * 3. Import it in `slashCommands/index.ts`
  * 4. Add entries to `package.json`:
- *    - Under `contributes.commands`: Add the VS Code command (e.g., `copilot.claude.mycommand`)
+ *    - Under `contributes.commands`: Add the Trixty IDE command (e.g., `copilot.claude.mycommand`)
  *    - Under `contributes.chatSessions[type="claude-code"].commands`: Add the slash command name and description
  *
  * @param ctor - The handler constructor class

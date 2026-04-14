@@ -200,7 +200,7 @@ sw.addEventListener('fetch', (event) => {
 	}
 
 	// If we're making a request against the remote authority, we want to go
-	// through VS Code itself so that we are authenticated properly.  If the
+	// through Trixty IDE itself so that we are authenticated properly.  If the
 	// service worker is hosted on the same origin we will have cookies and
 	// authentication will not be an issue.
 	if (requestUrl.origin !== sw.origin && requestUrl.host === remoteAuthority) {
@@ -437,7 +437,7 @@ async function processLocalhostRequest(
 	const client = await sw.clients.get(event.clientId);
 	if (!client) {
 		// This is expected when requesting resources on other localhost ports
-		// that are not spawned by vs code
+		// that are not spawned by Trixty IDE
 		return fetch(event.request);
 	}
 	const webviewId = getWebviewIdForClient(client);

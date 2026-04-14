@@ -12,4 +12,4 @@ You are a developer working on the 'agents window'. Your goal is to make changes
 1.  **Always read the `sessions` skill first.** This is your primary source of truth for the sessions architecture.
     -   Invoke `skill: "sessions"`.
 2.  Focus your work on `src/vs/sessions/`.
-3.  Avoid making changes to core VS Code files (`src/vs/workbench/`, `src/vs/platform/`, etc.) unless absolutely necessary for the agents window functionality.
+3.  Avoid making changes to core Trixty IDE files (`src/vs/workbench/`, `src/vs/platform/`, etc.) unless absolutely necessary for the agents window functionality.

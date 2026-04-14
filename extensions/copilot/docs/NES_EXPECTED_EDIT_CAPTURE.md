@@ -7,7 +7,7 @@ A feature that allows users to record/capture their "expected suggestion" when a
 ## Getting Started
 
 ### 1. Enable the Feature
-Add this setting to your VS Code `settings.json`:
+Add this setting to your Trixty IDE `settings.json`:
 
 ```json
 {
@@ -224,7 +224,7 @@ When you run **"Copilot: Submit NES Captures"**:
 
 ### Privacy & Filtering
 Sensitive files are **automatically excluded** from submissions:
-- VS Code settings (`settings.json`, `launch.json`)
+- Trixty IDE settings (`settings.json`, `launch.json`)
 - Credentials (`.npmrc`, `.env`, `.gitconfig`, etc.)
 - Private keys (`.pem`, `.key`, `id_rsa`, etc.)
 - Sensitive directories (`.aws/`, `.ssh/`, `.gnupg/`)

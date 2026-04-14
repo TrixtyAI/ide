@@ -362,7 +362,7 @@ export interface IBackgroundRequestOptions {
 }
 
 /**
- * A subagent request is a request made by a subagent, indicated with a subAgentInvocationId included in the request from VS Code.
+ * A subagent request is a request made by a subagent, indicated with a subAgentInvocationId included in the request from Trixty IDE.
  */
 export interface ISubagentRequestOptions {
 	readonly kind: 'subagent';

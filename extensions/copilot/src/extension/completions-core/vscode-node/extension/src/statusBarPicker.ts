@@ -106,7 +106,7 @@ export class CopilotStatusBarPickMenu {
 			case 'Normal':
 				statusText = l10n.t('Ready');
 				if (isInlineSuggestEnabled() === false) {
-					statusText += ` (${l10n.t('VS Code inline suggestions disabled')})`;
+					statusText += ` (${l10n.t('Trixty IDE inline suggestions disabled')})`;
 				} else if (this.instantiationService.invokeFunction(isCompletionEnabled) === false) {
 					statusText += ` (${l10n.t('Disabled')})`;
 				}

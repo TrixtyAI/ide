@@ -191,11 +191,11 @@ export class SetupTestsInvocation implements IIntentInvocation {
 		outputStream.markdown('\n\n');
 
 		if (extensionInfo) {
-			outputStream.markdown(l10n.t('I also recommend installing the {0} extension to make tests easy to run in VS Code:', extensionInfo.name));
+			outputStream.markdown(l10n.t('I also recommend installing the {0} extension to make tests easy to run in Trixty IDE:', extensionInfo.name));
 			outputStream.markdown('\n\n');
 			outputStream.push(new ChatResponseExtensionsPart([extensionInfo.id]));
 		} else {
-			outputStream.markdown(l10n.t('You can also search for an extension to make tests easy to run in VS Code:'));
+			outputStream.markdown(l10n.t('You can also search for an extension to make tests easy to run in Trixty IDE:'));
 			outputStream.button({
 				command: 'workbench.extensions.search',
 				title: l10n.t('Search Extensions'),
@@ -291,7 +291,7 @@ class SetupTestsPrompt extends PromptElement<SetupTestsPromptProps> {
 				6. After listing the file tree structure, respond with any terminal commands the user should execute to finish installing the testing framework. Terminal commands should be wrapped in a code fence tagged with the "sh" language.<br />
 				7. Finally, provide a command line a user can execute to run their tests.<br />
 				{setupConfirmation && <>
-					8. At the end, include a phrase that conveys '{setupConfirmation.message}', but rephrase this to indicate that this is the last step the user needs to take to enable rich UI integration in VS Code.{setupConfirmation.command && ` This message will be followed by a button that says "${setupConfirmation.command.title}".`}<br />
+					8. At the end, include a phrase that conveys '{setupConfirmation.message}', but rephrase this to indicate that this is the last step the user needs to take to enable rich UI integration in Trixty IDE.{setupConfirmation.command && ` This message will be followed by a button that says "${setupConfirmation.command.title}".`}<br />
 				</>}
 				<br />
 				# Example<br />

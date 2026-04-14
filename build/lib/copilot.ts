@@ -17,7 +17,7 @@ export const copilotPlatforms = [
 ];
 
 /**
- * Converts VS Code build platform/arch to the values that Node.js reports
+ * Converts Trixty IDE build platform/arch to the values that Node.js reports
  * at runtime via `process.platform` and `process.arch`.
  *
  * The copilot SDK's `loadNativeModule` looks up native binaries under
@@ -30,7 +30,7 @@ function toNodePlatformArch(platform: string, arch: string): { nodePlatform: str
 	let nodeArch = arch;
 
 	if (arch === 'armhf') {
-		// VS Code build uses 'armhf'; Node reports process.arch === 'arm'
+		// Trixty IDE build uses 'armhf'; Node reports process.arch === 'arm'
 		nodeArch = 'arm';
 	} else if (arch === 'alpine') {
 		// Legacy: { platform: 'linux', arch: 'alpine' } means alpine-x64
@@ -47,7 +47,7 @@ function toNodePlatformArch(platform: string, arch: string): { nodePlatform: str
  *
  * For platforms the copilot SDK doesn't natively support (e.g. alpine, armhf),
  * ALL platform packages are stripped - that's fine because the SDK doesn't ship
- * binaries for those platforms anyway, and we replace them with VS Code's own.
+ * binaries for those platforms anyway, and we replace them with Trixty IDE's own.
  */
 export function getCopilotExcludeFilter(platform: string, arch: string): string[] {
 	const { nodePlatform, nodeArch } = toNodePlatformArch(platform, arch);
@@ -55,7 +55,7 @@ export function getCopilotExcludeFilter(platform: string, arch: string): string[
 	const nonTargetPlatforms = copilotPlatforms.filter(p => p !== targetPlatformArch);
 
 	// Strip wrong-architecture @github/copilot-{platform} packages.
-	// All copilot prebuilds are stripped by .moduleignore; VS Code's own
+	// All copilot prebuilds are stripped by .moduleignore; Trixty IDE's own
 	// node-pty is copied into the prebuilds location by a post-packaging task.
 	const excludes = nonTargetPlatforms.map(p => `!**/node_modules/@github/copilot-${p}/**`);
 
@@ -63,10 +63,10 @@ export function getCopilotExcludeFilter(platform: string, arch: string): string[
 }
 
 /**
- * Copies VS Code's own node-pty binaries into the copilot SDK's
+ * Copies Trixty IDE's own node-pty binaries into the copilot SDK's
  * expected locations so the copilot CLI subprocess can find them at runtime.
  * The copilot-bundled prebuilds are stripped by .moduleignore;
- * this replaces them with the same binaries VS Code already ships, avoiding
+ * this replaces them with the same binaries Trixty IDE already ships, avoiding
  * new system dependency requirements.
  *
  * This works even for platforms the copilot SDK doesn't natively support

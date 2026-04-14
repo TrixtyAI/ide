@@ -217,7 +217,7 @@ steps:
           artifact: $(ARTIFACT_PREFIX)vscode_cli_linux_$(VSCODE_ARCH)_cli
           patterns: "**"
           path: $(Build.ArtifactStagingDirectory)/cli
-        displayName: Download VS Code CLI
+        displayName: Download Trixty IDE CLI
 
       - script: |
           set -e
@@ -427,7 +427,7 @@ steps:
         targetPath: $(CLIENT_PATH)
         artifactName: $(ARTIFACT_PREFIX)vscode_client_linux_$(VSCODE_ARCH)_archive-unsigned
         sbomBuildDropPath: $(Agent.BuildDirectory)/VSCode-linux-$(VSCODE_ARCH)
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) (unsigned)"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) (unsigned)"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['CLIENT_PATH'], ''))
       displayName: Publish client archive
@@ -437,7 +437,7 @@ steps:
         targetPath: $(SERVER_PATH)
         artifactName: $(ARTIFACT_PREFIX)vscode_server_linux_$(VSCODE_ARCH)_archive-unsigned
         sbomBuildDropPath: $(Agent.BuildDirectory)/vscode-server-linux-$(VSCODE_ARCH)
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) Server"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) Server"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['SERVER_PATH'], ''))
       displayName: Publish server archive
@@ -447,7 +447,7 @@ steps:
         targetPath: $(WEB_PATH)
         artifactName: $(ARTIFACT_PREFIX)vscode_web_linux_$(VSCODE_ARCH)_archive-unsigned
         sbomBuildDropPath: $(Agent.BuildDirectory)/vscode-server-linux-$(VSCODE_ARCH)-web
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) Web"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) Web"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['WEB_PATH'], ''))
       displayName: Publish web server archive
@@ -457,7 +457,7 @@ steps:
         targetPath: $(DEB_PATH)
         artifactName: $(ARTIFACT_PREFIX)vscode_client_linux_$(VSCODE_ARCH)_deb-package
         sbomBuildDropPath: .build/linux/deb
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) DEB"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) DEB"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['DEB_PATH'], ''))
       displayName: Publish deb package
@@ -467,7 +467,7 @@ steps:
         targetPath: $(RPM_PATH)
         artifactName: $(ARTIFACT_PREFIX)vscode_client_linux_$(VSCODE_ARCH)_rpm-package
         sbomBuildDropPath: .build/linux/rpm
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) RPM"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) RPM"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['RPM_PATH'], ''))
       displayName: Publish rpm package
@@ -477,7 +477,7 @@ steps:
         targetPath: $(SNAP_PATH)
         artifactName: vscode_client_linux_$(VSCODE_ARCH)_snap
         sbomBuildDropPath: $(SNAP_EXTRACTED_PATH)
-        sbomPackageName: "VS Code Linux $(VSCODE_ARCH) SNAP"
+        sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) SNAP"
         sbomPackageVersion: $(Build.SourceVersion)
       condition: and(succeededOrFailed(), ne(variables['SNAP_PATH'], ''))
       displayName: Publish snap package

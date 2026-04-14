@@ -60,18 +60,18 @@ export class ExtensionContributedChatTokenizer implements ITokenizer {
 		if (!text) {
 			return 0;
 		}
-		// Use the VS Code language model API to count tokens
+		// Use the Trixty IDE language model API to count tokens
 		return this.languageModel.countTokens(text);
 	}
 
 	async countMessageTokens(message: Raw.ChatMessage): Promise<number> {
-		// Convert to VS Code message format and use the language model's countTokens
+		// Convert to Trixty IDE message format and use the language model's countTokens
 		const apiMessages = convertToApiChatMessage([message]);
 		if (apiMessages.length === 0) {
 			return 0;
 		}
 
-		// Count tokens for the message using VS Code API
+		// Count tokens for the message using Trixty IDE API
 		const messageTokens = await this.languageModel.countTokens(apiMessages[0]);
 		return BaseTokensPerMessage + messageTokens;
 	}

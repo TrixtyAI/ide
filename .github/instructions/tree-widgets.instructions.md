@@ -1,5 +1,5 @@
 ---
-description: Use when asked to consume workbench tree widgets in VS Code.
+description: Use when asked to consume workbench tree widgets in Trixty IDE.
 ---
 
 # Workbench Tree Widgets Overview
@@ -10,17 +10,17 @@ description: Use when asked to consume workbench tree widgets in VS Code.
 
 ## Purpose
 
-The Workbench Tree Widgets provide high-level, workbench-integrated tree components that extend the base tree implementations with VS Code-specific functionality like context menus, keyboard navigation, theming, accessibility, and dependency injection integration. These widgets serve as the primary tree components used throughout the VS Code workbench for file explorers, debug views, search results, and other hierarchical data presentations.
+The Workbench Tree Widgets provide high-level, workbench-integrated tree components that extend the base tree implementations with Trixty IDE-specific functionality like context menus, keyboard navigation, theming, accessibility, and dependency injection integration. These widgets serve as the primary tree components used throughout the Trixty IDE workbench for file explorers, debug views, search results, and other hierarchical data presentations.
 
 ## Scope
 
 ### Included Functionality
-- **Context Integration**: Automatic context key management, focus handling, and VS Code theme integration
+- **Context Integration**: Automatic context key management, focus handling, and Trixty IDE theme integration
 - **Resource Navigation**: Built-in support for opening files and resources with proper editor integration
 - **Accessibility**: Complete accessibility provider integration with screen reader support
 - **Keyboard Navigation**: Smart keyboard navigation with search-as-you-type functionality
 - **Multi-selection**: Configurable multi-selection behavior with platform-appropriate modifier keys
-- **Dependency Injection**: Full integration with VS Code's service container for automatic service injection
+- **Dependency Injection**: Full integration with Trixty IDE's service container for automatic service injection
 - **Configuration**: Automatic integration with user settings for tree behavior customization
 
 ### Integration Points

@@ -122,7 +122,7 @@ pub async fn start_singleton_client(args: SingletonClientArgs) -> bool {
 				);
 
 			// we want to ensure the "listening" string always gets printed for
-			// consumers (i.e. VS Code). Ask for it. If the tunnel is not currently
+			// consumers (i.e. Trixty IDE). Ask for it. If the tunnel is not currently
 			// connected though, it will be soon, and that'll be in the log replays.
 			if let Ok(Ok(s)) = res.await {
 				if let Some(name) = s.name {

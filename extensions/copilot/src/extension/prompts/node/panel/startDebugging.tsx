@@ -356,7 +356,7 @@ export class StartDebuggingPrompt extends PromptElement<StartDebuggingPromptProp
 						{style === OutputStyle.Readable && <>
 							The user cannot see the context you are given, so you must not mention it. If you want to refer to it, you must include it in your reply.<br />
 						</>}
-						Print out the VS Code `launch.json` file needed to debug the command, formatted as JSON.<br />
+						Print out the Trixty IDE `launch.json` file needed to debug the command, formatted as JSON.<br />
 						If there are build steps needed before the program can be debugged, be sure to include a `preLaunchTask` property in the launch configuration.
 						If you include a `preLaunchTask` property, {state.resources?.some(r => r.path.endsWith('launch.json'))
 							? <>{' '}it must either refer to an existing a suitable task in the `tasks.json` file, or you must include a `tasks.json` file in your response that contains that configuration.</>
@@ -572,7 +572,7 @@ class ReferenceFilesFromQueryPrompt extends PromptElement<{
 		return (
 			<>
 				<SystemMessage priority={10}>
-					You are a Visual Studio Code assistant who specializes in debugging and creating launch configurations. Your job is to return an array of file names that may contain useful information to translate a user query into a VS Code debug configuration.<br />
+					You are a Visual Studio Code assistant who specializes in debugging and creating launch configurations. Your job is to return an array of file names that may contain useful information to translate a user query into a Trixty IDE debug configuration.<br />
 					The user will give you a file tree. Make sure to fully qualify paths you return from the tree, including their parent directories:<br />
 					Do not give any other explanation and return only a JSON array of strings. Avoid wrapping the whole response in triple backticks. Do not include any other information in your response.<br />
 					<TextChunk priority={8}>
@@ -630,7 +630,7 @@ class ReferenceFilesFromCliPrompt extends PromptElement<{
 		return (
 			<>
 				<SystemMessage priority={10}>
-					You are a Visual Studio Code assistant who specializes in debugging and creating launch configurations. Your job is to return an array of file names that may contain useful information to translate a command line invocation into a VS Code debug configuration and build task.<br />
+					You are a Visual Studio Code assistant who specializes in debugging and creating launch configurations. Your job is to return an array of file names that may contain useful information to translate a command line invocation into a Trixty IDE debug configuration and build task.<br />
 					For example, when running a command `make tests`, you should ask for the `Makefile` because it contains information about how the tests are run.<br />
 					The user will give you a file tree. Make sure to fully qualify paths you return from the tree, including their parent directories:<br />
 					Do not give any other explanation and return only a JSON array of strings. Avoid wrapping the whole response in triple backticks. Do not include any other information in your response.<br />

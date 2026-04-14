@@ -770,7 +770,9 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 				if (!context.state.installed && !otherAgentsAndToolsDisposable.value) {
 <LEXICAL_DECLARATION-68>					const disposables = otherAgentsAndToolsDisposable.value = new DisposableStore();
 </LEXICAL_DECLARATION-68><COMMENT-24>					// VSCode Agent
-</COMMENT-24><EXPRESSION_STATEMENT-67>					disposables.add(SetupChatAgent.registerOtherAgents(this.instantiationService, 'setup.vscode', 'vscode', false, localize2('vscodeAgentDescription', "Ask questions about VS Code").value, ChatAgentLocation.Panel, undefined, context, controller).disposable);
+</COMMENT-24><EXPRESSION_STATEMENT-67> disposables.add(SetupChatAgent.registerOtherAgents(this.instantiationService,
+	'setup.vscode', 'vscode', false, localize2('vscodeAgentDescription', "Ask questions about Trixty IDE").value,
+	ChatAgentLocation.Panel, undefined, context, controller).disposable);
 </EXPRESSION_STATEMENT-67><COMMENT-25>
 					// Tools
 </COMMENT-25><EXPRESSION_STATEMENT-68>					disposables.add(SetupTool.registerTools(this.instantiationService, {
@@ -780,8 +782,8 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 						},
 						icon: Codicon.newFolder,
 						displayName: localize('setupToolDisplayName', "New Workspace"),
-						modelDescription: localize('setupToolsDescription', "Scaffold a new workspace in VS Code"),
-						userDescription: localize('setupToolsDescription', "Scaffold a new workspace in VS Code"),
+						modelDescription: localize('setupToolsDescription', "Scaffold a new workspace in Trixty IDE"),
+						userDescription: localize('setupToolsDescription', "Scaffold a new workspace in Trixty IDE"),
 						canBeReferencedInPrompt: true,
 						toolReferenceName: 'new',
 						when: ContextKeyExpr.true(),

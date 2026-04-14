@@ -34,7 +34,7 @@ const transientEnvVarRegex = /^[A-Z_][A-Z0-9_]*=/i;
  *
  * Uses tree-sitter to parse compound commands (`foo && bar`) into
  * sub-commands that are individually checked against allow/deny lists.
- * The default rules mirror the VS Code `chat.tools.terminal.autoApprove`
+ * The default rules mirror the Trixty IDE `chat.tools.terminal.autoApprove`
  * setting defaults.
  *
  * Tree-sitter is initialized eagerly; call {@link initialize} and await the
@@ -296,7 +296,7 @@ function convertAutoApproveEntryToRegex(value: string): RegExp {
 
 // ---- Default rules ----------------------------------------------------------
 //
-// These mirror the VS Code `chat.tools.terminal.autoApprove` setting defaults.
+// These mirror the Trixty IDE `chat.tools.terminal.autoApprove` setting defaults.
 // Kept in sync manually — the actual setting will be wired up later.
 
 const DEFAULT_TERMINAL_AUTO_APPROVE_RULES: Readonly<Record<string, boolean>> = {

@@ -254,10 +254,10 @@ export abstract class BaseServiceConfigurationProvider implements ServiceConfigu
 	private readUseVsCodeWatcher(configuration: vscode.WorkspaceConfiguration): boolean {
 		const watcherExcludes = configuration.get<Record<string, boolean>>('files.watcherExclude') ?? {};
 		if (
-			watcherExcludes['**/node_modules/*/**'] === true || // VS Code default prior to 1.94.x
+			watcherExcludes['**/node_modules/*/**'] === true || // Trixty IDE default prior to 1.94.x
 			watcherExcludes['**/node_modules/**'] === true ||
 			watcherExcludes['**/node_modules'] === true ||
-			watcherExcludes['**'] === true	 					// VS Code Watching is entirely disabled
+			watcherExcludes['**'] === true	 					// Trixty IDE Watching is entirely disabled
 		) {
 			return false;
 		}

@@ -146,7 +146,7 @@ export interface ISpanHandle {
 }
 
 /**
- * Shape of `modelOptions` passed through VS Code IPC for cross-process
+ * Shape of `modelOptions` passed through Trixty IDE IPC for cross-process
  * CapturingToken restoration and OTel trace context propagation.
  */
 export interface OTelModelOptions {

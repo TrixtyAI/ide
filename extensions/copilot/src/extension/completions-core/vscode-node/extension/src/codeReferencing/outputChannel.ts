@@ -17,7 +17,7 @@ interface GitHubLogger extends Disposable {
 
 export const citationsChannelName = 'GitHub Copilot Log (Code References)';
 
-// Literally taken from VS Code
+// Literally taken from Trixty IDE
 function getCurrentTimestamp() {
 	const toTwoDigits = (v: number) => (v < 10 ? `0${v}` : v);
 	const toThreeDigits = (v: number) => (v < 10 ? `00${v}` : v < 100 ? `0${v}` : v);

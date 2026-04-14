@@ -37,7 +37,7 @@ export class ChatTitleProvider implements vscode.ChatTitleProvider {
 			return '';
 		}
 
-		// Extract the parent session ID from the context's sessionResource (provided by VS Code)
+		// Extract the parent session ID from the context's sessionResource (provided by Trixty IDE)
 		const sessionResource = context.sessionResource;
 		const parentChatSessionId = sessionResource ? sessionResourceToId(URI.from(sessionResource)) : undefined;
 

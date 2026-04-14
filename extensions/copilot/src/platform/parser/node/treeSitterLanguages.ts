@@ -42,7 +42,7 @@ const languageIdToWasmLanguageMapping: { [language: string]: WASMLanguage } = {
 };
 
 /**
- * @returns a {@link WASMLanguage} if can convert the language ID (from VS Code); otherwise, returns `undefined`.
+ * @returns a {@link WASMLanguage} if can convert the language ID (from Trixty IDE); otherwise, returns `undefined`.
  */
 export function getWasmLanguage(languageId: string): WASMLanguage | undefined {
 	if (languageId in languageIdToWasmLanguageMapping) {

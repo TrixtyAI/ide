@@ -48,7 +48,7 @@ export class TabsAndEditorsServiceImpl implements ITabsAndEditorsService {
 	}
 
 	/**
-	 * Returns the active text editor in the VS Code window.
+	 * Returns the active text editor in the Trixty IDE window.
 	 *
 	 * Uses vscode.window.activTextEditor but _ignores_ output editors. When no text editor is active,
 	 * the most recent tab group that shows a text editor is used.

@@ -24,7 +24,7 @@ export interface IClaudeCodeModels {
 	resolveEndpoint(requestedModel: string | undefined, fallbackModelId: ParsedClaudeModelId | undefined): Promise<IChatEndpoint | undefined>;
 	/**
 	 * Registers a LanguageModelChatProvider so that Claude models appear in
-	 * VS Code's built-in model picker for the claude-code session type.
+	 * Trixty IDE's built-in model picker for the claude-code session type.
 	 */
 	registerLanguageModelChatProvider(lm: typeof vscode['lm']): void;
 }

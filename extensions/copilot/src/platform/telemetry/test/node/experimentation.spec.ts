@@ -438,10 +438,10 @@ describe('ExP Service Tests', () => {
 		expect(signedOutNotQueriedTreatment).toBe(toExpectedTreatment('notQueriedTreatment', undefined, undefined));
 	});
 
-	it('should detect VS Code team member correctly', async () => {
+	it('should detect Trixty IDE team member correctly', async () => {
 		await expService.hasTreatments();
 
-		// Sign in as VS Code team member
+		// Sign in as Trixty IDE team member
 		const treatmentsChangePromise = GetNewTreatmentsChangedPromise();
 		copilotTokenService.copilotToken = VscodeTeamMemberToken;
 		await treatmentsChangePromise;
@@ -451,10 +451,10 @@ describe('ExP Service Tests', () => {
 		expect(userInfoStore.isVscodeTeamMember).toBe(true);
 	});
 
-	it('should detect non-VS Code team member correctly', async () => {
+	it('should detect non-Trixty IDE team member correctly', async () => {
 		await expService.hasTreatments();
 
-		// Sign in as non VS Code team member
+		// Sign in as non Trixty IDE team member
 		const treatmentsChangePromise = GetNewTreatmentsChangedPromise();
 		copilotTokenService.copilotToken = NonVscodeTeamMemberToken;
 		await treatmentsChangePromise;
@@ -464,7 +464,7 @@ describe('ExP Service Tests', () => {
 		expect(userInfoStore.isVscodeTeamMember).toBe(false);
 	});
 
-	it('should persist VS Code team member status to global state', async () => {
+	it('should persist Trixty IDE team member status to global state', async () => {
 		await expService.hasTreatments();
 
 		// Clear any existing cached values
@@ -480,7 +480,7 @@ describe('ExP Service Tests', () => {
 		expect(cachedIsVscodeTeamMember).toBe(true);
 	});
 
-	it('should use cached VS Code team member status on initialization', async () => {
+	it('should use cached Trixty IDE team member status on initialization', async () => {
 		// Simulate cached value in global state
 		await extensionContext.globalState.update(UserInfoStore.IS_VSCODE_TEAM_MEMBER_STORAGE_KEY, true);
 
@@ -556,7 +556,7 @@ describe('ExP Service Tests', () => {
 		expect(userInfoStore.organizationList?.length).toBe(0);
 	});
 
-	it('should trigger treatment refresh when VS Code team membership changes', async () => {
+	it('should trigger treatment refresh when Trixty IDE team membership changes', async () => {
 		await expService.hasTreatments();
 
 		// Start as signed out
@@ -568,7 +568,7 @@ describe('ExP Service Tests', () => {
 		// Reset mock to track refresh calls
 		expService.mockTasService.reset();
 
-		// Sign in as VS Code team member - this will trigger a user info change (from undefined to a value)
+		// Sign in as Trixty IDE team member - this will trigger a user info change (from undefined to a value)
 		const treatmentsChangePromise = GetNewTreatmentsChangedPromise();
 		copilotTokenService.copilotToken = VscodeTeamMemberToken;
 		await treatmentsChangePromise;

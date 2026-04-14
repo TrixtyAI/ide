@@ -27,7 +27,7 @@ describe('CopilotCLI SDK Upgrade', function () {
 		// Such changes may require us to update our extension packaging or other handling.
 		const existingBinaries = new Set(await findAllBinaries(copilotSDKPath));
 		const knownBinaries = new Set([
-			// node-pty related files (already accounted for in SDK, using VS Code node-pty).
+			// node-pty related files (already accounted for in SDK, using Trixty IDE node-pty).
 			path.join('prebuilds', 'darwin-arm64', 'pty.node'),
 			path.join('prebuilds', 'darwin-x64', 'pty.node'),
 			path.join('prebuilds', 'linux-arm64', 'pty.node'),

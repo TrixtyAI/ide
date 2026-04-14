@@ -302,7 +302,7 @@ export class ClaudeCodeSession extends Disposable {
 	 * @param request The full chat request
 	 * @param prompt The user's prompt as an array of content blocks
 	 * @param toolInvocationToken Token for invoking tools
-	 * @param stream Response stream for sending results back to VS Code
+	 * @param stream Response stream for sending results back to Trixty IDE
 	 * @param token Cancellation token for request cancellation
 	 * @param yieldRequested Function to check if the user has requested to interrupt
 	 */

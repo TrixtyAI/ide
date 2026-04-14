@@ -1661,7 +1661,7 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 			});
 		} else {
 			// Delegated flow
-			// NOTE: VS Code will now close the parent/source chat in most cases.
+			// NOTE: Trixty IDE will now close the parent/source chat in most cases.
 			stream.markdown(vscode.l10n.t('A cloud agent has begun working on your request. Follow its progress in the sessions list and associated pull request.'));
 		}
 

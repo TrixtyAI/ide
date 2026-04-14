@@ -49,13 +49,13 @@ function containsMicrosoftOrg(orgList: string[]): boolean {
 }
 
 /**
- * A function used to determine if the org list contains a VS Code organization
+ * A function used to determine if the org list contains a Trixty IDE organization
  * @param orgList The list of organizations the user is a member of
- * Whether or not it contains a VS Code org
+ * Whether or not it contains a Trixty IDE org
  */
 export function containsVSCodeOrg(orgList: string[]): boolean {
 	const VSCODE_ORGANIZATIONS = ['551cca60ce19654d894e786220822482'];
-	// Check if the user is part of a VS Code organization.
+	// Check if the user is part of a Trixty IDE organization.
 	for (const org of orgList) {
 		if (VSCODE_ORGANIZATIONS.includes(org)) {
 			return true;
@@ -324,7 +324,7 @@ export interface TokenEnvelope {
 	codesearch: boolean;
 	/** Whether content exclusion (.copilotignore) is enabled. */
 	copilotignore_enabled: boolean;
-	/** Whether VS Code electron fetcher v2 is enabled. */
+	/** Whether Trixty IDE electron fetcher v2 is enabled. */
 	vsc_electron_fetcher_v2: boolean;
 
 	// Consent settings
@@ -567,7 +567,7 @@ export type TokenErrorReason =
 	'RequestFailed' |
 	/** Server response could not be parsed as JSON (malformed or unexpected response format). */
 	'ParseFailed' |
-	/** User not authenticated with GitHub through VS Code. Only returned from VS Code integration layer, not from platform token minting. */
+	/** User not authenticated with GitHub through Trixty IDE. Only returned from Trixty IDE integration layer, not from platform token minting. */
 	'GitHubLoginFailed' |
 	/** Server returned 401 Unauthorized HTTP status. */
 	'HTTP401' |

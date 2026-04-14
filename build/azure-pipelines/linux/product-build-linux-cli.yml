@@ -24,7 +24,7 @@ jobs:
             artifactName: vscode_cli_linux_$(VSCODE_ARCH)_cli
             displayName: Publish vscode_cli_linux_$(VSCODE_ARCH)_cli artifact
             sbomBuildDropPath: $(Build.ArtifactStagingDirectory)/cli
-            sbomPackageName: "VS Code Linux $(VSCODE_ARCH) CLI"
+            sbomPackageName: "Trixty IDE Linux $(VSCODE_ARCH) CLI"
             sbomPackageVersion: $(Build.SourceVersion)
     steps:
       - template: ../common/checkout.yml@self

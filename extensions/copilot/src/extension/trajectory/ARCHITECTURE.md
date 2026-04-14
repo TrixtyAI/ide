@@ -1,12 +1,12 @@
 # Trajectory Logging Architecture
 
-This document explains the architecture of trajectory logging in VS Code Copilot Chat, 
+This document explains the architecture of trajectory logging in Trixty IDE Copilot Chat,
 including how it relates to the existing request logging system.
 
 ## Overview
 
-The trajectory logging system captures agent execution traces in the **ATIF (Agent Trajectory 
-Interchange Format)** for analysis, debugging, and potential benchmarking. It builds on top 
+The trajectory logging system captures agent execution traces in the **ATIF (Agent Trajectory
+Interchange Format)** for analysis, debugging, and potential benchmarking. It builds on top
 of the existing `RequestLogger` infrastructure.
 
 ```
@@ -68,7 +68,7 @@ of the existing `RequestLogger` infrastructure.
 
 **Purpose**: Captures all LLM requests, tool calls, and prompt traces for debugging.
 
-**Storage Pattern**: 
+**Storage Pattern**:
 - **Bounded array** with configurable max size (`RequestLoggerMaxEntries`)
 - Old entries are shifted out when limit is reached
 - Uses `AsyncLocalStorage` to associate requests with `CapturingToken`
@@ -185,13 +185,13 @@ The adapter determines session IDs with the following priority:
 │                    Session ID Priority                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. token.subAgentInvocationId  │  Explicit subagent linking   │
-│  2. token.chatSessionId         │  VS Code chat session ID     │
+│  2. token.chatSessionId         │  Trixty IDE chat session ID     │
 │  3. generateSessionId(label)    │  Fallback: hash + timestamp  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 This enables:
-- **Main trajectories**: Use VS Code's chat session ID for 1:1 mapping
+- **Main trajectories**: Use Trixty IDE's chat session ID for 1:1 mapping
 - **Subagent trajectories**: Use pre-assigned invocation ID for parent↔child linking
 - **Parent references child**: Tool call observation includes `subagent_trajectory_ref`
 
@@ -234,7 +234,7 @@ This enables:
 
 When RequestLogger evicts old entries (bounded), the adapter's tracking sets still retain:
 - Entry IDs in `processedEntries`
-- Tool call IDs in `processedToolCalls`  
+- Tool call IDs in `processedToolCalls`
 - Session data in `lastUserMessageBySession`, `requestToStepContext`, etc.
 
 This creates **orphaned references** that can never be cleaned up.
@@ -426,6 +426,6 @@ src/
 | Adapter.processedToolCalls | Set | ❌ No | **None (memory leak)** |
 | Adapter.sessionMap | WeakMap | ✅ Yes | GC when token collected |
 
-**Key Insight**: The adapter serves as a "translation layer" that watches RequestLogger events 
-and populates TrajectoryLogger. However, its deduplication tracking (Sets/Maps) grows unboundedly, 
+**Key Insight**: The adapter serves as a "translation layer" that watches RequestLogger events
+and populates TrajectoryLogger. However, its deduplication tracking (Sets/Maps) grows unboundedly,
 creating a memory leak in long-running sessions.

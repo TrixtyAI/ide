@@ -521,7 +521,7 @@ export interface RequestIdDetails {
 }
 
 /**
- * Build chat history from SDK events for VS Code chat session
+ * Build chat history from SDK events for Trixty IDE chat session
  * Converts SDKEvents into ChatRequestTurn2 and ChatResponseTurn2 objects
  */
 export function buildChatHistoryFromEvents(sessionId: string, modelId: string | undefined, events: readonly SessionEvent[], getVSCodeRequestId: (sdkRequestId: string) => RequestIdDetails | undefined, delegationSummaryService: IChatDelegationSummaryService, logger: ILogger, workingDirectory?: URI, defaultModeInstructionsForLastRequest?: StoredModeInstructions): (ChatRequestTurn2 | ChatResponseTurn2)[] {
@@ -749,11 +749,11 @@ function getRangeInPrompt(prompt: string, referencedName: string): [number, numb
 
 /**
  * Converts MCP {@link MCP.ContentBlock}[] values produced by MCP tool execution into
- * VS Code {@link McpToolInvocationContentData}[] objects for rendering in the chat UI.
+ * Trixty IDE {@link McpToolInvocationContentData}[] objects for rendering in the chat UI.
  *
  * MCP ContentBlocks represent heterogeneous pieces of tool output such as text, images,
  * audio, embedded resources, or resource links. This helper normalizes those different
- * content shapes into a common binary+MIME-type representation that the VS Code chat
+ * content shapes into a common binary+MIME-type representation that the Trixty IDE chat
  * tool invocation renderer understands, so that MCP tool results can be displayed
  * consistently alongside other chat responses.
  */
@@ -995,7 +995,7 @@ export function createCopilotCLIToolInvocation(data: {
 		// Currently there's no good way to render this to the user.
 		// Its a way to draw users attention to a file/code block.
 		// Generally models render the codeblock in the response, but here we have a tool call.
-		// Its a WIP, no clear way to render in CLI either, hence decided to hide in VS Code.
+		// Its a WIP, no clear way to render in CLI either, hence decided to hide in Trixty IDE.
 		return undefined;
 	}
 	if (toolCall.toolName === 'task_complete') {

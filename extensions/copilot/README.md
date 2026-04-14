@@ -21,9 +21,9 @@ To access GitHub Copilot, an active GitHub Copilot subscription is required. You
 
 **Manage sessions from a central view.** Run multiple [agent sessions](https://code.visualstudio.com/docs/copilot/chat/chat-sessions) in parallel and track them in one place. Monitor session status, switch between active work, review file changes, and resume where you left off.
 
-**Run agents with your preferred harness.** Use agents locally in VS Code, in the background via Copilot CLI, or Cloud via Copilot Coding Agent. You can also work with providers like Claude and Codex, and hand tasks off between agent types with context preserved all within the VS Code.
+**Run agents with your preferred harness.** Use agents locally in Trixty IDE, in the background via Copilot CLI, or Cloud via Copilot Coding Agent. You can also work with providers like Claude and Codex, and hand tasks off between agent types with context preserved all within the Trixty IDE.
 
-![Video showing an agent session building a complete feature in VS Code.](https://github.com/microsoft/vscode-docs/raw/refs/heads/main/docs/copilot/images/overview/agents-intro.gif)
+![Video showing an agent session building a complete feature in Trixty IDE.](https://github.com/microsoft/vscode-docs/raw/refs/heads/main/docs/copilot/images/overview/agents-intro.gif)
 
 **Use agents to [plan before you build](https://code.visualstudio.com/docs/copilot/agents/planning) with the Plan agent**, which breaks tasks into structured implementation plans and asks clarifying questions. When your plan is ready, hand it off to an implementation agent to execute it. You can also [delegate tasks to cloud agents](https://code.visualstudio.com/docs/copilot/agents/cloud-agents) that create branches, implement changes, and open pull requests for your team to review.
 
@@ -35,7 +35,7 @@ To access GitHub Copilot, an active GitHub Copilot subscription is required. You
 
 **Use inline chat for targeted edits** by pressing `Ctrl+I`/`Cmd+I` to open a chat prompt directly in the editor. Describe a change and Copilot suggests edits in place for refactoring methods, adding error handling, or explaining complex algorithms without leaving your editor.
 
-![Inline chat in VS Code](https://code.visualstudio.com/assets/docs/copilot/copilot-chat/inline-chat-question-example.png)
+![Inline chat in Trixty IDE](https://code.visualstudio.com/assets/docs/copilot/copilot-chat/inline-chat-question-example.png)
 
 
 ## Customize AI for your workflow
@@ -54,7 +54,7 @@ GitHub Copilot works on any language, including Java, PHP, Python, JavaScript, R
 
 ### Version compatibility
 
-As Copilot Chat releases in lockstep with VS Code due to its deep UI integration, every new version of Copilot Chat is only compatible with the latest and newest release of VS Code. This means that if you are using an older version of VS Code, you will not be able to use the latest Copilot Chat.
+As Copilot Chat releases in lockstep with Trixty IDE due to its deep UI integration, every new version of Copilot Chat is only compatible with the latest and newest release of Trixty IDE. This means that if you are using an older version of Trixty IDE, you will not be able to use the latest Copilot Chat.
 
 Only the latest Copilot Chat versions will use the latest models provided by the Copilot service, as even minor model upgrades require prompt changes and fixes in the extension.
 
@@ -64,15 +64,15 @@ By using Copilot Chat you agree to [GitHub Copilot chat preview terms](https://d
 
 Please refer to our [Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement) to learn about the data we collect, how we use it, and the controls available to you.
 
-To get the latest security fixes, please use the latest version of the Copilot extension and VS Code.
+To get the latest security fixes, please use the latest version of the Copilot extension and Trixty IDE.
 
 ### Resources & next steps
 * **[Sign up for GitHub Copilot Free](https://github.com/settings/copilot?utm_source=vscode-chat-readme&utm_medium=third&utm_campaign=2025mar-em-MSFT-signup)**: Explore Copilot's AI capabilities at no cost before upgrading to a paid plan.
    * If you're using Copilot for your business, check out [Copilot Business](https://docs.github.com/en/copilot/copilot-business/about-github-copilot-business) and [Copilot Enterprise](https://docs.github.com/en/copilot/github-copilot-enterprise/overview/about-github-copilot-enterprise).
-* **[Copilot Quickstart](https://code.visualstudio.com/docs/copilot/getting-started)**: Discover the key features of Copilot in VS Code.
+* **[Copilot Quickstart](https://code.visualstudio.com/docs/copilot/getting-started)**: Discover the key features of Copilot in Trixty IDE.
 * **[Agents Tutorial](https://code.visualstudio.com/docs/copilot/agents/agents-tutorial)**: Get started with autonomous agents across different environments.
-* **[VS Code on YouTube](https://www.youtube.com/@code)**: Watch the latest demos and updates on the VS Code channel.
-* **[Frequently Asked Questions](https://code.visualstudio.com/docs/copilot/faq)**: Get answers to commonly asked questions about Copilot in VS Code.
+* **[Trixty IDE on YouTube](https://www.youtube.com/@code)**: Watch the latest demos and updates on the Trixty IDE channel.
+* **[Frequently Asked Questions](https://code.visualstudio.com/docs/copilot/faq)**: Get answers to commonly asked questions about Copilot in Trixty IDE.
 * **[Provide Feedback](https://github.com/microsoft/vscode-copilot-release/issues)**: Send us your feedback and feature request to help us make GitHub Copilot better!
 
 ## Data and telemetry

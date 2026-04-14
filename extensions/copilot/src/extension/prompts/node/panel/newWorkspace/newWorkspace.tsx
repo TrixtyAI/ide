@@ -190,7 +190,7 @@ export class NewWorkspacePrompt extends PromptElement<NewWorkspacePromptProps, N
 				</>}
 				{state.intent?.intent === 'Project' && !this._metadata && <>
 					<InstructionMessage priority={1000}>
-						You are a VS Code assistant. Your job is to suggest a filetree directory structure for a project that a user wants to create.<br />
+						You are a Trixty IDE assistant. Your job is to suggest a filetree directory structure for a project that a user wants to create.<br />
 						If a step does not relate to filetree directory structures, do not respond. Please do not guess a response and instead just respond with a polite apology if you are unsure.
 						## Additional Rules ##<br />
 						If the user does not specify "app" or "project" in their query, assume they are asking for a project.<br />
@@ -453,7 +453,7 @@ export class NewWorkspaceMetaPrompt extends PromptElement<NewWorkspaceMetaPrompt
 					# Question<br />
 					Create a new TypeScript project with a basic "Hello World" web application.<br />
 					<br />
-					User: VS Code extension custom sidebar<br />
+					User: Trixty IDE extension custom sidebar<br />
 					Assistant:<br />
 					# Intent<br />
 					Project<br />

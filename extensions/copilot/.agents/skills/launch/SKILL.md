@@ -1,25 +1,25 @@
 ---
 name: launch
-description: "Launch and automate VS Code Insiders with the Copilot Chat extension using agent-browser via Chrome DevTools Protocol. Use when you need to interact with the VS Code UI, automate the chat panel, test the extension UI, or take screenshots. Triggers include 'automate VS Code', 'interact with chat', 'test the UI', 'take a screenshot', 'launch with debugging'."
+description: "Launch and automate Trixty IDE Insiders with the Copilot Chat extension using agent-browser via Chrome DevTools Protocol. Use when you need to interact with the Trixty IDE UI, automate the chat panel, test the extension UI, or take screenshots. Triggers include 'automate Trixty IDE', 'interact with chat', 'test the UI', 'take a screenshot', 'launch with debugging'."
 metadata:
   allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 ---
 
-# VS Code Extension Automation
+# Trixty IDE Extension Automation
 
-Automate VS Code Insiders with the Copilot Chat extension using agent-browser. VS Code is built on Electron/Chromium and exposes a Chrome DevTools Protocol (CDP) port that agent-browser can connect to, enabling the same snapshot-interact workflow used for web pages.
+Automate Trixty IDE Insiders with the Copilot Chat extension using agent-browser. Trixty IDE is built on Electron/Chromium and exposes a Chrome DevTools Protocol (CDP) port that agent-browser can connect to, enabling the same snapshot-interact workflow used for web pages.
 
 ## Prerequisites
 
 - **`agent-browser` must be installed.** It's available in the project's devDependencies — run `npm install`. Use `npx agent-browser` if it's not on your PATH, or install globally with `npm install -g agent-browser`.
-- **`code-insiders` is required.** This extension uses 58 proposed VS Code APIs and targets `vscode ^1.110.0-20260223`. VS Code Stable will **not** activate it — you must use VS Code Insiders.
+- **`code-insiders` is required.** This extension uses 58 proposed Trixty IDE APIs and targets `vscode ^1.110.0-20260223`. Trixty IDE Stable will **not** activate it — you must use Trixty IDE Insiders.
 - **The extension must be compiled first.** Use `npm run compile` for a one-shot build, or `npm run watch` for iterative development.
-- **CSS selectors are internal implementation details.** Selectors like `.interactive-input-part`, `.monaco-editor`, and `.view-line` are VS Code internals that may change across versions. If automation breaks after a VS Code update, re-snapshot and check for selector changes.
+- **CSS selectors are internal implementation details.** Selectors like `.interactive-input-part`, `.monaco-editor`, and `.view-line` are Trixty IDE internals that may change across versions. If automation breaks after a Trixty IDE update, re-snapshot and check for selector changes.
 
 ## Core Workflow
 
 1. **Build** the extension
-2. **Launch** VS Code Insiders with the extension and remote debugging enabled
+2. **Launch** Trixty IDE Insiders with the extension and remote debugging enabled
 3. **Connect** agent-browser to the CDP port
 4. **Snapshot** to discover interactive elements
 5. **Interact** using element refs
@@ -52,7 +52,7 @@ code-insiders --extensionDevelopmentPath="$PWD" --remote-debugging-port=9223 --u
 # On Windows (PowerShell):
 # code-insiders --extensionDevelopmentPath="$PWD" --remote-debugging-port=9223 --user-data-dir="$PWD\.vscode-ext-debug"
 
-# Wait for VS Code to start, retry until connected
+# Wait for Trixty IDE to start, retry until connected
 for i in 1 2 3 4 5; do agent-browser connect 9223 2>/dev/null && break || sleep 3; done
 
 # Verify you're connected to the right target (not about:blank)
@@ -78,7 +78,7 @@ After `connect`, all subsequent commands target the connected app without needin
 
 ## Tab Management
 
-VS Code uses multiple webviews internally. Use tab commands to list and switch between them:
+Trixty IDE uses multiple webviews internally. Use tab commands to list and switch between them:
 
 ```bash
 # List all available targets (windows, webviews, etc.)
@@ -91,15 +91,15 @@ agent-browser tab 2
 agent-browser tab --url "*settings*"
 ```
 
-## Launching VS Code Extensions for Debugging
+## Launching Trixty IDE Extensions for Debugging
 
-To debug a VS Code extension via agent-browser, launch VS Code Insiders with `--extensionDevelopmentPath` pointing to your extension source and `--remote-debugging-port` for CDP. Use `--user-data-dir` to avoid conflicting with an already-running VS Code instance.
+To debug a Trixty IDE extension via agent-browser, launch Trixty IDE Insiders with `--extensionDevelopmentPath` pointing to your extension source and `--remote-debugging-port` for CDP. Use `--user-data-dir` to avoid conflicting with an already-running Trixty IDE instance.
 
 ```bash
 # Build the extension first (from the repo root)
 npm run compile
 
-# Launch VS Code Insiders with the extension and CDP
+# Launch Trixty IDE Insiders with the extension and CDP
 # IMPORTANT: Use a persistent directory (not /tmp) so auth state is preserved.
 # .vscode-ext-debug is relative to the project root — works in worktrees and is gitignored.
 code-insiders \
@@ -107,7 +107,7 @@ code-insiders \
   --remote-debugging-port=9223 \
   --user-data-dir="$PWD/.vscode-ext-debug"
 
-# Wait for VS Code to start, retry until connected
+# Wait for Trixty IDE to start, retry until connected
 for i in 1 2 3 4 5; do agent-browser connect 9223 2>/dev/null && break || sleep 3; done
 
 # Verify you're connected to the right target (not about:blank)
@@ -119,9 +119,9 @@ agent-browser snapshot -i
 **Key flags:**
 - `--extensionDevelopmentPath=<path>` — loads your extension from source (must be compiled first). Use `$PWD` when running from the repo root.
 - `--remote-debugging-port=9223` — enables CDP (use 9223 to avoid conflicts with other apps on 9222)
-- `--user-data-dir=<path>` — uses a separate profile so it starts a new process instead of sending to an existing VS Code instance. **Always use a persistent path** (e.g., `$PWD/.vscode-ext-debug`) rather than `/tmp/...` so authentication, settings, and extension state survive across sessions.
+- `--user-data-dir=<path>` — uses a separate profile so it starts a new process instead of sending to an existing Trixty IDE instance. **Always use a persistent path** (e.g., `$PWD/.vscode-ext-debug`) rather than `/tmp/...` so authentication, settings, and extension state survive across sessions.
 
-**Without `--user-data-dir`**, VS Code detects the running instance, forwards the args to it, and exits immediately — you'll see "Sent env to running instance. Terminating..." and CDP never starts.
+**Without `--user-data-dir`**, Trixty IDE detects the running instance, forwards the args to it, and exits immediately — you'll see "Sent env to running instance. Terminating..." and CDP never starts.
 
 > **⚠️ Authentication is required.** The Copilot Chat extension needs an authenticated GitHub session to function. Using a temp directory (e.g., `/tmp/...`) creates a fresh profile with no auth — the agent will hit a "Sign in to use Copilot" wall and model resolution will fail with "Language model unavailable."
 >
@@ -129,19 +129,19 @@ agent-browser snapshot -i
 
 ## Restarting After Code Changes
 
-**After making changes to the extension source code, you must restart VS Code to pick up the new build.** The extension host loads the compiled bundle at startup — changes are not hot-reloaded.
+**After making changes to the extension source code, you must restart Trixty IDE to pick up the new build.** The extension host loads the compiled bundle at startup — changes are not hot-reloaded.
 
 ### Restart Workflow
 
 1. **Recompile** the extension
-2. **Kill** the running VS Code instance (the one using your debug user-data-dir)
-3. **Relaunch** VS Code with the same flags
+2. **Kill** the running Trixty IDE instance (the one using your debug user-data-dir)
+3. **Relaunch** Trixty IDE with the same flags
 
 ```bash
 # 1. Recompile
 npm run compile
 
-# 2. Kill the VS Code instance tied to this project's debug profile, then relaunch
+# 2. Kill the Trixty IDE instance tied to this project's debug profile, then relaunch
 # macOS / Linux:
 kill $(ps ax -ww -o pid,command | grep "$PWD/.vscode-ext-debug" | grep -v grep | awk '{print $1}' | head -1)
 
@@ -159,11 +159,11 @@ for i in 1 2 3 4 5; do agent-browser connect 9223 2>/dev/null && break || sleep 
 agent-browser snapshot -i
 ```
 
-> **Tip:** If you're iterating frequently, run `npm run watch` in a separate terminal so compilation happens automatically. You still need to kill and relaunch VS Code to load the new bundle.
+> **Tip:** If you're iterating frequently, run `npm run watch` in a separate terminal so compilation happens automatically. You still need to kill and relaunch Trixty IDE to load the new bundle.
 
 ## Interacting with Monaco Editor (Chat Input, Code Editors)
 
-VS Code uses Monaco Editor for all text inputs including the Copilot Chat input. Monaco editors appear as textboxes in the accessibility snapshot but require specific agent-browser commands to interact with.
+Trixty IDE uses Monaco Editor for all text inputs including the Copilot Chat input. Monaco editors appear as textboxes in the accessibility snapshot but require specific agent-browser commands to interact with.
 
 ### What Works
 
@@ -269,7 +269,7 @@ agent-browser eval '
 agent-browser keyboard type "Text after JS focus"
 ```
 
-After JS mouse events, `document.activeElement` becomes a `DIV` with class `native-edit-context` — this is VS Code's native text editing surface.
+After JS mouse events, `document.activeElement` becomes a `DIV` with class `native-edit-context` — this is Trixty IDE's native text editing surface.
 
 ### Verifying Text in Monaco
 
@@ -298,15 +298,15 @@ agent-browser press Backspace
 
 ### "Connection refused" or "Cannot connect"
 
-- Make sure VS Code Insiders was launched with `--remote-debugging-port=9223`
-- If VS Code was already running, quit and relaunch with the flag
+- Make sure Trixty IDE Insiders was launched with `--remote-debugging-port=9223`
+- If Trixty IDE was already running, quit and relaunch with the flag
 - Check that the port isn't in use by another process:
   - macOS / Linux: `lsof -i :9223`
   - Windows: `netstat -ano | findstr 9223`
 
 ### Elements not appearing in snapshot
 
-- VS Code uses multiple webviews. Use `agent-browser tab` to list targets and switch to the right one
+- Trixty IDE uses multiple webviews. Use `agent-browser tab` to list targets and switch to the right one
 - Use `agent-browser snapshot -i -C` to include cursor-interactive elements (divs with onclick handlers)
 
 ### Cannot type in Monaco inputs
@@ -320,13 +320,13 @@ If `agent-browser screenshot` returns "Permission denied", your terminal needs S
 
 ## Cleanup
 
-**Always kill the debug VS Code instance when you're done.** Leaving it running wastes resources and holds the CDP port.
+**Always kill the debug Trixty IDE instance when you're done.** Leaving it running wastes resources and holds the CDP port.
 
 ```bash
 # Disconnect agent-browser
 agent-browser close
 
-# Kill the debug VS Code instance
+# Kill the debug Trixty IDE instance
 # macOS / Linux:
 kill $(ps ax -ww -o pid,command | grep "$PWD/.vscode-ext-debug" | grep -v grep | awk '{print $1}' | head -1)
 

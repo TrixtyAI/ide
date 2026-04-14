@@ -17,14 +17,14 @@ const MATERIALIZATION_TIMEOUT_MS = 4000;
 const MATERIALIZATION_POLL_INTERVAL_MS = 100;
 
 /**
- * Copies the node-pty files from VS Code's installation into a @github/copilot location
+ * Copies the node-pty files from Trixty IDE's installation into a @github/copilot location
  *
  * MUST be called before any `import('@github/copilot/sdk')` or `import('@github/copilot')`.
  *
  * @github/copilot bundles the node-pty code and its no longer possible to shim the package.
  *
  * @param extensionPath The extension's path (where to create the shim)
- * @param vscodeAppRoot VS Code's installation path (where node-pty is located)
+ * @param vscodeAppRoot Trixty IDE's installation path (where node-pty is located)
  */
 export async function ensureNodePtyShim(extensionPath: string, vscodeAppRoot: string, logService: ILogService): Promise<void> {
 	if (shimCreated) {

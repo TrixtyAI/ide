@@ -27,7 +27,7 @@ export function setup(logger: Logger) {
 			const localeInfo = await app.workbench.localization.getLocaleInfo();
 
 			if (localeInfo.locale === undefined || localeInfo.locale.toLowerCase() !== 'de') {
-				throw new Error(`The requested locale for VS Code was not German. The received value is: ${localeInfo.locale === undefined ? 'not set' : localeInfo.locale}`);
+				throw new Error(`The requested locale for Trixty IDE was not German. The received value is: ${localeInfo.locale === undefined ? 'not set' : localeInfo.locale}`);
 			}
 
 			if (localeInfo.language.toLowerCase() !== 'de') {

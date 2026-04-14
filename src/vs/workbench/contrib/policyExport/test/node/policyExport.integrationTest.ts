@@ -25,7 +25,7 @@ suite('PolicyExport Integration Tests', () => {
 			this.skip();
 		}
 
-		// This test launches VS Code with --export-policy-data flag, so it takes longer
+		// This test launches Trixty IDE with --export-policy-data flag, so it takes longer
 		this.timeout(60000);
 
 		// Get the repository root (FileAccess.asFileUri('') points to the 'out' directory)
@@ -42,12 +42,12 @@ suite('PolicyExport Integration Tests', () => {
 		}
 
 		try {
-			// Launch VS Code with --export-policy-data flag
+			// Launch Trixty IDE with --export-policy-data flag
 			const scriptPath = isWindows
 				? join(rootPath, 'scripts', 'code.bat')
 				: join(rootPath, 'scripts', 'code.sh');
 
-			// Skip prelaunch to avoid redownloading electron while the parent VS Code is using it.
+			// Skip prelaunch to avoid redownloading electron while the parent Trixty IDE is using it.
 			// DISTRO_PRODUCT_JSON points to a static test fixture so --export-policy-data can
 			// merge extension policies without needing distro access or GITHUB_TOKEN.
 			// This fixture is NOT expected to stay in sync with the distro — it exists purely

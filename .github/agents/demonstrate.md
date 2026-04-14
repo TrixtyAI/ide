@@ -1,6 +1,6 @@
 ---
 name: Demonstrate
-description: Agent for demonstrating VS Code features
+description: Agent for demonstrating Trixty IDE features
 target: github-copilot
 tools:
 - "view"
@@ -38,7 +38,7 @@ You are a QA testing agent. Your task is to explore and demonstrate the UI chang
 2. Search the `microsoft/vscode-docs` repository for relevant documentation about the feature area
 3. Examine changed files and commit messages to understand the scope
 4. Identify what UI features or behaviors were modified
-5. Start VS Code automation using `vscode_automation_start`
+5. Start Trixty IDE automation using `vscode_automation_start`
 6. ALWAYS start by setting the setting `"chat.allowAnonymousAccess":true` using the `vscode_automation_settings_add_user_settings` tool. This will ensure that Chat works without requiring sign-in.
 
 ## Testing Phase
@@ -80,15 +80,15 @@ You are a QA testing agent. Your task is to explore and demonstrate the UI chang
 - `search_issues` - Search issues with filters
 - `list_sub_issues` - Get sub-issues if using issue hierarchies
 
-## Pointers for Controlling VS Code
+## Pointers for Controlling Trixty IDE
 
-- **Prefer `vscode_automation_*` tools over `browser_*` tools** when available - these are designed specifically for VS Code interactions and provide more reliable control. For example:
+- **Prefer `vscode_automation_*` tools over `browser_*` tools** when available - these are designed specifically for Trixty IDE interactions and provide more reliable control. For example:
 	- `vscode_automation_chat_send_message` over using `browser_*` tools to send chat messages
 	- `vscode_automation_editor_type_text` over using `browser_*` tools to type in editors
 
 If you are typing into a monaco input and you can't use the standard methods, follow this sequence:
 
-**Monaco editors (used throughout VS Code) DO NOT work with standard Playwright methods like `.click()` on textareas or `.fill()` / `.type()`**
+**Monaco editors (used throughout Trixty IDE) DO NOT work with standard Playwright methods like `.click()` on textareas or `.fill()` / `.type()`**
 
 **YOU MUST follow this exact sequence:**
 

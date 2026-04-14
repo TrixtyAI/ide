@@ -120,7 +120,7 @@ export namespace Copilot {
 	export interface ResolveRequest {
 		// A unique ID to correlate the request with the completion request.
 		completionId: string;
-		// Optional the opportunity ID provided by VS Code core.
+		// Optional the opportunity ID provided by Trixty IDE core.
 		opportunityId?: string;
 
 		documentContext: DocumentContext;

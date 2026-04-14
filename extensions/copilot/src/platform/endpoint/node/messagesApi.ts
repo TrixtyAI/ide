@@ -133,7 +133,7 @@ export function createMessagesRequestBody(accessor: ServicesAccessor, options: I
 		finalTools.push({ name: TOOL_SEARCH_TOOL_NAME, type: TOOL_SEARCH_TOOL_TYPE, defer_loading: false });
 	}
 	// When customToolSearchEnabled, the search_tools tool is already in the
-	// anthropicTools array (registered as a model-specific VS Code tool) and will handle
+	// anthropicTools array (registered as a model-specific Trixty IDE tool) and will handle
 	// tool search client-side. Deferred tools still have defer_loading: true so the model
 	// knows to use the search tool to discover them.
 	finalTools.push(...nonDeferredTools, ...deferredTools);

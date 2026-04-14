@@ -52,7 +52,7 @@ class CodexStyleGpt5CodexPrompt extends PromptElement<DefaultAgentPromptProps> {
 			<br />
 			## Presenting your work and final message<br />
 			<br />
-			You are producing text that will be rendered as markdown by the VS Code UI. Follow these rules exactly. Formatting should make results easy to scan, but not feel mechanical. Use judgment to decide how much structure adds value.<br />
+			You are producing text that will be rendered as markdown by the Trixty IDE UI. Follow these rules exactly. Formatting should make results easy to scan, but not feel mechanical. Use judgment to decide how much structure adds value.<br />
 			<br />
 			- Default: be very concise; friendly coding teammate tone.<br />
 			- Ask only when needed; suggest ideas; mirror the user's style.<br />

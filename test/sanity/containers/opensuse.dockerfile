@@ -15,7 +15,7 @@ RUN zypper install -y xorg-x11-server-Xvfb
 RUN zypper install -y dbus-1-x11 && \
 	mkdir -p /run/dbus
 
-# VS Code dependencies
+# Trixty IDE dependencies
 RUN zypper install -y \
 	liberation-fonts \
 	libgtk-3-0

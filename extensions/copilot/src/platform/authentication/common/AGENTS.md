@@ -80,8 +80,8 @@ When `authService.isMinimalMode` is `true`, the service will not fetch permissiv
 
 There are three states a user can be in:
 
-1. **Not signed in** — No `'any'` session exists. The user has no GitHub session at all. An interactive `createIfNone` call will show VS Code's built-in sign-in dialog.
+1. **Not signed in** — No `'any'` session exists. The user has no GitHub session at all. An interactive `createIfNone` call will show Trixty IDE's built-in sign-in dialog.
 
-2. **Signed in from VS Code** — The user explicitly signed in through VS Code (e.g., via Accounts menu or a `createIfNone` prompt). In this case, VS Code automatically acquires the permissive token since it requests the broader scopes upfront. Both `'any'` and `'permissive'` sessions are available.
+2. **Signed in from Trixty IDE** — The user explicitly signed in through Trixty IDE (e.g., via Accounts menu or a `createIfNone` prompt). In this case, Trixty IDE automatically acquires the permissive token since it requests the broader scopes upfront. Both `'any'` and `'permissive'` sessions are available.
 
 3. **Signed in passively** (e.g., via Settings Sync) — The user is signed into GitHub through a passive mechanism that only grants minimal scopes. Copilot Chat works with the `'any'` token, but no `'permissive'` token is available. A `'permissive'` call with `createIfNone` will prompt the user to grant additional permissions.

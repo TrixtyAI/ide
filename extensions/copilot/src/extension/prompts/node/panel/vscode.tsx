@@ -368,7 +368,7 @@ ms-python.python,ms-python.vscode-pylance
 					</Tag>
 					</>}
 					{state.currentVersion && <><Tag name='currentVSCodeVersion'>
-						Current VS Code version (major.minor): {state.currentVersion}
+						Current Trixty IDE version (major.minor): {state.currentVersion}
 					</Tag><br /></>}
 					{state.releaseNotes && state.releaseNotes.length > 0 && <><Tag name='releaseNotes'>
 						Below are release notes which might be relevant to the question. <br />
@@ -376,10 +376,10 @@ ms-python.python,ms-python.vscode-pylance
 					</Tag>
 					</>}
 					<Tag name='vscodeAPIToolUseInstructions'>
-						Always call the tool {ToolName.VSCodeAPI} to get documented references and examples when before responding to questions about VS Code Extension Development.<br />
+						Always call the tool {ToolName.VSCodeAPI} to get documented references and examples when before responding to questions about Trixty IDE Extension Development.<br />
 					</Tag>
 					<Tag name='searchExtensionToolUseInstructions'>
-						Always call the tool 'vscode_searchExtensions_internal' to first search for extensions in the VS Code Marketplace before responding about extensions.<br />
+						Always call the tool 'vscode_searchExtensions_internal' to first search for extensions in the Trixty IDE Marketplace before responding about extensions.<br />
 					</Tag>
 					<Tag name='vscodeCmdToolUseInstructions'>
 						Call the tool {ToolName.RunVscodeCmd} to run commands in Visual Studio Code, only use as part of a new workspace creation process. <br />

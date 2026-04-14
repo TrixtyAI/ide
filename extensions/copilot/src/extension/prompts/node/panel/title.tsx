@@ -24,7 +24,7 @@ export class TitlePrompt extends PromptElement<TitlePromptProps> {
 					- Git rebase question<br />
 					- Installing Python packages<br />
 					- Location of LinkedList implementation in codebase<br />
-					- Adding a tree view to a VS Code extension<br />
+					- Adding a tree view to a Trixty IDE extension<br />
 					- React useState hook usage
 				</SystemMessage>
 				<UserMessage priority={900}>

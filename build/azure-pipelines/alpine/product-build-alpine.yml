@@ -23,7 +23,7 @@ jobs:
             artifactName: vscode_server_linux_alpine_archive-unsigned
             displayName: Publish x64 server archive
             sbomBuildDropPath: $(SERVER_DIR_PATH)
-            sbomPackageName: "VS Code Alpine x64 Server"
+            sbomPackageName: "Trixty IDE Alpine x64 Server"
             sbomPackageVersion: $(Build.SourceVersion)
           # keep legacy name
           - output: pipelineArtifact
@@ -31,7 +31,7 @@ jobs:
             artifactName: vscode_web_linux_alpine_archive-unsigned
             displayName: Publish x64 web server archive
             sbomBuildDropPath: $(WEB_DIR_PATH)
-            sbomPackageName: "VS Code Alpine x64 Web"
+            sbomPackageName: "Trixty IDE Alpine x64 Web"
             sbomPackageVersion: $(Build.SourceVersion)
         - ${{ if ne(parameters.VSCODE_ARCH, 'x64') }}:
           - output: pipelineArtifact
@@ -39,14 +39,14 @@ jobs:
             artifactName: vscode_server_alpine_$(VSCODE_ARCH)_archive-unsigned
             displayName: Publish server archive
             sbomBuildDropPath: $(SERVER_DIR_PATH)
-            sbomPackageName: "VS Code Alpine $(VSCODE_ARCH) Server"
+            sbomPackageName: "Trixty IDE Alpine $(VSCODE_ARCH) Server"
             sbomPackageVersion: $(Build.SourceVersion)
           - output: pipelineArtifact
             targetPath: $(Build.ArtifactStagingDirectory)/out/web/vscode-server-alpine-$(VSCODE_ARCH)-web.tar.gz
             artifactName: vscode_web_alpine_$(VSCODE_ARCH)_archive-unsigned
             displayName: Publish web server archive
             sbomBuildDropPath: $(WEB_DIR_PATH)
-            sbomPackageName: "VS Code Alpine $(VSCODE_ARCH) Web"
+            sbomPackageName: "Trixty IDE Alpine $(VSCODE_ARCH) Web"
             sbomPackageVersion: $(Build.SourceVersion)
     steps:
       - template: ../common/checkout.yml@self

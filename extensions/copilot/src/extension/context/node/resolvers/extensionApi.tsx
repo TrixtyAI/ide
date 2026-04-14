@@ -55,7 +55,7 @@ export class ApiEmbeddingsIndex implements IApiEmbeddingsIndex {
 		} else if (context.type === 'command') {
 			return `${context.text}`;
 		} else if (context.type === 'documentationCodeBlock') {
-			return `Example code from VS Code documentation:\n${createFencedCodeBlock(context.lang, context.text)}`;
+			return `Example code from Trixty IDE documentation:\n${createFencedCodeBlock(context.lang, context.text)}`;
 		}
 
 		return '';
@@ -86,7 +86,7 @@ export class VSCodeAPIContextElement extends PromptElement<VSCodeAPIContextProps
 
 	async renderAsString(): Promise<string> {
 		const snippets = await this.getSnippets(undefined);
-		return `Below are some potentially relevant code samples related to VS Code extension development. You may use information from these samples to help you answer the question if you believe it is relevant.\n${snippets.join('\n\n')}`;
+		return `Below are some potentially relevant code samples related to Trixty IDE extension development. You may use information from these samples to help you answer the question if you believe it is relevant.\n${snippets.join('\n\n')}`;
 	}
 
 	private async getSnippets(token: CancellationToken | undefined): Promise<string[]> {
@@ -103,7 +103,7 @@ export class VSCodeAPIContextElement extends PromptElement<VSCodeAPIContextProps
 		const snippets = await this.getSnippets(token);
 		if (snippets.length) {
 			return <>
-				Below are some potentially relevant code samples related to VS Code extension development. You may use information from these samples to help you answer the question if you believe it is relevant.<br />
+				Below are some potentially relevant code samples related to Trixty IDE extension development. You may use information from these samples to help you answer the question if you believe it is relevant.<br />
 				{snippets.map(s => {
 					return <><TextChunk>{s}</TextChunk><br /><br /></>;
 				})}

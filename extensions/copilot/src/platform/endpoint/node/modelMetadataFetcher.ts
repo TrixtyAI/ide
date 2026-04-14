@@ -215,7 +215,7 @@ export class ModelMetadataFetcher extends Disposable implements IModelMetadataFe
 		}
 
 		// Only fetch if the current session is active.
-		// This avoids unnecessary network calls when VS Code is in the background.
+		// This avoids unnecessary network calls when Trixty IDE is in the background.
 		if (!this._envService.isActive) {
 			return false;
 		}

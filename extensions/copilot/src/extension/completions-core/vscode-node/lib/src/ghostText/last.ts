@@ -174,8 +174,8 @@ export function handleGhostTextShown(accessor: ServicesAccessor, cmp: CopilotCom
 }
 
 /**
- * Handles partial acceptance for VS Code clients using line-based strategy.
- * VS Code tracks acceptance by lines and resets the accepted length per line.
+ * Handles partial acceptance for Trixty IDE clients using line-based strategy.
+ * Trixty IDE tracks acceptance by lines and resets the accepted length per line.
  */
 function handleLineAcceptance(accessor: ServicesAccessor, cmp: CopilotCompletion, acceptedLength: number) {
 	const last = accessor.get(ICompletionsLastGhostText);
@@ -201,7 +201,7 @@ function handleLineAcceptance(accessor: ServicesAccessor, cmp: CopilotCompletion
 
 /**
  * Handles full acceptance of ghost text completions.
- * This method is primarily used by VS Code for explicit full acceptances.
+ * This method is primarily used by Trixty IDE for explicit full acceptances.
  */
 export function handleGhostTextPostInsert(
 	accessor: ServicesAccessor,

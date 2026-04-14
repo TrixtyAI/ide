@@ -25,7 +25,7 @@ function getCategorySummary(category: ToolCategory): string {
 		case ToolCategory.WebInteraction:
 			return 'Call tools from this group when you need to interact with web content, browse websites, or access external resources.';
 		case ToolCategory.VSCodeInteraction:
-			return 'Call tools from this group when you need to interact with the VS Code workspace and access VS Code features.';
+			return 'Call tools from this group when you need to interact with the Trixty IDE workspace and access Trixty IDE features.';
 		case ToolCategory.Testing:
 			return 'Call tools from this group when you need to run tests, analyze test failures, and manage test workflows.';
 		case ToolCategory.RedundantButSpecific: {

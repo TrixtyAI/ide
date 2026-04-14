@@ -4,7 +4,7 @@
 # Usage:
 #   docker compose -f docs/monitoring/docker-compose.yaml up -d
 #
-# Then set in VS Code or launch.json:
+# Then set in Trixty IDE or launch.json:
 #   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 receivers:

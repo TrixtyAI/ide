@@ -137,7 +137,7 @@ else {
 	quality = parseQuality();
 }
 
-logger.log(`VS Code product quality: ${quality}.`);
+logger.log(`Trixty IDE product quality: ${quality}.`);
 
 async function ensureStableCode(): Promise<void> {
 	let stableCodePath = opts['stable-build'];
@@ -159,7 +159,7 @@ async function ensureStableCode(): Promise<void> {
 			throw new Error(`Could not find suitable stable version for ${version}`);
 		}
 
-		logger.log(`Found VS Code v${version}, downloading previous VS Code version ${stableVersion}...`);
+		logger.log(`Found Trixty IDE v${version}, downloading previous Trixty IDE version ${stableVersion}...`);
 
 		let lastProgressMessage: string | undefined = undefined;
 		let lastProgressReportedAt = 0;

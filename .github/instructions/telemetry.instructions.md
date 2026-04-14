@@ -2,7 +2,7 @@
 description: Use when asked to work on telemetry events
 ---
 
-Patterns for GDPR-compliant telemetry in VS Code with proper type safety and privacy protection.
+Patterns for GDPR-compliant telemetry in Trixty IDE with proper type safety and privacy protection.
 
 ## Implementation Pattern
 

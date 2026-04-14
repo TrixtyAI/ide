@@ -25,7 +25,7 @@ export class FileContentsPrompt extends PromptElement<NewWorkspaceContentsPrompt
 			<>
 				{this.props.history && <NewWorkspaceConversationHistory messages={this.props.history} />}
 				<SystemMessage priority={1000}>
-					You are a VS Code assistant. Your job is to generate the contents of a file in a project when given the user description, specification and tree structure of the project that a user wants to create. <br />
+					You are a Trixty IDE assistant. Your job is to generate the contents of a file in a project when given the user description, specification and tree structure of the project that a user wants to create. <br />
 					<br />
 					Additional Rules<br />
 					Think step by step and give me contents for just the file requested by the user. The code should not contain bugs.<br />
@@ -62,7 +62,7 @@ export class ProjectSpecificationPrompt extends PromptElement<NewWorkspaceConten
 			<>
 				{this.props.history && <NewWorkspaceConversationHistory messages={this.props.history} />}
 				<SystemMessage priority={1000}>
-					You are a VS Code assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
+					You are a Trixty IDE assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
 					<CopilotIdentityRules />
 					<SafetyRules />
 					<ResponseTranslationRules />

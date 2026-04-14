@@ -154,7 +154,7 @@ if ($isStable -eq "0") {
 	}
 }
 
-# Set always on key handlers which map to default VS Code keybindings
+# Set always on key handlers which map to default Trixty IDE keybindings
 function Set-MappedKeyHandler {
 	param ([string[]] $Chord, [string[]]$Sequence)
 	try {
@@ -188,12 +188,12 @@ function Set-MappedKeyHandlers {
 	if ($env:VSCODE_SUGGEST -eq '1' -and $PSVersionTable.PSVersion -ge "7.0") {
 		Remove-Item Env:VSCODE_SUGGEST
 
-		# VS Code send completions request (may override Ctrl+Spacebar)
+		# Trixty IDE send completions request (may override Ctrl+Spacebar)
 		Set-PSReadLineKeyHandler -Chord 'F12,e' -ScriptBlock {
 			Send-Completions
 		}
 
-		# VS Code send global completions request
+		# Trixty IDE send global completions request
 		Set-PSReadLineKeyHandler -Chord 'F12,f' -ScriptBlock {
 			# Get commands, convert to string array to reduce the payload size and send as JSON
 			$commands = @(

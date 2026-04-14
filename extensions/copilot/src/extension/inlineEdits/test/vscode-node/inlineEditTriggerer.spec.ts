@@ -731,7 +731,7 @@ suite('InlineEditTriggerer', () => {
 
 			//    The bypass scenario: triggerTextChange fires for cell2.document, creating LastChange with
 			//    documentTrigger = cell2.document. Then another selection event comes for cell2 but from
-			//    a DIFFERENT textEditor.document. This happens when VS Code reloads cell documents.
+			//    a DIFFERENT textEditor.document. This happens when Trixty IDE reloads cell documents.
 			//    We can simulate this by registering a new doc object for the same notebook cell URI.
 			const cell2Alt = createNotebookCellDocument('cell2', 'x = 1');
 			// cell2Alt.document is a NEW object but has same URI

@@ -239,7 +239,7 @@
 						"pl"
 					],
 					"enumDescriptions": [
-						"Use VS Code's configured display language",
+						"Use Trixty IDE's configured display language",
 						"English",
 						"français",
 						"italiano",

@@ -12,16 +12,16 @@ assignees: ''
 <!-- 🔎 Search existing issues to avoid duplicates. -->
 <!-- 🧪 Test without extensions to isolate the issue. -->
 
-- Trixty Version: 
-- OS Version: 
+- Trixty Version:
+- OS Version:
 occur when all extensions are disabled?: Yes/No
 
 <!-- 🪓 If you answered No above, use 'Help: Start Extension Bisect' from Command Palette to try to identify the cause. -->
 <!-- 📣 Issues caused by an extension need to be reported directly to the extension publisher. The 'Help > Report Issue' dialog can assist with this. -->
-- VS Code Version: 
-- OS Version: 
+- Trixty IDE Version:
+- OS Version:
 
 Steps to Reproduce:
 
-1. 
+1.
 2.

@@ -194,7 +194,7 @@ extends:
 
       - task: AzureCLI@2
         inputs:
-          azureSubscription: 'VS Code Development WIF'
+          azureSubscription: 'Trixty IDE Development WIF'
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: npm run setup
@@ -219,16 +219,16 @@ extends:
         displayName: Run simulation tests
 
       - script: xvfb-run -a npm run test:extension
-        displayName: Run extension tests using VS Code
+        displayName: Run extension tests using Trixty IDE
 
       - script: npm run test:prompt
         displayName: Run Completions Core prompt tests
 
       - script: xvfb-run -a npm run test:completions-core
-        displayName: Run Completions Core lib tests using VS Code
+        displayName: Run Completions Core lib tests using Trixty IDE
 
       - script: xvfb-run -a npm run test:sanity
-        displayName: Run extension sanity tests using VS Code
+        displayName: Run extension sanity tests using Trixty IDE
 
     tsa:
       config:

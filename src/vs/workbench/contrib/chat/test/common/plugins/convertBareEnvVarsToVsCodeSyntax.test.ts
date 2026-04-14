@@ -118,7 +118,7 @@ suite('convertBareEnvVarsToVsCodeSyntax', () => {
 			assert.strictEqual(cfg.command, '${config:editor.fontSize}');
 		});
 
-		test('does not convert lowercase/camelCase VS Code variable tokens', () => {
+		test('does not convert lowercase/camelCase Trixty IDE variable tokens', () => {
 			const cfg = asStdio(convertBareEnvVarsToVsCodeSyntax({
 				name: 'test',
 				uri: URI.parse('file:///test'),

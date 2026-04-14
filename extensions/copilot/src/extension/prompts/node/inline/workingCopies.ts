@@ -116,7 +116,7 @@ export class WorkingCopyDerivedDocument {
 
 /**
  * Keeps track of the current document with edits applied immediately.
- * This simulates the EOL sequence behavior of VS Code, namely it keeps the EOL sequence
+ * This simulates the EOL sequence behavior of Trixty IDE, namely it keeps the EOL sequence
  * of the original document and it does not allow for mixed EOL sequences.
  */
 export class WorkingCopyOriginalDocument {
@@ -143,7 +143,7 @@ export class WorkingCopyOriginalDocument {
 	constructor(
 		private _text: string,
 	) {
-		// VS Code doesn't allow mixed EOL sequences, so the presence of one \r\n
+		// Trixty IDE doesn't allow mixed EOL sequences, so the presence of one \r\n
 		// indicates that the document uses \r\n as EOL sequence.
 		this._eol = _text.includes('\r\n') ? '\r\n' : '\n';
 	}

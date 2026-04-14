@@ -15,7 +15,7 @@ const UNTRUSTED_COPILOT_HOME_MESSAGE = l10n.t('The Copilot home directory is not
 
 /**
  *
- * We keep parsing in two phases to mirror VS Code's shape:
+ * We keep parsing in two phases to mirror Trixty IDE's shape:
  * 1) detect suffixes (e.g. :12:3, (12, 3)) and resolve the path before them
  * 2) detect path-only links (no suffix)
  */
@@ -60,7 +60,7 @@ export type SessionDirResolver = (terminal: Terminal) => Promise<Uri[]>;
  * Resolves relative file links in Copilot CLI terminal output.
  *
  * Copilot CLI paths are relative to the session-state directory, not the
- * workspace root. VS Code's built-in detector cannot resolve that context.
+ * workspace root. Trixty IDE's built-in detector cannot resolve that context.
  */
 export class CopilotCLITerminalLinkProvider implements TerminalLinkProvider<CopilotCLITerminalLink> {
 
@@ -96,7 +96,7 @@ export class CopilotCLITerminalLinkProvider implements TerminalLinkProvider<Copi
 
 	async provideTerminalLinks(context: TerminalLinkContext, token: CancellationToken): Promise<CopilotCLITerminalLink[]> {
 		const line = context.line;
-		// Match VS Code's built-in MaxLineLength limit (terminalLocalLinkDetector.ts).
+		// Match Trixty IDE's built-in MaxLineLength limit (terminalLocalLinkDetector.ts).
 		if (!line.trim() || line.length > 2000) {
 			return [];
 		}
@@ -107,7 +107,7 @@ export class CopilotCLITerminalLinkProvider implements TerminalLinkProvider<Copi
 		}
 		const links: CopilotCLITerminalLink[] = [];
 		for (const candidate of this._detectLinkCandidates(line)) {
-			// Match VS Code's built-in MaxResolvedLinksInLine (terminalLocalLinkDetector.ts).
+			// Match Trixty IDE's built-in MaxResolvedLinksInLine (terminalLocalLinkDetector.ts).
 			if (token.isCancellationRequested || links.length >= 10) {
 				break;
 			}
@@ -118,7 +118,7 @@ export class CopilotCLITerminalLinkProvider implements TerminalLinkProvider<Copi
 			}
 
 			// Strip trailing punctuation that is unlikely part of the path.
-			// Mirrors VS Code's specialEndCharRegex (terminalLocalLinkDetector.ts).
+			// Mirrors Trixty IDE's specialEndCharRegex (terminalLocalLinkDetector.ts).
 			let trimmed = 0;
 			while (pathText.length > 1 && /[\[\]"'.]$/.test(pathText)) {
 				pathText = pathText.slice(0, -1);

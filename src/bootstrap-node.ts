@@ -142,7 +142,7 @@ export function configurePortable(product: Partial<IProductConfiguration>): { po
 			return path.dirname(path.dirname(path.dirname(appRoot)));
 		}
 
-		// appRoot = ..\Microsoft VS Code Insiders\<version>\resources\app
+		// appRoot = ..\Microsoft Trixty IDE Insiders\<version>\resources\app
 		if (process.platform === 'win32' && product.win32VersionedUpdate) {
 			return path.dirname(path.dirname(path.dirname(appRoot)));
 		}

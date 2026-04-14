@@ -128,9 +128,9 @@ async function runSessionsUpdateAction(
 		const hasCrossAppCoordinator = isWindows && isInsiderOrExploration;
 		if (!hasCrossAppCoordinator) {
 			const { confirmed } = await dialogService.confirm({
-				message: localize('sessionsUpdateFromVSCode.title', "Update from VS Code"),
-				detail: localize('sessionsUpdateFromVSCode.detail', "This will close the Agents app and open VS Code so you can install the update.\n\nLaunch Agents again after the update is complete."),
-				primaryButton: localize('sessionsUpdateFromVSCode.open', "Close and Open VS Code"),
+				message: localize('sessionsUpdateFromVSCode.title', "Update from Trixty IDE"),
+				detail: localize('sessionsUpdateFromVSCode.detail', "This will close the Agents app and open Trixty IDE so you can install the update.\n\nLaunch Agents again after the update is complete."),
+				primaryButton: localize('sessionsUpdateFromVSCode.open', "Close and Open Trixty IDE"),
 			});
 
 			if (confirmed) {

@@ -213,7 +213,7 @@ class WorkspaceMutationInstructionsPrompt extends PromptElement<WorkspaceMutatio
 		return (
 			<>
 				<SystemMessage priority={1000}>
-					You are a VS Code assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
+					You are a Trixty IDE assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
 					<CopilotIdentityRules />
 					<SafetyRules />
 					<ResponseTranslationRules />
@@ -268,7 +268,7 @@ class WorkspaceMutationFilePrompt extends PromptElement<WorkspaceFileMutationPro
 		return (
 			<>
 				<SystemMessage priority={1000}>
-					You are a VS Code assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
+					You are a Trixty IDE assistant. Your job is to generate the project specification when given the user description and file tree structure of the project that a user wants to create. <br />
 					<CopilotIdentityRules />
 					<SafetyRules />
 					<ResponseTranslationRules />

@@ -101,7 +101,7 @@
 			"problemMatcher": "$esbuild-watch"
 		},
 		{
-			"label": "VS Code - Build",
+			"label": "Trixty IDE - Build",
 			"dependsOn": [
 				"Core - Transpile",
 				"Core - Typecheck",
@@ -163,7 +163,7 @@
 			"problemMatcher": "$esbuild"
 		},
 		{
-			"label": "Kill VS Code - Build",
+			"label": "Kill Trixty IDE - Build",
 			"dependsOn": [
 				"Kill Core - Transpile",
 				"Kill Core - Typecheck",
@@ -174,21 +174,21 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Restart VS Code - Build",
+			"label": "Restart Trixty IDE - Build",
 			"dependsOn": [
-				"Kill VS Code - Build",
-				"VS Code - Build"
+				"Kill Trixty IDE - Build",
+				"Trixty IDE - Build"
 			],
 			"group": "build",
 			"dependsOrder": "sequence",
 			"problemMatcher": []
 		},
 		{
-			"label": "Kill VS Code - Build, Npm, VS Code - Build",
+			"label": "Kill Trixty IDE - Build, Npm, Trixty IDE - Build",
 			"dependsOn": [
-				"Kill VS Code - Build",
+				"Kill Trixty IDE - Build",
 				"npm: install",
-				"VS Code - Build"
+				"Trixty IDE - Build"
 			],
 			"group": "build",
 			"dependsOrder": "sequence",

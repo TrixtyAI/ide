@@ -17,5 +17,5 @@ RUN dnf install -y dbus-x11 && \
 # X11 Server
 RUN dnf install -y xorg-x11-server-Xvfb
 
-# VS Code dependencies
+# Trixty IDE dependencies
 RUN dnf install -y xdg-utils

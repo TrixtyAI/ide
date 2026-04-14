@@ -100,7 +100,7 @@ export class CopilotCloudGitOperationsManager {
 		const { repository, remoteName, baseRef } = await this.repoInfo();
 		const asyncBranch = await this.generateRandomBranchName(repository, 'copilot');
 
-		const commitMessage = vscode.l10n.t('Checkpoint from VS Code for cloud agent session');
+		const commitMessage = vscode.l10n.t('Checkpoint from Trixty IDE for cloud agent session');
 		try {
 			await repository.createBranch(asyncBranch, true);
 			await this.performCommit(asyncBranch, repository, commitMessage);

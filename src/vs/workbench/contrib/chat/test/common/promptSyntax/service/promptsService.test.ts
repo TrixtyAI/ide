@@ -986,11 +986,11 @@ suite('PromptsService', () => {
 					path: `${rootFolder}/.github/agents/vscode-agent.agent.md`,
 					contents: [
 						'---',
-						'description: \'VS Code specialized agent.\'',
+						'description: \'Trixty IDE specialized agent.\'',
 						'target: \'vscode\'',
 						'model: \'gpt-4\'',
 						'---',
-						'I am specialized for VS Code editor tasks.',
+						'I am specialized for Trixty IDE editor tasks.',
 					]
 				},
 				{
@@ -1027,11 +1027,11 @@ suite('PromptsService', () => {
 				},
 				{
 					name: 'vscode-agent',
-					description: 'VS Code specialized agent.',
+					description: 'Trixty IDE specialized agent.',
 					target: Target.VSCode,
 					model: ['gpt-4'],
 					agentInstructions: {
-						content: 'I am specialized for VS Code editor tasks.',
+						content: 'I am specialized for Trixty IDE editor tasks.',
 						toolReferences: [],
 						metadata: undefined
 					},
@@ -1187,7 +1187,7 @@ suite('PromptsService', () => {
 			assert.deepEqual(
 				result,
 				expected,
-				'Claude tools and models must be mapped to VS Code equivalents; non-Claude agents must remain unchanged.',
+				'Claude tools and models must be mapped to Trixty IDE equivalents; non-Claude agents must remain unchanged.',
 			);
 		});
 

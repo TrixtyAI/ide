@@ -125,7 +125,7 @@ export class NuGetMcpSetup {
 		try {
 			// perform a local tool install using the .NET CLI
 			// this warms the cache (user packages folder) so dnx will be fast
-			// this also makes the server.json available which will be mapped to VS Code MCP config
+			// this also makes the server.json available which will be mapped to Trixty IDE MCP config
 			await fs.mkdir(installDir, { recursive: true });
 
 			// the cwd must be the install directory or a child directory for local tool install to work

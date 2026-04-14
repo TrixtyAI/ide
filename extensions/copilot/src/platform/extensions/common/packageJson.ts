@@ -7,7 +7,7 @@ export interface IPackageJson {
 	name: string;
 	version: string;
 
-	// Partial typings for VS Code contributions
+	// Partial typings for Trixty IDE contributions
 	contributes?: {
 		debuggers?: IDebugConfigSchema[];
 	};

@@ -85,7 +85,7 @@ struct HandlerContext {
 	socket_tx: mpsc::Sender<SocketSignal>,
 	/// Configured launcher paths.
 	launcher_paths: LauncherPaths,
-	/// Connected VS Code Server
+	/// Connected Trixty IDE Server
 	code_server: CodeServerCell,
 	/// Potentially many "websocket" connections to client
 	server_bridges: ServerMultiplexer,
@@ -93,7 +93,7 @@ struct HandlerContext {
 	code_server_args: CodeServerArgs,
 	/// port forwarding functionality
 	port_forwarding: Option<PortForwarding>,
-	/// install platform for the VS Code server
+	/// install platform for the Trixty IDE server
 	platform: Platform,
 	/// http client to make download/update requests
 	http: Arc<FallbackSimpleHttp>,

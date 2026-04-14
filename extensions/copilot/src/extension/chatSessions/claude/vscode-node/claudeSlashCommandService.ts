@@ -29,7 +29,7 @@ export interface IClaudeSlashCommandService {
 	/**
 	 * Try to handle a slash command from the user's request.
 	 *
-	 * Checks `request.command` first (VS Code slash command), then falls back to
+	 * Checks `request.command` first (Trixty IDE slash command), then falls back to
 	 * parsing a `/command` pattern from `request.prompt`.
 	 *
 	 * @param request - The user's request containing prompt and optional command
@@ -62,7 +62,7 @@ export class ClaudeSlashCommandService extends Disposable implements IClaudeSlas
 		@ILogService private readonly logService: ILogService,
 	) {
 		super();
-		// Initialize eagerly to register VS Code commands at startup
+		// Initialize eagerly to register Trixty IDE commands at startup
 		this._ensureInitialized();
 	}
 
@@ -71,7 +71,7 @@ export class ClaudeSlashCommandService extends Disposable implements IClaudeSlas
 		stream: vscode.ChatResponseStream,
 		token: CancellationToken
 	): Promise<IClaudeSlashCommandResult> {
-		// 1. Check request.command (VS Code slash command selected via UI)
+		// 1. Check request.command (Trixty IDE slash command selected via UI)
 		if (request.command) {
 			const handler = this._getHandler(request.command.toLowerCase());
 			if (handler) {
@@ -123,7 +123,7 @@ export class ClaudeSlashCommandService extends Disposable implements IClaudeSlas
 			}
 			this._handlerCache.set(commandKey, handler);
 
-			// Register VS Code command if commandId is provided
+			// Register Trixty IDE command if commandId is provided
 			if (handler.commandId) {
 				this._register(vscode.commands.registerCommand(handler.commandId, () => {
 					// Invoke with no args and no stream (Command Palette mode)

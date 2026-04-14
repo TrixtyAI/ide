@@ -46,7 +46,7 @@ class AnthropicAdapter implements IProtocolAdapter {
 		};
 
 		if (requestBody.tools && requestBody.tools.length > 0) {
-			// Map Anthropic tools to VS Code chat tools. Provide a no-op invoke since this server doesn't run tools.
+			// Map Anthropic tools to Trixty IDE chat tools. Provide a no-op invoke since this server doesn't run tools.
 			const tools = coalesce(requestBody.tools.map(tool => {
 				if ('input_schema' in tool) {
 					const chatTool: OpenAiFunctionTool = {

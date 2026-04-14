@@ -191,12 +191,12 @@ export class RemoteTunnelService extends Disposable implements IRemoteTunnelServ
 				binParentLocation = this.environmentService.appRoot;
 			} else if (isWindows) {
 				if (this.productService.win32VersionedUpdate) {
-					// appRoot = C:\Users\<name>\AppData\Local\Programs\Microsoft VS Code Insiders\<version>\resources\app
-					// bin = C:\Users\<name>\AppData\Local\Programs\Microsoft VS Code Insiders\bin
+					// appRoot = C:\Users\<name>\AppData\Local\Programs\Microsoft Trixty IDE Insiders\<version>\resources\app
+					// bin = C:\Users\<name>\AppData\Local\Programs\Microsoft Trixty IDE Insiders\bin
 					binParentLocation = dirname(dirname(dirname(this.environmentService.appRoot)));
 				} else {
-					// appRoot = C:\Users\<name>\AppData\Local\Programs\Microsoft VS Code Insiders\resources\app
-					// bin = C:\Users\<name>\AppData\Local\Programs\Microsoft VS Code Insiders\bin
+					// appRoot = C:\Users\<name>\AppData\Local\Programs\Microsoft Trixty IDE Insiders\resources\app
+					// bin = C:\Users\<name>\AppData\Local\Programs\Microsoft Trixty IDE Insiders\bin
 					binParentLocation = dirname(dirname(this.environmentService.appRoot));
 				}
 			} else {

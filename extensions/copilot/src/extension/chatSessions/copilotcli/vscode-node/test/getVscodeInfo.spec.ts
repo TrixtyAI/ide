@@ -47,7 +47,7 @@ describe('getVscodeInfo tool', () => {
 		expect(server.hasToolRegistered('get_vscode_info')).toBe(true);
 	});
 
-	it('should return VS Code environment information', async () => {
+	it('should return Trixty IDE environment information', async () => {
 		const handler = server.getToolHandler('get_vscode_info')!;
 		const result = parseToolResult<VscodeInfoResult>(await handler({}));
 

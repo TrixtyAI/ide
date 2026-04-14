@@ -135,7 +135,7 @@ export class DefaultIntentRequestHandler {
 
 			// For subagent requests, use the subAgentInvocationId as the session ID.
 			// This enables explicit linking between the parent's runSubagent tool call and the subagent trajectory.
-			// For main requests, use the VS Code chat sessionId directly as the trajectory session ID.
+			// For main requests, use the Trixty IDE chat sessionId directly as the trajectory session ID.
 			const isSubagent = !!this.request.subAgentInvocationId;
 			const capturingToken = new CapturingToken(
 				this.request.prompt,

@@ -822,11 +822,11 @@ export class SSHRemoteAgentHostMainService extends Disposable implements ISSHRem
 		const cliBin = getRemoteCLIBin(this._quality);
 		const { code } = await sshExec(client, `${cliBin} --version`, { ignoreExitCode: true });
 		if (code === 0) {
-			this._logService.info(`${LOG_PREFIX} VS Code CLI already installed on remote`);
+			this._logService.info(`${LOG_PREFIX} Trixty IDE CLI already installed on remote`);
 			return;
 		}
 
-		reportProgress(localize('sshProgressDownloadingCLI', "Installing VS Code CLI on remote..."));
+		reportProgress(localize('sshProgressDownloadingCLI', "Installing Trixty IDE CLI on remote..."));
 		const url = buildCLIDownloadUrl(platform.os, platform.arch, this._quality);
 
 		const installCmd = [
@@ -836,6 +836,6 @@ export class SSHRemoteAgentHostMainService extends Disposable implements ISSHRem
 		].join(' && ');
 
 		await sshExec(client, installCmd);
-		this._logService.info(`${LOG_PREFIX} VS Code CLI installed successfully`);
+		this._logService.info(`${LOG_PREFIX} Trixty IDE CLI installed successfully`);
 	}
 }

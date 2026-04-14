@@ -1,11 +1,11 @@
 ---
-description: Architecture documentation for VS Code AI Customization view. Use when working in `src/vs/workbench/contrib/chat/browser/aiCustomization`
+description: Architecture documentation for Trixty IDE AI Customization view. Use when working in `src/vs/workbench/contrib/chat/browser/aiCustomization`
 applyTo: 'src/vs/platform/agentHost/**'
 ---
 
 # Agent Host
 
-The agent host communicates via the Agent Host Protocol. The specification for this lives in a directory `../agent-host-protocol` as a sibling of the VS Code directory.
+The agent host communicates via the Agent Host Protocol. The specification for this lives in a directory `../agent-host-protocol` as a sibling of the Trixty IDE directory.
 
 If this directory doesn't exist, you should use the "ask questions" tool to ask the user if they want to clone `git@github.com:microsoft/agent-host-protocol.git` to that directory. After doing so, you should also prompt the user to add `file:///<path/to/agent-host-protocol>/plugins/copilot-plugin` as a plugin in their `chat.pluginLocations` settings.
 

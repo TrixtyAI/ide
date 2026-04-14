@@ -150,7 +150,7 @@ const server = createServer(socket => {
 });
 
 const waitingMessage = setInterval(() => {
-	console.log('> Waiting for VS Code to connect...');
+	console.log('> Waiting for Trixty IDE to connect...');
 }, 2000);
 
 const pipeName = `copilot-dbg.${process.pid}-${randomBytes(4).toString('hex')}.sock`;

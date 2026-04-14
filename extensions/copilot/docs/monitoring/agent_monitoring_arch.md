@@ -181,7 +181,7 @@ Both export to the same OTLP endpoint. Bridge processor sits on Provider B, forw
 
 1. `COPILOT_OTEL_*` env vars (highest)
 2. `OTEL_EXPORTER_OTLP_*` standard env vars
-3. VS Code settings (`github.copilot.chat.otel.*`)
+3. Trixty IDE settings (`github.copilot.chat.otel.*`)
 4. Defaults (lowest)
 
 Kill switch: `telemetry.telemetryLevel === 'off'` → all OTel disabled.

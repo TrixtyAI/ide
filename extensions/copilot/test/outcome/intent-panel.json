@@ -462,13 +462,13 @@
 		]
 	},
 	{
-		"name": "intent [panel] - [relaxed] [builtin] How to change colour theme in VS Code?",
+		"name": "intent [panel] - [relaxed] [builtin] How to change colour theme in Trixty IDE?",
 		"requests": [
 			"67d6f922955a66551441e5700265a50f15ae1bc9cd5f4bc1e64a4eceb09a5e93"
 		]
 	},
 	{
-		"name": "intent [panel] - [relaxed] [builtin] how to change position of explorer in vs code",
+		"name": "intent [panel] - [relaxed] [builtin] how to change position of explorer in Trixty IDE",
 		"requests": [
 			"319d9018e2e3c1fd00f840c6feff08b67c74ddaedc1bf6f809e6c1a45d051416"
 		]
@@ -1314,13 +1314,13 @@
 		]
 	},
 	{
-		"name": "intent [panel] - [strict] [builtin] How to change colour theme in VS Code?",
+		"name": "intent [panel] - [strict] [builtin] How to change colour theme in Trixty IDE?",
 		"requests": [
 			"67d6f922955a66551441e5700265a50f15ae1bc9cd5f4bc1e64a4eceb09a5e93"
 		]
 	},
 	{
-		"name": "intent [panel] - [strict] [builtin] how to change position of explorer in vs code",
+		"name": "intent [panel] - [strict] [builtin] how to change position of explorer in Trixty IDE",
 		"requests": [
 			"319d9018e2e3c1fd00f840c6feff08b67c74ddaedc1bf6f809e6c1a45d051416"
 		]

@@ -30,7 +30,7 @@ export class Emitter<T> extends lsp.Emitter<T> {
 
 /**
  * Transforms an event by applying a transformation function to the event's value.
- * Mostly useful for tranforming native VS Code events into our own.
+ * Mostly useful for tranforming native Trixty IDE events into our own.
  * If the transformation function returns `undefined`, the listener will not be called.
  */
 export function transformEvent<T, R extends object>(event: Event<T>, transform: (value: T) => R | undefined): Event<R> {

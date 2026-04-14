@@ -18,7 +18,7 @@ to the end. This is for enabling shared array buffers. So, for example:
 
 In order to work with web's new type acquisition, you'll need to enable
 `TypeScript > Experimental > Tsserver > Web: Enable Project Wide Intellisense`
-in your VS Code options (`Ctrl-,`), you may need to reload the page.
+in your Trixty IDE options (`Ctrl-,`), you may need to reload the page.
 
 This happens when working in a regular `.js` file on a dependency without
 declared types. You should be able to open `file.js` and write something like

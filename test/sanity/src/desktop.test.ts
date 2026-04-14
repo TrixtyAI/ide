@@ -248,7 +248,7 @@ export function setup(context: TestContext) {
 		args.push('--skip-welcome');
 		args.push(test.workspaceDir);
 
-		context.log(`Starting VS Code ${entryPoint} with args ${args.join(' ')}`);
+		context.log(`Starting Trixty IDE ${entryPoint} with args ${args.join(' ')}`);
 		const app = await _electron.launch({ executablePath: entryPoint, args });
 		try {
 			const window = await context.getPage(app.firstWindow());

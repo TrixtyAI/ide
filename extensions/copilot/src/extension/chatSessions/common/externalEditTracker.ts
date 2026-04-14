@@ -12,7 +12,7 @@ import { URI } from '../../../util/vs/base/common/uri';
 
 /**
  * Tracks ongoing external edit operations for agent tools.
- * Manages the lifecycle of external edits by coordinating with VS Code's
+ * Manages the lifecycle of external edits by coordinating with Trixty IDE's
  * externalEdit API to ensure proper tracking and attribution of file changes.
  */
 export class ExternalEditTracker {
@@ -79,7 +79,7 @@ export class ExternalEditTracker {
 	/**
 	 * Completes tracking of an external edit operation.
 	 * @param editKey Unique identifier for the edit operation to complete
-	 * @returns Promise that resolves when VS Code has finished tracking the edit
+	 * @returns Promise that resolves when Trixty IDE has finished tracking the edit
 	 */
 	public async completeEdit(editKey: string): Promise<string | undefined> {
 		const ongoingEdit = this._ongoingEdits.get(editKey);

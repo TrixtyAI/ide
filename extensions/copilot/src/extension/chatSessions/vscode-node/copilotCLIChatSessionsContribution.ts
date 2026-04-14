@@ -116,7 +116,7 @@ function getIssueRuntimeInfo(): { readonly platform: string; readonly vscodeInfo
 function getSessionLoadFailureIssueInfo(invalidSessionMessage: string): { readonly issueBody: string; readonly issueUrl: string } {
 	const runtimeInfo = getIssueRuntimeInfo();
 	const issueTitle = '[Copilot CLI] Failed to load chat session';
-	const issueBody = `## Description\n\nFailed to load a Copilot CLI chat session.\n\n## Environment\n\n- Platform: ${runtimeInfo.platform}\n- VS Code: ${runtimeInfo.vscodeInfo}\n- Chat Extension Version: ${runtimeInfo.extensionVersion}\n\n## Error\n\n\`\`\`\n${invalidSessionMessage}\n\`\`\``;
+	const issueBody = `## Description\n\nFailed to load a Copilot CLI chat session.\n\n## Environment\n\n- Platform: ${runtimeInfo.platform}\n- Trixty IDE: ${runtimeInfo.vscodeInfo}\n- Chat Extension Version: ${runtimeInfo.extensionVersion}\n\n## Error\n\n\`\`\`\n${invalidSessionMessage}\n\`\`\``;
 	const issueUrl = `https://github.com/microsoft/vscode/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
 
 	return { issueBody, issueUrl };
@@ -161,7 +161,7 @@ export class CopilotCLIChatSessionItemProvider extends Disposable implements vsc
 	public readonly untitledSessionIdMapping = new Map<string, string>();
 	/**
 	 * Until the untitled session is properly swappped with the new session, we should keep track of this mapping.
-	 * When VS Code asks for the session, always return the old untitled session Uri.
+	 * When Trixty IDE asks for the session, always return the old untitled session Uri.
 	 */
 	public readonly sdkToUntitledUriMapping = new Map<string, Uri>();
 	private readonly _onDidChangeChatSessionItems = this._register(new Emitter<void>());
@@ -1184,10 +1184,10 @@ export class CopilotCLIChatSessionParticipant extends Disposable {
 	 *
 	 * 1. The user sends a message while the session is already processing a
 	 *    previous request (status is `InProgress` or `NeedsInput`).
-	 * 2. VS Code signals this by setting `context.yieldRequested = true` on the
+	 * 2. Trixty IDE signals this by setting `context.yieldRequested = true` on the
 	 *    *previous* request's context object.
 	 * 3. This handler polls `context.yieldRequested` every 100 ms. Once detected
-	 *    the outer `Promise.race` resolves, returning control to VS Code so it
+	 *    the outer `Promise.race` resolves, returning control to Trixty IDE so it
 	 *    can dispatch the new (steering) request.
 	 * 4. Crucially, the inner `handleRequestImpl` promise is **not** cancelled
 	 *    or disposed – the original SDK session continues running in the
@@ -2246,7 +2246,7 @@ export function registerCLIChatCommands(
 		contentProvider.trackLastUsedFolderInWelcomeView(selectedFolderUri);
 		folderRepositoryManager.setNewSessionFolder(sessionId, selectedFolderUri);
 
-		// Notify VS Code that the option changed
+		// Notify Trixty IDE that the option changed
 		contentProvider.notifySessionOptionsChange(sessionItemResource, [{
 			optionId: REPOSITORY_OPTION_ID,
 			value: selectedFolderUri.fsPath

@@ -16,7 +16,7 @@ import { createTrackingIdGetter, ITelemetryUserConfig } from '../common/telemetr
 import { AzureInsightReporter, unwrapEventNameFromPrefix } from '../node/azureInsightsReporter';
 
 /**
- * Adapter that wraps both old and new telemetry reporters to implement VS Code's TelemetrySender interface.
+ * Adapter that wraps both old and new telemetry reporters to implement Trixty IDE's TelemetrySender interface.
  * Supports lazy flag evaluation to avoid circular dependencies during service initialization.
  */
 class TelemetryReporterAdapter implements TelemetrySender {

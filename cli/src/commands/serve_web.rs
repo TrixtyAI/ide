@@ -43,7 +43,7 @@ use super::{args::ServeWebArgs, CommandContext};
 
 /// Length of a commit hash, for validation
 const COMMIT_HASH_LEN: usize = 40;
-/// Number of seconds where, if there's no connections to a VS Code server,
+/// Number of seconds where, if there's no connections to a Trixty IDE server,
 /// the server is shut down.
 const SERVER_IDLE_TIMEOUT_SECS: u64 = 60 * 60;
 /// Number of seconds in which the server times out when there is a connection
@@ -62,10 +62,10 @@ const PATH_COOKIE_NAME: &str = "vscode-secret-key-path";
 const SECRET_KEY_COOKIE_NAME: &str = "vscode-cli-secret-half";
 
 /// Implements the vscode "server of servers". Clients who go to the URI get
-/// served the latest version of the VS Code server whenever they load the
-/// page. The VS Code server prefixes all assets and connections it loads with
+/// served the latest version of the Trixty IDE server whenever they load the
+/// page. The Trixty IDE server prefixes all assets and connections it loads with
 /// its version string, so existing clients can continue to get served even
-/// while new clients get new VS Code Server versions.
+/// while new clients get new Trixty IDE Server versions.
 pub async fn serve_web(ctx: CommandContext, mut args: ServeWebArgs) -> Result<i32, AnyError> {
 	legal::require_consent(&ctx.paths, args.accept_server_license_terms)?;
 
@@ -249,7 +249,7 @@ fn append_secret_headers(
 	);
 }
 
-/// Gets the release info from the VS Code path prefix, which is in the
+/// Gets the release info from the Trixty IDE path prefix, which is in the
 /// format `/<quality>-<commit>/...`
 fn get_release_from_path(path: &str, platform: Platform) -> Option<(Release, String)> {
 	if !path.starts_with('/') {
@@ -675,7 +675,7 @@ impl ConnectionManager {
 		Ok(release)
 	}
 
-	/// Gets the StartData for the a version of the VS Code server, triggering
+	/// Gets the StartData for the a version of the Trixty IDE server, triggering
 	/// download/start if necessary. It returns `CodeError::ServerNotYetDownloaded`
 	/// while the server is downloading, which is used to have a refresh loop on the page.
 	async fn get_version_data(&self, release: Release) -> Result<StartData, CodeError> {

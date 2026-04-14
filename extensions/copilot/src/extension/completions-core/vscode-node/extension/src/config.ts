@@ -195,7 +195,7 @@ export async function enableCompletions(accessor: ServicesAccessor) {
 		const inspect = config.inspect(option);
 		// Start from the most specific setting and work our way up to the global default.
 		for (const [key, target, overrideInLanguage] of inspectKinds) {
-			// Exit condition: if VS Code thinks the setting is enabled, we're done.
+			// Exit condition: if Trixty IDE thinks the setting is enabled, we're done.
 			// This might be true from the start, or a call to .update() might flip it.
 			if (vscode.workspace.getConfiguration(section, scope).get(option)) {
 				break;

@@ -14,7 +14,7 @@ import TelemetryReporter from '@vscode/extension-telemetry';
 let telemetry: TelemetryReporter | undefined;
 let client: AsyncDisposable | undefined;
 
-// this method is called when vs code is activated
+// this method is called when Trixty IDE is activated
 export async function activate(context: ExtensionContext) {
 
 	const clientPackageJSON = getPackageInfo(context);

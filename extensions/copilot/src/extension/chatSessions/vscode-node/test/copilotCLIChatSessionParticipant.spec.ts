@@ -80,7 +80,7 @@ vi.mock('../copilotCLITerminalIntegration', () => {
 // Mock vscode.commands.executeCommand so we can control delegation behavior in tests.
 // By default it throws (simulating commands API not being available), which causes
 // createCLISessionAndSubmitRequest to fall into its catch block and call handleRequest directly.
-// The workaround tests override this to simulate the full VS Code core round-trip.
+// The workaround tests override this to simulate the full Trixty IDE core round-trip.
 const { mockExecuteCommand } = vi.hoisted(() => ({
 	mockExecuteCommand: vi.fn()
 }));
@@ -90,7 +90,7 @@ vi.mock('vscode', async (importOriginal) => {
 	return {
 		...actual,
 		env: {
-			appName: 'VS Code'
+			appName: 'Trixty IDE'
 		},
 		version: 'test-vscode-version',
 		extensions: {
@@ -313,7 +313,7 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 		TestCopilotCLISession.nextHandleRequestResult = undefined;
 		TestCopilotCLISession.handleRequestHook = undefined;
 		TestCopilotCLISession.statusOverride = undefined;
-		// By default, simulate VS Code core opening the delegated session and
+		// By default, simulate Trixty IDE core opening the delegated session and
 		// re-invoking handleRequest with the copilotcli:// resource. This matches
 		// the production flow where executeCommand opens the session.
 		// The chatSessionContext lost workaround tests override this.
@@ -819,7 +819,7 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 		(invalidSessionService.getSession as ReturnType<typeof vi.fn>).mockClear();
 		(invalidSessionService.createSession as ReturnType<typeof vi.fn>).mockClear();
 		(invalidSessionService.tryGetPartialSesionHistory as ReturnType<typeof vi.fn>).mockClear();
-		const request = new TestChatRequest('Continue from VS Code');
+		const request = new TestChatRequest('Continue from Trixty IDE');
 		const context = createChatContext(sessionId, false, request);
 		const stream = new MockChatResponseStream();
 		const requestToken = disposables.add(new CancellationTokenSource()).token;
@@ -940,7 +940,7 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 		expect(manager.sessions.size).toBe(1);
 		expect(summarySpy).toHaveBeenCalledTimes(0);
 		// Delegation creates the session and fires executeCommand (fire-and-forget).
-		// The request is processed asynchronously when VS Code opens the session.
+		// The request is processed asynchronously when Trixty IDE opens the session.
 		expect(mockExecuteCommand).toHaveBeenCalledWith(
 			'workbench.action.chat.openSessionWithPrompt.copilotcli',
 			expect.objectContaining({
@@ -1781,7 +1781,7 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 		// 1. handleRequest is called with chatSessionContext=undefined → triggers handleDelegationFromAnotherChat
 		// 2. createCLISessionAndSubmitRequest creates a session, stores prompt in contextForRequest,
 		//    then calls vscode.commands.executeCommand('workbench.action.chat.openSessionWithPrompt.copilotcli', ...)
-		// 3. VS Code core opens the new session and calls handleRequest again with the copilotcli:// resource,
+		// 3. Trixty IDE core opens the new session and calls handleRequest again with the copilotcli:// resource,
 		//    but due to a core bug chatSessionContext may be undefined
 		// 4. The workaround detects the copilotcli:// scheme + stored contextForRequest data and
 		//    reconstructs a synthetic chatSessionContext, so the session is reused with the stored prompt.
@@ -1790,11 +1790,11 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 
 		beforeEach(() => {
 			callbackDone = undefined;
-			// Override the default round-trip behavior to simulate VS Code core
+			// Override the default round-trip behavior to simulate Trixty IDE core
 			// calling handleRequest again with the copilotcli:// resource but with chatSessionContext lost.
 			mockExecuteCommand.mockImplementation(async (command: string, args: any) => {
 				if (command === 'workbench.action.chat.openSessionWithPrompt.copilotcli') {
-					// Simulate VS Code core: it opens the session and fires handleRequest,
+					// Simulate Trixty IDE core: it opens the session and fires handleRequest,
 					// but the core bug means chatSessionContext is undefined.
 					const callbackRequest = new TestChatRequest(args.prompt);
 					callbackRequest.sessionResource = args.resource;
@@ -1812,7 +1812,7 @@ describe('CopilotCLIChatSessionParticipant.handleRequest', () => {
 			// Start delegation: call handleRequest with no chatSessionContext.
 			// This triggers handleDelegationFromAnotherChat → createCLISessionAndSubmitRequest
 			// which creates a session, stores prompt/attachments, calls executeCommand.
-			// The mock executeCommand simulates VS Code calling handleRequest again with
+			// The mock executeCommand simulates Trixty IDE calling handleRequest again with
 			// the copilotcli:// resource but chatSessionContext=undefined (the core bug).
 			// The workaround reconstructs context and reuses the session.
 			const request = new TestChatRequest('Build feature X');

@@ -38,7 +38,7 @@ export class OTelChatDebugLogProviderContribution extends Disposable implements 
 	/** Max entries to keep in the detail resolution cache */
 	private static readonly MAX_ENTRY_CACHE = 1000;
 
-	/** Currently active VS Code session ID */
+	/** Currently active Trixty IDE session ID */
 	private _activeSessionId: string | undefined;
 
 	/** Active progress callback for streaming events */
@@ -103,7 +103,7 @@ export class OTelChatDebugLogProviderContribution extends Disposable implements 
 
 	/**
 	 * Scope an event's IDs with the current run index to prevent collisions
-	 * across VS Code restarts (OTel resets its span counter on restart).
+	 * across Trixty IDE restarts (OTel resets its span counter on restart).
 	 */
 	private _scopeEventIds(evt: vscode.ChatDebugEvent, runIndex: number): void {
 		if (runIndex === 0) { return; } // First run — no suffix needed

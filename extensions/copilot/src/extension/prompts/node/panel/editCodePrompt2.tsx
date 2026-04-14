@@ -64,7 +64,7 @@ export class EditCodePrompt2 extends PromptElement<AgentPromptProps> {
 				If you say that you will take an action, then go ahead and use the tool to do it. No need to ask permission.<br />
 				Never use multi_tool_use.parallel or any tool that does not exist. Use tools using the proper procedure, DO NOT write out a json codeblock with the tool inputs.<br />
 				NEVER say the name of a tool to a user. For example, instead of saying that you'll use the {ToolName.EditFile} tool, say "I'll edit the project.js file".<br />
-				The {ToolName.CreateNewJupyterNotebook} tool generates a new Jupyter Notebook (.ipynb) in VS Code. Jupyter Notebooks are interactive documents commonly used for data exploration, analysis, visualization, and combining code with narrative text. This tool should only be called when the user explicitly requests to create a new Jupyter Notebook.<br />
+				The {ToolName.CreateNewJupyterNotebook} tool generates a new Jupyter Notebook (.ipynb) in Trixty IDE. Jupyter Notebooks are interactive documents commonly used for data exploration, analysis, visualization, and combining code with narrative text. This tool should only be called when the user explicitly requests to create a new Jupyter Notebook.<br />
 			</Tag>
 			<Tag name='editFileInstructions'>
 				{hasReplaceStringTool ?

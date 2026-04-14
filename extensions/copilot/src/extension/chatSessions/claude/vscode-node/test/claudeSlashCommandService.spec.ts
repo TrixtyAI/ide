@@ -62,7 +62,7 @@ describe('ClaudeSlashCommandService', () => {
 		stream = new MockChatResponseStream();
 	});
 
-	// #region request.command (VS Code UI slash command)
+	// #region request.command (Trixty IDE UI slash command)
 
 	describe('request.command handling', () => {
 		it('dispatches to handler when request.command matches', async () => {

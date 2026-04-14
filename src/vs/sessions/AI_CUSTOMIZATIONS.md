@@ -6,7 +6,7 @@ This document describes the AI customization experience: a management editor and
 
 ### File Structure
 
-The management editor lives in `vs/workbench` (shared between core VS Code and sessions):
+The management editor lives in `vs/workbench` (shared between core Trixty IDE and sessions):
 
 ```
 src/vs/workbench/contrib/chat/browser/aiCustomization/
@@ -17,7 +17,7 @@ src/vs/workbench/contrib/chat/browser/aiCustomization/
 ├── aiCustomizationListWidget.ts                # Search + grouped list + harness toggle
 ├── aiCustomizationListWidgetUtils.ts           # List item helpers (truncation, etc.)
 ├── aiCustomizationDebugPanel.ts                # Debug diagnostics panel
-├── aiCustomizationWorkspaceService.ts          # Core VS Code workspace service impl
+├── aiCustomizationWorkspaceService.ts          # Core Trixty IDE workspace service impl
 ├── customizationHarnessService.ts              # Core harness service impl (agent-gated)
 ├── customizationCreatorService.ts              # AI-guided creation flow
 ├── customizationGroupHeaderRenderer.ts         # Collapsible group header renderer
@@ -61,7 +61,7 @@ src/vs/sessions/contrib/sessions/browser/
 
 The `IAICustomizationWorkspaceService` interface controls per-window behavior:
 
-| Property / Method | Core VS Code | Agent Sessions Window |
+| Property / Method | Core Trixty IDE | Agent Sessions Window |
 |----------|-------------|----------|
 | `managementSections` | All sections except Models | All sections except Models |
 | `getStorageSourceFilter(type)` | Delegates to `ICustomizationHarnessService` | Delegates to `ICustomizationHarnessService` |
@@ -77,7 +77,7 @@ Storage answers "where did this come from?"; harness answers "who consumes it?".
 The service is defined in `common/customizationHarnessService.ts` which also provides:
 - **`CustomizationHarnessServiceBase`** — reusable base class handling active-harness state, the observable list, and `getStorageSourceFilter` dispatch.
 - **`ISectionOverride`** — per-section UI customization: `commandId` (command invocation), `rootFile` + `label` (root-file creation), `typeLabel` (custom type name), `fileExtension` (override default), `rootFileShortcuts` (dropdown shortcuts).
-- **Factory functions** — `createVSCodeHarnessDescriptor`, `createCliHarnessDescriptor`, `createClaudeHarnessDescriptor`. The VS Code harness receives `[PromptsStorage.extension, BUILTIN_STORAGE]` as extras; CLI and Claude in core receive `[]` (no extension source). Sessions CLI receives `[BUILTIN_STORAGE]`.
+- **Factory functions** — `createVSCodeHarnessDescriptor`, `createCliHarnessDescriptor`, `createClaudeHarnessDescriptor`. The Trixty IDE harness receives `[PromptsStorage.extension, BUILTIN_STORAGE]` as extras; CLI and Claude in core receive `[]` (no extension source). Sessions CLI receives `[BUILTIN_STORAGE]`.
 - **Well-known root helpers** — `getCliUserRoots(userHome)` and `getClaudeUserRoots(userHome)` centralize the `~/.copilot`, `~/.claude`, `~/.agents` path knowledge.
 - **Filter helpers** — `matchesWorkspaceSubpath()` for segment-safe subpath matching; `matchesInstructionFileFilter()` for filename/path-prefix pattern matching.
 
@@ -89,7 +89,7 @@ Available harnesses:
 | `cli` | Copilot CLI | Restricts user roots to `~/.copilot`, `~/.claude`, `~/.agents` |
 | `claude` | Claude | Restricts user roots to `~/.claude`; hides Prompts + Plugins sections |
 
-In core VS Code, all three harnesses are registered but CLI and Claude only appear when their respective agents are registered (`requiredAgentId` checked via `IChatAgentService`). VS Code is the default.
+In core Trixty IDE, all three harnesses are registered but CLI and Claude only appear when their respective agents are registered (`requiredAgentId` checked via `IChatAgentService`). Trixty IDE is the default.
 In sessions, only CLI is registered (single harness, toggle bar hidden).
 
 ### IHarnessDescriptor
@@ -127,7 +127,7 @@ The shared `applyStorageSourceFilter()` helper applies this filter to any `{uri,
 | Prompts | `[local, user, plugin, builtin]` | `undefined` (all roots) |
 | Agents, Skills, Instructions | `[local, user, plugin, builtin]` | `[~/.copilot, ~/.claude, ~/.agents]` |
 
-**Core VS Code filter behavior:**
+**Core Trixty IDE filter behavior:**
 
 Local harness: all types use `[local, user, extension, plugin, builtin]` with no user root filter. Items from the default chat extension (`productService.defaultChatAgent.chatExtensionId`) are grouped under "Built-in" via `groupKey` override in the list widget.
 
@@ -153,9 +153,9 @@ Claude additionally applies:
 - `workspaceSubpaths: ['.claude']` (instruction files matching `instructionFileFilter` are exempt)
 - `sectionOverrides`: Hooks → `copilot.claude.hooks` command; Instructions → "Add CLAUDE.md" primary, "Rule" type label, `.md` file extension
 
-### Built-in Extension Grouping (Core VS Code)
+### Built-in Extension Grouping (Core Trixty IDE)
 
-In core VS Code, customization items contributed by the default chat extension (`productService.defaultChatAgent.chatExtensionId`, typically `GitHub.copilot-chat`) are grouped under the "Built-in" header in the management editor list widget, separate from third-party "Extensions".
+In core Trixty IDE, customization items contributed by the default chat extension (`productService.defaultChatAgent.chatExtensionId`, typically `GitHub.copilot-chat`) are grouped under the "Built-in" header in the management editor list widget, separate from third-party "Extensions".
 
 This follows the same pattern as the MCP list widget, which determines grouping at the UI layer by inspecting collection sources. The list widget uses `IProductService` to identify the chat extension and sets `groupKey: BUILTIN_STORAGE` on matching items:
 
@@ -175,7 +175,7 @@ Sessions overrides `PromptsService` via `AgenticPromptsService` (in `promptsServ
 - **Discovery**: `AgenticPromptFilesLocator` scopes workspace folders to the active session's worktree
 - **Built-in skills**: Discovers bundled `SKILL.md` files from `vs/sessions/skills/{name}/` and surfaces them with `PromptsStorage.builtin` storage type
 - **User override**: Built-in skills are omitted when a user or workspace skill with the same name exists
-- **Creation targets**: `getSourceFolders()` override replaces VS Code profile user roots with `~/.copilot/{subfolder}` for CLI compatibility
+- **Creation targets**: `getSourceFolders()` override replaces Trixty IDE profile user roots with `~/.copilot/{subfolder}` for CLI compatibility
 - **Hook folders**: Falls back to `.github/hooks` in the active worktree
 
 ### Built-in Skills

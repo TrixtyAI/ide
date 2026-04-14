@@ -40,7 +40,7 @@ export class ResponseTranslationRules extends PromptElement {
 		if (!validLocales.find((locale) => languageOverride === locale)) {
 			return undefined;
 		}
-		const languageConfiguration = languageOverride !== 'auto' ? languageOverride : this.envService.language; // No need to further validate VS Code's configured locale
+		const languageConfiguration = languageOverride !== 'auto' ? languageOverride : this.envService.language; // No need to further validate Trixty IDE's configured locale
 		if (languageConfiguration === 'en') {
 			return undefined;
 		}

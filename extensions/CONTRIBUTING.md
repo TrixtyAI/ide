@@ -1,6 +1,6 @@
 # Contributing to Built-In Extensions
 
-This directory contains built-in extensions that ship with VS Code.
+This directory contains built-in extensions that ship with Trixty IDE.
 
 ## Basic Structure
 

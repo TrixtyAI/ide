@@ -506,7 +506,7 @@ export async function main(argv: string[]): Promise<void> {
 			// similar to if the app was launched from the dock
 			// https://github.com/microsoft/vscode/issues/102975
 
-			// The following args are for the open command itself, rather than for VS Code:
+			// The following args are for the open command itself, rather than for Trixty IDE:
 			// -n creates a new instance.
 			//    Without -n, the open command re-opens the existing instance as-is.
 			// -g starts the new instance in the background.

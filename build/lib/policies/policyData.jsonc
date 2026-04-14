@@ -130,7 +130,7 @@
                     },
                     {
                         "key": "chat.mcp.access.registry",
-                        "value": "Allows access to MCP servers installed from the registry that VS Code is connected to."
+                        "value": "Allows access to MCP servers installed from the registry that Trixty IDE is connected to."
                     },
                     {
                         "key": "chat.mcp.access.any",
@@ -443,7 +443,7 @@
             "localization": {
                 "description": {
                     "key": "github.copilot.chat.claudeAgent.enabled",
-                    "value": "Enable Claude Agent sessions in VS Code. Start and resume agentic coding sessions powered by Anthropic Claude Agent SDK directly in the editor. Uses your existing Copilot subscription."
+                    "value": "Enable Claude Agent sessions in Trixty IDE. Start and resume agentic coding sessions powered by Anthropic Claude Agent SDK directly in the editor. Uses your existing Copilot subscription."
                 }
             },
             "type": "boolean",

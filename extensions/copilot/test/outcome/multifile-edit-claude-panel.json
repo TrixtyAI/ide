@@ -143,7 +143,7 @@
 		]
 	},
 	{
-		"name": "multifile-edit-claude [panel] [typescript] - add a command and dependency to a VS Code extension - (claude-3.5-sonnet)",
+		"name": "multifile-edit-claude [panel] [typescript] - add a command and dependency to a Trixty IDE extension - (claude-3.5-sonnet)",
 		"requests": [
 			"0005596d20a2ebc3ba0e50976ad63ff177db91e1fbd15c53fa13f10858469d58",
 			"03ca9073a27a4bc72afafdf3780c6079515003e51fd0e38f24e75a8d0f8cc0e6",

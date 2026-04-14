@@ -1,6 +1,6 @@
 # workbench/contrib/chat Code Organization
 
-This contrib is, as of the end of 2025, the largest workbench contrib in VS Code by a substantial margin. Let's try to keep it organized! Here's a rough description of some of the key folders.
+This contrib is, as of the end of 2025, the largest workbench contrib in Trixty IDE by a substantial margin. Let's try to keep it organized! Here's a rough description of some of the key folders.
 
 ## Key Folders
 

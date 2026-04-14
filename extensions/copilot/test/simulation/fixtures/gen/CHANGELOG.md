@@ -127,7 +127,7 @@
 - Pull Requests can be submitted from the "Create" view by doing `ctrl/cmd+enter` while your cursor is in the description input box.
 - Keybindings are supported for "Mark File as Viewed" (`pr.markFileAsViewed`). When "Mark File as Viewed" is run from a command or from the editor toolbar the file will also be closed. Tip: Use with "Open All Diffs" for quickly going through a PR review.
 - Checked-out pull requests with less than 20 files will have all the diffs pre-fetched for faster diff-opening times.
-- Strings in VS Code UI have been configured for localization. Strings in webviews (such as the "Create" view and the PR description/overview) are still not localized.
+- Strings in Trixty IDE UI have been configured for localization. Strings in webviews (such as the "Create" view and the PR description/overview) are still not localized.
 
 ### Fixes
 
@@ -149,7 +149,7 @@
 ### Changes
 
 - Improved support for GitHub Enterprise starting with GitHub Enterprise version 3.1. This includes:
-  - PAT-less authentication courtesy of the VS Code built in GitHub Enterprise authentication provider.
+  - PAT-less authentication courtesy of the Trixty IDE built in GitHub Enterprise authentication provider.
   - Automatic detection when you open a folder with an Enterprise repo and an on-ramp to get set up.
   - Fixes for GitHub Enterprise bugs. _Note:_ If you find any issues with GitHub Enterprise please do file an issue!
 - Checkboxes to mark files as viewed. This means you can mark whole folders as viewed now.
@@ -179,7 +179,7 @@
 	![GitHub Label Colors](documentation/changelog/0.50.0/labelColors.png)
 
 - Review Comments can now be directly resolved/unresolved in the Pull Request Overview
-- Creating an issue should never lose data. If the "new issue" editor is closed but the issue is not created, the data will be stored until VS Code is reloaded.
+- Creating an issue should never lose data. If the "new issue" editor is closed but the issue is not created, the data will be stored until Trixty IDE is reloaded.
 - When the local branch is out of date, a prompt to pull the branch will show when the "Refresh" button on the PR overview is clicked. The setting `githubPullRequests.pullBranch` also has a new `always` option.
 - Renamed files have a tooltip that makes the rename clearer.
 
@@ -337,7 +337,7 @@
 
 ### Changes
 
-- Pull request loading performance in vscode.dev and github.dev (and to a lesser extension, desktop VS Code) is significantly improved. As part of this:
+- Pull request loading performance in vscode.dev and github.dev (and to a lesser extension, desktop Trixty IDE) is significantly improved. As part of this:
 	- The "changes in pull request" tree shows faster.
 	- Individual file diffs are not loaded until the diff is opened.
 	- Comments load in with a delay.
@@ -353,7 +353,7 @@
 - Added a "Don't show again" button to the "Do you want to create a pull request" notification to better surface the associated setting.
 ![Notification with don't show again button](documentation/changelog/0.36.0/dont-show-button.png)
 - There's a new command "Open All Diffs".
-- Comments now show a timestamp using the new VS Code comment `timestamp` API.
+- Comments now show a timestamp using the new Trixty IDE comment `timestamp` API.
 
 ### Fixes
 
@@ -395,7 +395,7 @@
 
 ### Changes
 
-- This extension now supports pre-releases using VS Code's built in pre-release feature. Version 0.33.0 was skipped to support this.
+- This extension now supports pre-releases using Trixty IDE's built in pre-release feature. Version 0.33.0 was skipped to support this.
 
 ![Extension pre-release support](documentation/changelog/0.34.0/pre-release-extension.png)
 
@@ -425,7 +425,7 @@
 
 ## 0.33.*
 
-- **This is a pre-release version** that uses VS Code's built-in pre-release extension support. The old nightly build (GitHub Pull Requests Nightly) is being deprecated in favor of the this built-in support. Users of the the old nightly build will be automatically upgraded to the new pre-release version; however, extension state will not be migrated. Thank you for helping make GitHub Pull Requests and Issues better!
+- **This is a pre-release version** that uses Trixty IDE's built-in pre-release extension support. The old nightly build (GitHub Pull Requests Nightly) is being deprecated in favor of the this built-in support. Users of the the old nightly build will be automatically upgraded to the new pre-release version; however, extension state will not be migrated. Thank you for helping make GitHub Pull Requests and Issues better!
 
 ## 0.32.0
 
@@ -692,11 +692,11 @@
 
 ## 0.21.4
 
-- Adopt latest API changes for TreeItem in VS Code 1.52.0
+- Adopt latest API changes for TreeItem in Trixty IDE 1.52.0
 
 ## 0.21.3
 
-- Adopt latest API changes for VS Code 1.52.0.
+- Adopt latest API changes for Trixty IDE 1.52.0.
 
 ## 0.21.2
 

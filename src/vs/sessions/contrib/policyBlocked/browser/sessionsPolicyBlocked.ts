@@ -49,7 +49,7 @@ export class SessionsPolicyBlockedOverlay extends Disposable {
 		}, true));
 
 		// Block mouse interaction on the overlay background, but allow
-		// clicks through to card children (e.g. the "Open VS Code" button).
+		// clicks through to card children (e.g. the "Open Trixty IDE" button).
 		this._register(addDisposableListener(this.overlay, EventType.MOUSE_DOWN, e => {
 			if (e.target === this.overlay) {
 				e.preventDefault();
@@ -75,9 +75,9 @@ export class SessionsPolicyBlockedOverlay extends Disposable {
 			this.openerService.open(URI.parse('https://aka.ms/VSCode/Agents/docs'));
 		}));
 
-		// Open VS Code button
+		// Open Trixty IDE button
 		const button = this._register(new Button(card, { ...defaultButtonStyles, secondary: true }));
-		button.label = localize('policyBlocked.openVSCode', "Open VS Code");
+		button.label = localize('policyBlocked.openVSCode', "Open Trixty IDE");
 		this._register(button.onDidClick(() => this._openVSCode()));
 	}
 

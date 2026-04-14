@@ -5,8 +5,8 @@
 
 /* ---- Changes Titlebar Indicator (in right toolbar) ---- */
 
-/* Separator between local-session actions (Run, VS Code) and fixed toggles (Terminal, Changes).
- * Targets the action following the VS Code icon (any Codicon.vscode variant). */
+/* Separator between local-session actions (Run, Trixty IDE) and fixed toggles (Terminal, Changes).
+ * Targets the action following the Trixty IDE icon (any Codicon.vscode variant). */
 .agent-sessions-workbench .titlebar-session-actions-container .monaco-action-bar .actions-container > .action-item:has(.codicon[class*="codicon-vscode"]) + .action-item {
 	position: relative;
 	margin-left: 17px;

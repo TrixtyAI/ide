@@ -451,7 +451,7 @@ export class ChatMcpAppModel extends Disposable {
 					break;
 
 				case 'ui/request-display-mode':
-					// VS Code only supports inline display mode
+					// Trixty IDE only supports inline display mode
 					result = { mode: 'inline' } satisfies McpApps.McpUiRequestDisplayModeResult;
 					break;
 

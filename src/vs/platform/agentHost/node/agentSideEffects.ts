@@ -123,7 +123,7 @@ export class AgentSideEffects extends Disposable {
 
 	/**
 	 * Default edit auto-approve patterns applied by the agent host.
-	 * Matches the VS Code `chat.tools.edits.autoApprove` setting defaults.
+	 * Matches the Trixty IDE `chat.tools.edits.autoApprove` setting defaults.
 	 */
 	private static readonly _DEFAULT_EDIT_AUTO_APPROVE_PATTERNS: Readonly<Record<string, boolean>> = {
 		'**/*': true,

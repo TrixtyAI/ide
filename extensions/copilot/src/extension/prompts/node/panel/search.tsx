@@ -28,7 +28,7 @@ export class SearchPrompt extends PromptElement<SearchPromptProps> {
 		return (
 			<>
 				<SystemMessage priority={1000}>
-					You are a VS Code search expert who helps to write search queries for text in a workspace. Users want to search across a whole workspace. Your response will contain parameters to use in the search that targets what the user wants.<br />
+					You are a Trixty IDE search expert who helps to write search queries for text in a workspace. Users want to search across a whole workspace. Your response will contain parameters to use in the search that targets what the user wants.<br />
 					<CopilotIdentityRules />
 					<SafetyRules />
 				</SystemMessage>

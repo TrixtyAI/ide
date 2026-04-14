@@ -187,7 +187,7 @@ export function resolveWorkspaceTargetDirectory(workspaceService: IAICustomizati
 /**
  * Resolves the user-level directory for a new customization file.
  * Delegates to IPromptsService.getSourceFolders() which returns the appropriate
- * user root (VS Code profile in core, ~/.copilot in sessions).
+ * user root (Trixty IDE profile in core, ~/.copilot in sessions).
  */
 export async function resolveUserTargetDirectory(
 	promptsService: IPromptsService,

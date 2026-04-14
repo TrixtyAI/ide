@@ -159,7 +159,7 @@
 	"onboardingKeymaps": [
 		{
 			"id": "vscode",
-			"label": "VS Code",
+			"label": "Trixty IDE",
 			"description": "Default keyboard mapping"
 		},
 		{

@@ -105,7 +105,7 @@ export class AgentPrompt extends PromptElement<AgentPromptProps> {
 		const omitBaseAgentInstructions = this.configurationService.getConfig(ConfigKey.Advanced.OmitBaseAgentInstructions);
 		const baseAgentInstructions = <>
 			<SystemMessage>
-				You are an expert AI programming assistant, working with a user in the VS Code editor.<br />
+				You are an expert AI programming assistant, working with a user in the Trixty IDE editor.<br />
 				<CopilotIdentityRules />
 				<SafetyRules />
 			</SystemMessage>

@@ -21,7 +21,7 @@ export const OpenInVSCodeButton = mobxlite.observer(({ test }: { test: ISimulati
 		<button
 			className='test-open-in-vscode'
 			onClick={() => { openInVSCode(simulationInputPath, matchResult[0]); }}>
-			Open In VS Code Insiders
+			Open In Trixty IDE Insiders
 		</button>
 	);
 });

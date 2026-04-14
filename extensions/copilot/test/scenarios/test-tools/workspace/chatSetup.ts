@@ -138,7 +138,7 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 
 			const disposables = new DisposableStore();
 
-			const { agent, disposable } = SetupAgent.doRegisterAgent(instantiationService, chatAgentService, 'setup.vscode', 'vscode', false, localize2('vscodeAgentDescription', "Ask questions about VS Code").value, ChatAgentLocation.Panel, undefined, context, controller);
+			const { agent, disposable } = SetupAgent.doRegisterAgent(instantiationService, chatAgentService, 'setup.vscode', 'vscode', false, localize2('vscodeAgentDescription', "Ask questions about Trixty IDE").value, ChatAgentLocation.Panel, undefined, context, controller);
 			disposables.add(disposable);
 
 			disposables.add(SetupTool.registerTool(instantiationService, {
@@ -148,8 +148,8 @@ class SetupAgent extends Disposable implements IChatAgentImplementation {
 				},
 				icon: Codicon.newFolder,
 				displayName: localize('setupToolDisplayName', "New Workspace"),
-				modelDescription: localize('setupToolsDescription', "Scaffold a new workspace in VS Code"),
-				userDescription: localize('setupToolsDescription', "Scaffold a new workspace in VS Code"),
+				modelDescription: localize('setupToolsDescription', "Scaffold a new workspace in Trixty IDE"),
+				userDescription: localize('setupToolsDescription', "Scaffold a new workspace in Trixty IDE"),
 				canBeReferencedInPrompt: true,
 				toolReferenceName: 'new',
 				when: ContextKeyExpr.true(),

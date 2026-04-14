@@ -79,7 +79,7 @@ class OpenAIAdapterForSTests implements IProtocolAdapter {
 		};
 
 		if (requestBody.tools && Array.isArray(requestBody.tools) && requestBody.tools.length > 0) {
-			// Map OpenAI tools to VS Code chat tools
+			// Map OpenAI tools to Trixty IDE chat tools
 			const tools = coalesce(requestBody.tools.map((tool) => {
 				if (tool.type === 'function' && tool.function) {
 					const chatTool: OpenAiFunctionTool = {

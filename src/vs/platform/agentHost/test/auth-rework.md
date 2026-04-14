@@ -2,14 +2,14 @@
 
 ## Problem
 
-The current authentication mechanism is imperative and VS Code-specific:
+The current authentication mechanism is imperative and Trixty IDE-specific:
 
 1. The renderer discovers agents via `listAgents()` and checks `IAgentDescriptor.requiresAuth`.
-2. It obtains a GitHub OAuth token from VS Code's built-in authentication service.
+2. It obtains a GitHub OAuth token from Trixty IDE's built-in authentication service.
 3. It pushes the token via `setAuthToken(token)` — a fire-and-forget JSON-RPC notification.
 4. The agent host fans the token out to all registered `IAgent` providers.
 
-This couples the agent host to VS Code internals. An external client (CLI tool, web app, another editor) connecting over WebSocket has no way to know _what_ authentication is required, _where_ to get a token, or _what scopes_ are needed. The client must have out-of-band knowledge that "this server needs a GitHub OAuth token."
+This couples the agent host to Trixty IDE internals. An external client (CLI tool, web app, another editor) connecting over WebSocket has no way to know _what_ authentication is required, _where_ to get a token, or _what scopes_ are needed. The client must have out-of-band knowledge that "this server needs a GitHub OAuth token."
 
 ## Design Goals
 
@@ -301,7 +301,7 @@ When the Copilot agent registers, it publishes an auth scheme:
 
 The agent host aggregates auth schemes from all agents into `IInitializeResult.resourceMetadata`.
 
-### Client-side (VS Code renderer)
+### Client-side (Trixty IDE renderer)
 
 ```typescript
 // After initialize:
@@ -440,7 +440,7 @@ A future extension could add an `IAuthScheme` with `scheme: 'device_code'` that 
 ## Migration Plan
 
 1. **Phase A**: Add `resourceMetadata` to `IInitializeResult` and the `authenticate` command. Keep `setAuthToken` working as-is.
-2. **Phase B**: Update VS Code renderer to use `authenticate` instead of `setAuthToken`. External clients can start using the new flow.
+2. **Phase B**: Update Trixty IDE renderer to use `authenticate` instead of `setAuthToken`. External clients can start using the new flow.
 3. **Phase C**: Remove `setAuthToken`, `requiresAuth`, and the old imperative push model. Bump protocol version.
 
 ## Open Questions

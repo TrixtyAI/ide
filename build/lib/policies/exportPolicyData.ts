@@ -8,7 +8,7 @@ import { resolve } from 'path';
 
 const rootPath = resolve(import.meta.dirname, '..', '..', '..');
 
-// VS Code OAuth app client ID (same as the GitHub Authentication extension)
+// Trixty IDE OAuth app client ID (same as the GitHub Authentication extension)
 const CLIENT_ID = '01ab8ac9400c4e429b23';
 
 /**

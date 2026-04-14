@@ -16,7 +16,7 @@ import { JSONSchemaCache } from './schemaCache';
 
 let client: AsyncDisposable | undefined;
 
-// this method is called when vs code is activated
+// this method is called when Trixty IDE is activated
 export async function activate(context: ExtensionContext) {
 	const clientPackageJSON = await getPackageInfo(context);
 	const telemetry = new TelemetryReporter(clientPackageJSON.aiKey);

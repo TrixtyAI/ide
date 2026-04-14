@@ -143,7 +143,7 @@ This tests the transition from the empty state to having an active workspace sel
 3. Select a name `<name>` when the quickpick appears and confirm
 4. Verify the file opens in the embedded editor
 5. Verify the file path shown in the editor header is `~/.copilot/instructions/<name>.instructions.md`
-6. Confirm the path is NOT the VS Code profile folder (e.g., NOT `~/.vscode-oss-sessions-dev/User/...`)
+6. Confirm the path is NOT the Trixty IDE profile folder (e.g., NOT `~/.vscode-oss-sessions-dev/User/...`)
 7. Press the back button to return to the list
 8. Observe the new instruction appears in the "User" group
 9. Observe the sidebar badge count reflects the new user instruction
@@ -152,7 +152,7 @@ This tests the transition from the empty state to having an active workspace sel
 
 #### Expected Results
 
-- User file is created under `~/.copilot/instructions/` (not the VS Code profile folder)
+- User file is created under `~/.copilot/instructions/` (not the Trixty IDE profile folder)
 - The file appears in the "User" group in the list
 - Sidebar badge count includes the new user file
 - Debug report confirms the user creation target is `~/.copilot/instructions`
@@ -160,7 +160,7 @@ This tests the transition from the empty state to having an active workspace sel
 #### Notes
 
 - This validates that `AgenticPromptsService.getSourceFolders()` correctly redirects user creation to `~/.copilot/`
-- The VS Code profile folder should never be used for user creation in sessions
+- The Trixty IDE profile folder should never be used for user creation in sessions
 
 ---
 

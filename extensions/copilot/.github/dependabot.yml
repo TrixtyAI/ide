@@ -35,7 +35,7 @@ updates:
       - dependency-name: "@types/eslint"
         update-types: ["version-update:semver-major"] # eslint 8 for json config (@jrieken)
       - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"] # Keep Node compatibility aligned with current Electron version in VS Code
+        update-types: ["version-update:semver-major"] # Keep Node compatibility aligned with current Electron version in Trixty IDE
       - dependency-name: "@types/react"
         update-types: ["version-update:semver-major"] # @fluentui/react-components currently requires react <19 (@ulugbekna)
       - dependency-name: "@types/react-dom"

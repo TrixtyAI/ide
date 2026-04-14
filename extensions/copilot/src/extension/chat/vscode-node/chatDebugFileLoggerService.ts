@@ -64,7 +64,7 @@ interface IActiveLogSession {
 	pendingToolDefs: string | undefined;
 	/** Whether we've already checked disk for a previous session directory (prevents repeated sync FS calls) */
 	resumeChecked: boolean;
-	/** Run index: 0 for the first run, incremented on each VS Code restart that resumes this session */
+	/** Run index: 0 for the first run, incremented on each Trixty IDE restart that resumes this session */
 	runIndex: number;
 }
 
@@ -578,7 +578,7 @@ export class ChatDebugFileLoggerService extends Disposable implements IChatDebug
 		// Auto-promote resumed sessions: if the session was just created with
 		// hasOwnSpans = false but has an existing JSONL directory from a previous
 		// extension lifecycle, promote it. This handles sessions continued after
-		// VS Code restart where title/categorization won't re-fire.
+		// Trixty IDE restart where title/categorization won't re-fire.
 		const session = this._activeSessions.get(sessionId);
 		if (session && !session.hasOwnSpans && !session.parentSessionId && !session.resumeChecked) {
 			session.resumeChecked = true;

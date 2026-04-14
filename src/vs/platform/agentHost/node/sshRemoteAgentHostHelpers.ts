@@ -20,7 +20,7 @@ export function validateShellToken(value: string, label: string): string {
 	return value;
 }
 
-/** Install location for the VS Code CLI on the remote machine. */
+/** Install location for the Trixty IDE CLI on the remote machine. */
 export function getRemoteCLIDir(quality: string): string {
 	const q = validateShellToken(quality, 'quality');
 	return q === 'stable' ? '~/.vscode-cli' : `~/.vscode-cli-${q}`;

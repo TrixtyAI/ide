@@ -5,7 +5,7 @@
 [![Feature Requests](https://img.shields.io/github/issues/microsoft/monaco-editor/feature-request.svg)](https://github.com/microsoft/monaco-editor/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
 [![Bugs](https://img.shields.io/github/issues/microsoft/monaco-editor/bug.svg)](https://github.com/microsoft/monaco-editor/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3Abug)
 
-The Monaco Editor is the fully featured code editor from [VS Code](https://github.com/microsoft/vscode). Check out the [VS Code docs](https://code.visualstudio.com/docs/editor/editingevolved) to see some of the supported features.
+The Monaco Editor is the fully featured code editor from [Trixty IDE](https://github.com/microsoft/vscode). Check out the [Trixty IDE docs](https://code.visualstudio.com/docs/editor/editingevolved) to see some of the supported features.
 
 ![image](https://user-images.githubusercontent.com/5047891/94183711-290c0780-fea3-11ea-90e3-c88ff9d21bd6.png)
 
@@ -33,7 +33,7 @@ It is recommended to develop against the `dev` version, and in production to use
 
 ## Concepts
 
-Monaco editor is best known for being the text editor that powers VS Code. However, it's a bit more nuanced. Some basic understanding about the underlying concepts is needed to use Monaco editor effectively.
+Monaco editor is best known for being the text editor that powers Trixty IDE. However, it's a bit more nuanced. Some basic understanding about the underlying concepts is needed to use Monaco editor effectively.
 
 ### Models
 
@@ -74,15 +74,15 @@ Create [issues](https://github.com/microsoft/monaco-editor/issues) in this repos
 
 ## FAQ
 
-❓ **What is the relationship between VS Code and the Monaco Editor?**
+❓ **What is the relationship between Trixty IDE and the Monaco Editor?**
 
-The Monaco Editor is generated straight from VS Code's sources with some shims around services the code needs to make it run in a web browser outside of its home.
+The Monaco Editor is generated straight from Trixty IDE's sources with some shims around services the code needs to make it run in a web browser outside of its home.
 
-❓ **What is the relationship between VS Code's version and the Monaco Editor's version?**
+❓ **What is the relationship between Trixty IDE's version and the Monaco Editor's version?**
 
 None. The Monaco Editor is a library and it reflects directly the source code.
 
-❓ **I've written an extension for VS Code, will it work on the Monaco Editor in a browser?**
+❓ **I've written an extension for Trixty IDE, will it work on the Monaco Editor in a browser?**
 
 No.
 
@@ -94,7 +94,7 @@ Language services create web workers to compute heavy stuff outside of the UI th
 
 ❓ **What is this `loader.js`? Can I use `require.js`?**
 
-It is an AMD loader that we use in VS Code. Yes.
+It is an AMD loader that we use in Trixty IDE. Yes.
 
 ❓ **I see the warning "Could not create web worker". What should I do?**
 

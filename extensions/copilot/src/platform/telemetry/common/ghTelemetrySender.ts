@@ -113,7 +113,7 @@ export class BaseGHTelemetrySender implements ITelemetrySender {
 		const telemetryData = TelemetryData.createAndMarkAsIssued(eventPropertiesToSimpleObject(properties), measurements);
 		telemetryData.makeReadyForSending(this._configService, this._envService, this._telemetryConfig);
 		const newPropeties: Mutable<TelemetryEventProperties> = {};
-		// This disables VS Code's default sanitization
+		// This disables Trixty IDE's default sanitization
 		for (const key in telemetryData.properties) {
 			newPropeties[key] = new TelemetryTrustedValue(telemetryData.properties[key]);
 		}

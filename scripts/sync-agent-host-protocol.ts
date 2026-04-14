@@ -14,7 +14,7 @@
 //   3. Formats with the project's tsfmt.json settings.
 //   4. Adds Microsoft copyright header.
 //
-// URI stays as `string` (the protocol's canonical representation). VS Code code
+// URI stays as `string` (the protocol's canonical representation). Trixty IDE code
 // should call `URI.parse()` at point-of-use where a URI class is needed.
 
 import * as fs from 'fs';
@@ -201,7 +201,7 @@ function processFile(src: string, dest: string): void {
 function main() {
 	if (!fs.existsSync(TYPES_DIR)) {
 		console.error(`ERROR: Cannot find ${TYPES_DIR}`);
-		console.error('Clone agent-host-protocol as a sibling of the VS Code repo:');
+		console.error('Clone agent-host-protocol as a sibling of the Trixty IDE repo:');
 		console.error('  git clone git@github.com:microsoft/agent-host-protocol.git ../agent-host-protocol');
 		process.exit(1);
 	}

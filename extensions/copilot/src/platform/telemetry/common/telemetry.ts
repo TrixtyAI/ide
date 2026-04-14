@@ -163,17 +163,17 @@ export interface IGHTelemetryService {
 	setReporter(reporter: TelemetrySender | undefined): void;
 
 	/**
-	 * Standard telemetry events can be disabled with VS Code's telemetry settings.
+	 * Standard telemetry events can be disabled with Trixty IDE's telemetry settings.
 	 */
 	sendTelemetry(name: string, telemetryData?: TelemetryData): Promise<void>;
 
 	/**
-	 * Standard telemetry events can be disabled with VS Code's telemetry settings.
+	 * Standard telemetry events can be disabled with Trixty IDE's telemetry settings.
 	 */
 	sendErrorTelemetry(name: string, telemetryData?: TelemetryData): Promise<void>;
 
 	/**
-	 * Enhanced telemetry events contain additional data such as user prompts and suggestions. Like standard telemetry events, it can disabled with VS Code's telemetry settings or the Copilot settings page.
+	 * Enhanced telemetry events contain additional data such as user prompts and suggestions. Like standard telemetry events, it can disabled with Trixty IDE's telemetry settings or the Copilot settings page.
 	 *
 	 * You can manage this setting on the Copilot settings page https://github.com/settings/copilot/features
 	 * Learn about configuring this telemetry at https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-your-copilot-plan/managing-copilot-policies-as-an-individual-subscriber#enabling-or-disabling-prompt-and-suggestion-collection
@@ -182,7 +182,7 @@ export interface IGHTelemetryService {
 	sendEnhancedTelemetry(name: string, telemetryData?: TelemetryData): Promise<void>;
 
 	/**
-	 * Enhanced telemetry events contain additional data such as user prompts and suggestions. Like standard telemetry events, it can disabled with VS Code's telemetry settings or the Copilot settings page.
+	 * Enhanced telemetry events contain additional data such as user prompts and suggestions. Like standard telemetry events, it can disabled with Trixty IDE's telemetry settings or the Copilot settings page.
 	 *
 	 * You can manage this setting on the Copilot settings page https://github.com/settings/copilot/features
 	 * Learn about configuring this telemetry at https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-your-copilot-plan/managing-copilot-policies-as-an-individual-subscriber#enabling-or-disabling-prompt-and-suggestion-collection

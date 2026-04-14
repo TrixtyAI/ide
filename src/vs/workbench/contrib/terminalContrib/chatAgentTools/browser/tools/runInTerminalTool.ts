@@ -571,7 +571,7 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 		}
 		// BackgroundDetachRewriter must come after SandboxRewriter so that nohup/Start-Process
 		// wraps the entire sandbox runtime, keeping both the sandbox and the child process alive
-		// through VS Code shutdown.
+		// through Trixty IDE shutdown.
 		this._commandLineRewriters.push(this._register(this._instantiationService.createInstance(CommandLineBackgroundDetachRewriter)));
 		// PreventHistoryRewriter must be last so the leading space is applied to the final
 		// command, including any sandbox wrapping.

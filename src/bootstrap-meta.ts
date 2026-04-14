@@ -21,7 +21,7 @@ if (pkgObj['BUILD_INSERT_PACKAGE_CONFIGURATION']) {
 
 // Load sub files
 if ((process as INodeProcess).isEmbeddedApp) {
-	// Preserve the parent VS Code's policy identity before the
+	// Preserve the parent Trixty IDE's policy identity before the
 	// embedded app overrides win32RegValueName / darwinBundleIdentifier.
 	productObj.parentPolicyConfig = {
 		win32RegValueName: productObj.win32RegValueName,

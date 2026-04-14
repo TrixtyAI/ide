@@ -9,11 +9,11 @@ import { ToolRegistry } from './toolsRegistry';
 
 /**
  * Tool names not registered via ToolRegistry.registerTool that should also
- * be non-deferred. These are core tools provided by VS Code or dynamically
+ * be non-deferred. These are core tools provided by Trixty IDE or dynamically
  * injected tools.
  */
 const additionalNonDeferredToolNames = new Set<string>([
-	// Core tools provided by VS Code (not registered via ToolRegistry.registerTool)
+	// Core tools provided by Trixty IDE (not registered via ToolRegistry.registerTool)
 	ToolName.CoreRunInTerminal,
 	ToolName.CoreGetTerminalOutput,
 	ToolName.CoreRunSubagent,
@@ -23,7 +23,7 @@ const additionalNonDeferredToolNames = new Set<string>([
 	ToolName.ToolSearch,
 	// Dynamically injected tools (no ToolName enum entry)
 	'task_complete',
-	// VS Code built-in language tools that should always be available
+	// Trixty IDE built-in language tools that should always be available
 	'vscode_renameSymbol',
 	'vscode_listCodeUsages',
 ]);

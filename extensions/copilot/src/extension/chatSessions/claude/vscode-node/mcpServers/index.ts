@@ -7,5 +7,5 @@
 // This chains: common/mcpServers -> node/mcpServers -> vscode-node/mcpServers
 import '../../node/mcpServers/index';
 
-// Import all VS Code-specific MCP server contributor modules to trigger self-registration
+// Import all Trixty IDE-specific MCP server contributor modules to trigger self-registration
 // Add new contributor imports here as they are created

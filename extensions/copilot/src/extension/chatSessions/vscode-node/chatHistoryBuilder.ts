@@ -386,11 +386,11 @@ function findModelIdForRequest(
 // #endregion
 
 /**
- * Converts a Claude Code session into VS Code chat history turns.
+ * Converts a Claude Code session into Trixty IDE chat history turns.
  *
  * In the Anthropic API, tool results are sent as user messages, so a single
  * agentic turn (assistant calls tools, gets results, calls more tools, etc.)
- * appears as alternating assistant/user messages in the JSONL. VS Code's chat
+ * appears as alternating assistant/user messages in the JSONL. Trixty IDE's chat
  * API expects all of that to be a single ChatResponseTurn2, so we accumulate
  * response parts across tool-result boundaries and only finalize a response
  * when we encounter a user message with actual text (a new user request).
@@ -495,7 +495,7 @@ export function buildChatHistory(session: IClaudeCodeSession): (vscode.ChatReque
 		} else if (currentType === 'system') {
 			// System entries (e.g., "Conversation compacted") are appended as an
 			// additional markdown part in the pending response. We don't emit them
-			// as a separate ChatResponseTurn2 because the VS Code chat widget
+			// as a separate ChatResponseTurn2 because the Trixty IDE chat widget
 			// merges consecutive response turns without an intervening request,
 			// which causes the system text to lose its visual separation.
 			const msg = messages[i];

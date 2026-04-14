@@ -5772,14 +5772,14 @@
     "score": 1
   },
   {
-    "name": "intent [panel] - [relaxed] [builtin] How to change colour theme in VS Code?",
+    "name": "intent [panel] - [relaxed] [builtin] How to change colour theme in Trixty IDE?",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,
     "score": 1
   },
   {
-    "name": "intent [panel] - [relaxed] [builtin] how to change position of explorer in vs code",
+    "name": "intent [panel] - [relaxed] [builtin] how to change position of explorer in Trixty IDE",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,
@@ -6766,14 +6766,14 @@
     "score": 1
   },
   {
-    "name": "intent [panel] - [strict] [builtin] How to change colour theme in VS Code?",
+    "name": "intent [panel] - [strict] [builtin] How to change colour theme in Trixty IDE?",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,
     "score": 1
   },
   {
-    "name": "intent [panel] - [strict] [builtin] how to change position of explorer in vs code",
+    "name": "intent [panel] - [strict] [builtin] how to change position of explorer in Trixty IDE",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,
@@ -7263,7 +7263,7 @@
     "score": 1
   },
   {
-    "name": "multifile-edit [panel] [typescript] - add a command and dependency to a VS Code extension",
+    "name": "multifile-edit [panel] [typescript] - add a command and dependency to a Trixty IDE extension",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,
@@ -7361,7 +7361,7 @@
     "score": 1
   },
   {
-    "name": "multifile-edit-claude [panel] [typescript] - add a command and dependency to a VS Code extension - (claude-3.5-sonnet)",
+    "name": "multifile-edit-claude [panel] [typescript] - add a command and dependency to a Trixty IDE extension - (claude-3.5-sonnet)",
     "contentFilterCount": 0,
     "passCount": 10,
     "failCount": 0,

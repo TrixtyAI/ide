@@ -24,7 +24,7 @@ const DEFAULT_MAX_RETAINED = 20;
 
 /**
  * Strip the internal `__vscode-<number>` suffix that is appended to tool-call
- * IDs for uniqueness inside VS Code.  The transcript should contain only the
+ * IDs for uniqueness inside Trixty IDE.  The transcript should contain only the
  * original model-generated ID.
  */
 function stripInternalToolCallId(id: string): string {

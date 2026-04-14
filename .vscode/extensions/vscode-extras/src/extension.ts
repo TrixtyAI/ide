@@ -14,7 +14,7 @@ export class Extension extends vscode.Disposable {
 		const disposables: vscode.Disposable[] = [];
 		super(() => disposables.forEach(d => d.dispose()));
 
-		this._output = vscode.window.createOutputChannel('VS Code Extras', { log: true });
+		this._output = vscode.window.createOutputChannel('Trixty IDE Extras', { log: true });
 		disposables.push(this._output);
 
 		this._updateNpmFeature();

@@ -1,4 +1,4 @@
-# VS Code Smoke Tests Failures History
+# Trixty IDE Smoke Tests Failures History
 
 This file contains a history of smoke test failures which could be avoided if particular techniques were used in the test (e.g. binding test elements with HTML5 `data-*` attribute).
 

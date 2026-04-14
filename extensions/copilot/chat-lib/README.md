@@ -1,6 +1,6 @@
 # @vscode/chat-lib
 
-Chat SDK extracted from VS Code Copilot Chat.
+Chat SDK extracted from Trixty IDE Copilot Chat.
 
 ## Installation
 

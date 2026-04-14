@@ -76,7 +76,7 @@ export enum ExpTreatmentVariables {
 	CompletionsDebounce = 'copilotcompletionsdebounce',
 
 	/**
-	 * Enable the electron networking in VS Code.
+	 * Enable the electron networking in Trixty IDE.
 	 */
 	ElectronFetcher = 'copilotelectronfetcher',
 	FetchFetcher = 'copilotfetchfetcher',

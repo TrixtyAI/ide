@@ -73,7 +73,7 @@ installHeaders();
 
 if (process.arch !== os.arch()) {
 	console.error(`\x1b[1;31m*** ARCHITECTURE MISMATCH: The node.js process is ${process.arch}, but your OS architecture is ${os.arch()}. ***\x1b[0;0m`);
-	console.error(`\x1b[1;31m*** This can greatly increase the build time of vs code. ***\x1b[0;0m`);
+	console.error(`\x1b[1;31m*** This can greatly increase the build time of Trixty IDE. ***\x1b[0;0m`);
 }
 
 function hasSupportedVisualStudioVersion() {

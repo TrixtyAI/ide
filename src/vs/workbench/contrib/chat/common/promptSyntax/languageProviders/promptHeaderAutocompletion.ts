@@ -354,7 +354,7 @@ export class PromptHeaderAutocompletion implements CompletionItemProvider {
 		const lineText = model.getLineContent(position.lineNumber);
 		const firstNonWhitespace = lineText.search(/\S/);
 		const isEmptyLine = firstNonWhitespace === -1;
-		// Start the range after leading whitespace so VS Code's completion
+		// Start the range after leading whitespace so Trixty IDE's completion
 		// filtering matches the hook name prefix the user has typed.
 		const rangeStartColumn = isEmptyLine ? position.column : firstNonWhitespace + 1;
 
@@ -465,7 +465,7 @@ export class PromptHeaderAutocompletion implements CompletionItemProvider {
 		const firstNonWhitespace = lineText.search(/\S/);
 		const isEmptyLine = firstNonWhitespace === -1;
 		// Skip past the YAML sequence indicator `- ` so the range starts at the
-		// actual field name; otherwise VS Code's completion filter would see the
+		// actual field name; otherwise Trixty IDE's completion filter would see the
 		// `- ` prefix and reject valid field names.
 		const dashPrefixMatch = lineText.match(/^(\s*-\s+)/);
 		const fieldStart = dashPrefixMatch ? dashPrefixMatch[1].length : firstNonWhitespace;

@@ -4,7 +4,7 @@ description: 'Use when implementing accessibility features, ARIA labels, screen 
 
 # Accessibility Guidelines
 
-Accessibility is a high-priority area in VS Code. Follow these patterns to ensure features work correctly with screen readers and assistive technologies.
+Accessibility is a high-priority area in Trixty IDE. Follow these patterns to ensure features work correctly with screen readers and assistive technologies.
 
 ## Keybinding Scoping
 

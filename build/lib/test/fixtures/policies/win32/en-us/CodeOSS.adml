@@ -22,7 +22,7 @@
 			<string id="ChatMCP">ChatMCP</string>
 			<string id="ChatMCP_chat_mcp_access">Controls access to installed Model Context Protocol servers.</string>
 			<string id="ChatMCP_chat_mcp_access_none">No access to MCP servers.</string>
-			<string id="ChatMCP_chat_mcp_access_registry">Allows access to MCP servers installed from the registry that VS Code is connected to.</string>
+			<string id="ChatMCP_chat_mcp_access_registry">Allows access to MCP servers installed from the registry that Trixty IDE is connected to.</string>
 			<string id="ChatMCP_chat_mcp_access_any">Allow access to any installed MCP server.</string>
 			<string id="ChatPromptFiles">ChatPromptFiles</string>
 			<string id="ChatPromptFiles_chat_promptFiles_policy">Enables reusable prompt and instruction files in Chat sessions.</string>

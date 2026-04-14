@@ -50,11 +50,11 @@ Do not add your issue as a comment to an existing issue unless it's for the iden
 
 The more information you can provide, the more likely someone will be successful at reproducing the issue and finding a fix.
 
-The built-in tool for reporting an issue, which you can access by using `Report Issue` in VS Code's Help menu, can help streamline this process by automatically providing the version of VS Code, all your installed extensions, and your system info. Additionally, the tool will search among existing issues to see if a similar issue already exists.
+The built-in tool for reporting an issue, which you can access by using `Report Issue` in Trixty IDE's Help menu, can help streamline this process by automatically providing the version of Trixty IDE, all your installed extensions, and your system info. Additionally, the tool will search among existing issues to see if a similar issue already exists.
 
 Please include the following with each issue:
 
-* Version of VS Code and copilot-chat extension
+* Version of Trixty IDE and copilot-chat extension
 * Your operating system
 * The LLM model if applicable
 * Reproducible steps (1... 2... 3...) that cause the issue
@@ -80,7 +80,7 @@ Please include the following with each issue:
 
 **Tip:** If "Launch Copilot Extension - Watch Mode" doesn't work for you, try using the "Launch Copilot Extension" debug configuration instead.
 
-**Note:** Setup and running under Windows Subsystem for Linux (WSL) is supported by following the [VS Code setup instructions](https://github.com/microsoft/vscode/wiki/Selfhosting-on-Windows-WSL).
+**Note:** Setup and running under Windows Subsystem for Linux (WSL) is supported by following the [Trixty IDE setup instructions](https://github.com/microsoft/vscode/wiki/Selfhosting-on-Windows-WSL).
 
 ### Testing
 If you hit errors while running tests, ensure that you are using the correct Node version and that git lfs is properly installed (run `git lfs pull` to validate).
@@ -91,7 +91,7 @@ There are unit tests which run in Node.JS:
 npm run test:unit
 ```
 
-There are also integration tests that run within VS Code itself:
+There are also integration tests that run within Trixty IDE itself:
 
 ```
 npm run test:extension
@@ -107,7 +107,7 @@ You can run the simulation tests with:
 npm run simulate
 ```
 
-Keep in mind that PRs will fail unless the cache is populated. Running the command above will populate the cache by creating new cache layers in `test/simulation/cache/layers`. This cache population must be done by VS Code team members. If a community member submits a PR with new cache layer(s), the PR will fail and a VS Code team member must delete the layer(s) and recreate them within their dev box.
+Keep in mind that PRs will fail unless the cache is populated. Running the command above will populate the cache by creating new cache layers in `test/simulation/cache/layers`. This cache population must be done by Trixty IDE team members. If a community member submits a PR with new cache layer(s), the PR will fail and a Trixty IDE team member must delete the layer(s) and recreate them within their dev box.
 
 You can ensure the cache is populated with:
 
@@ -177,7 +177,7 @@ We have developed a TSX-based framework for composing prompts. This section desc
 - Prompt elements can return other prompt elements which will all be rendered by the prompt renderer. For example, your prompt may benefit from reusing the following utility components:
    - `SystemMessage`, `UserMessage` and `AssistantMessage`: Text within these components will be converted to the system, user and assistant message types from the OpenAI API.
    - `SafetyRules`: This should usually be included in a `SystemMessage` to ensure that your feature is compliant with Responsible AI guidelines.
-- If your prompt does asynchronous work e.g. VS Code extension API calls or additional requests to the Copilot API for chunk reranking, you can precompute this state in an optional async `prepare` method. `prepare` is called before `render` and the prepared state will be passed back to your prompt component's sync `render` method.
+- If your prompt does asynchronous work e.g. Trixty IDE extension API calls or additional requests to the Copilot API for chunk reranking, you can precompute this state in an optional async `prepare` method. `prepare` is called before `render` and the prepared state will be passed back to your prompt component's sync `render` method.
 
 Please note:
 * Newlines are not preserved in string literals when rendered, and must be explicitly declared with the builtin `<br />` attribute.
@@ -199,14 +199,14 @@ Understanding these guidelines is crucial for making effective contributions to 
 
 ### Layers
 
-Like in VS Code we organize our source code into layers and folders. Understand a "layer" as runtime target which is defined by the ambient APIs that you can use. We have these layers:
+Like in Trixty IDE we organize our source code into layers and folders. Understand a "layer" as runtime target which is defined by the ambient APIs that you can use. We have these layers:
 
-* `common` - Just JavaScript and its builtins APIs. Also allowed to use types from the VS Code API, but no runtime access.
-* `vscode` - Runtime access to VS Code APIs, can use `common`
+* `common` - Just JavaScript and its builtins APIs. Also allowed to use types from the Trixty IDE API, but no runtime access.
+* `vscode` - Runtime access to Trixty IDE APIs, can use `common`
 * `node` - Node.js APIs and modules, can use `common, node`
-* `vscode-node` - VS Code APIs and Node.js APIs, can use `common, vscode, node`
+* `vscode-node` - Trixty IDE APIs and Node.js APIs, can use `common, vscode, node`
 * `worker` - Web Worker APIs, can use `common`
-* `vscode-worker` - VS Code APIs and Web Worker APIs, can use `common, vscode, worker`
+* `vscode-worker` - Trixty IDE APIs and Web Worker APIs, can use `common, vscode, worker`
 
 
 
@@ -247,11 +247,11 @@ Running the extension out of sources in their runtimes:
   * ensure an entry `"browser": "./dist/web"` in `package.json`
   * run `npm run web`
   * in your browser open `http://localhost:3000`
-  * in VS Code configure the hidden setting `chat.experimental.serverlessWebEnabled` to `true` (reload if this is the first time you set it)
+  * in Trixty IDE configure the hidden setting `chat.experimental.serverlessWebEnabled` to `true` (reload if this is the first time you set it)
 
 ### Contributions and Services
 
-Like in VS Code, Copilot extension is built with contributions and services so that components can both isolate from each other but also provide and use services together.
+Like in Trixty IDE, Copilot extension is built with contributions and services so that components can both isolate from each other but also provide and use services together.
 
 Contributions are registered in these folders and automatically picked up by the extension when running:
 * `./extension/extension/vscode/contributions.ts`: contributions that can run in both node.js and web worker extension hosts
@@ -272,19 +272,19 @@ The main interesting files related to agent mode are:
 - [`agentPrompt.tsx`](src/extension/prompts/node/agent/agentPrompt.tsx): The main entrypoint for rendering the agent prompt
 - [`agentInstructions.tsx`](src/extension/prompts/node/agent/agentInstructions.tsx): The agent mode system prompt
 - [`toolCallingLoop.ts`](src/extension/intents/node/toolCallingLoop.ts): Running the agentic loop
-- [`chatAgents.ts`](src/extension/conversation/vscode-node/chatParticipants.ts): Registers agent mode and other participants, and the handlers for requests coming from VS Code.
+- [`chatAgents.ts`](src/extension/conversation/vscode-node/chatParticipants.ts): Registers agent mode and other participants, and the handlers for requests coming from Trixty IDE.
 
-Currently, agent mode is essentially a [chat participant](https://code.visualstudio.com/api/extension-guides/chat) registered with VS Code. It mainly uses the standard API along with the standard [`vscode.lm.invokeTool`](https://code.visualstudio.com/api/references/vscode-api#lm.tools) API to invoke tools, but is registered with a flag in `package.json` denoting it as the "agent mode" participant. It also has some special abilities driven by [proposed API](https://code.visualstudio.com/api/advanced-topics/using-proposed-api).
+Currently, agent mode is essentially a [chat participant](https://code.visualstudio.com/api/extension-guides/chat) registered with Trixty IDE. It mainly uses the standard API along with the standard [`vscode.lm.invokeTool`](https://code.visualstudio.com/api/references/vscode-api#lm.tools) API to invoke tools, but is registered with a flag in `package.json` denoting it as the "agent mode" participant. It also has some special abilities driven by [proposed API](https://code.visualstudio.com/api/advanced-topics/using-proposed-api).
 
 > **Note**: Some usages of "agent" in the codebase may refer to our older chat participants (`@workspace`, `@vscode`, ...) or Copilot Extension agents installed by a GitHub App.
 
 ## Tools
 
-Copilot registers a number of different tools. Tools are also available from other VS Code extensions or from MCP servers registered with VS Code. The tool picker in VS Code primarily determines which tools are enabled, and this set is passed to the agent on the ChatRequest. Some edit tools are only enabled for certain models or based on configuration or experiments. The agent has the final say for which tools are included in a request, and this logic is in `getTools` in [`agentIntent.ts`](src/extension/intents/node/agentIntent.ts).
+Copilot registers a number of different tools. Tools are also available from other Trixty IDE extensions or from MCP servers registered with Trixty IDE. The tool picker in Trixty IDE primarily determines which tools are enabled, and this set is passed to the agent on the ChatRequest. Some edit tools are only enabled for certain models or based on configuration or experiments. The agent has the final say for which tools are included in a request, and this logic is in `getTools` in [`agentIntent.ts`](src/extension/intents/node/agentIntent.ts).
 
 ### Developing tools
 
-Tools are registered through VS Code's normal [Language Model Tool API](https://code.visualstudio.com/api/extension-guides/tools). The key parts of the built-in tools are here:
+Tools are registered through Trixty IDE's normal [Language Model Tool API](https://code.visualstudio.com/api/extension-guides/tools). The key parts of the built-in tools are here:
 
 - [`package.json`](package.json): The tool descriptions and schemas are defined here.
 - [`toolNames.ts`](src/extension/tools/common/toolNames.ts): Contains the model-facing tool names.
@@ -308,15 +308,15 @@ The view also has entries for tool calls on their own, and a prompt-tsx debug vi
 
 ## API updates
 
-When updating VS Code proposed extension API that is used by the extension, we have two tools to make sure that the version of the extension that gets installed will be compatible with the version of VS Code: the `engines.vscode` field in `package.json`, and the proposed API version.
+When updating Trixty IDE proposed extension API that is used by the extension, we have two tools to make sure that the version of the extension that gets installed will be compatible with the version of Trixty IDE: the `engines.vscode` field in `package.json`, and the proposed API version.
 
 ### Making breaking changes to API
 
 When making a change to the proposed API that breaks backwards compatibility, you MUST update the API version of the proposal. This is declared in a comment at the top of the proposal .d.ts, and gets automatically updated in `extensionsApiProposals.ts` by the build task. Example: https://github.com/microsoft/vscode/blob/93a7382ecd63439a5bc507ef60e57610845ec05d/src/vscode-dts/vscode.proposed.lmTools.d.ts#L6.
 
-Then, you must adopt this change in the extension and declare that the extension supports this version of the API in `package.json`'s `enabledApiProposals`, like `lmTools@2`. This will ensure that the extension will only be installed and activated in a version of VS Code that supports the same version of the API.
+Then, you must adopt this change in the extension and declare that the extension supports this version of the API in `package.json`'s `enabledApiProposals`, like `lmTools@2`. This will ensure that the extension will only be installed and activated in a version of Trixty IDE that supports the same version of the API.
 
-And, you must adopt this change in the extension at the same time as it's made in VS Code, otherwise the next day's Insiders build won't have a compatible Copilot Chat extension available.
+And, you must adopt this change in the extension at the same time as it's made in Trixty IDE, otherwise the next day's Insiders build won't have a compatible Copilot Chat extension available.
 
 Examples of changes that break backwards compatibility:
 - Renaming a method that is used by the extension
@@ -325,7 +325,7 @@ Examples of changes that break backwards compatibility:
 
 ### Making additive changes to API
 
-When making a change to proposed API that adds a new feature but doesn't break backwards compatibility, you don't have to update the API version, because an older version of the extension will still work with the new VS Code build. But, once you adopt that new API, you must update the date part of the `engines.vscode` field in `package.json`. For example, `"vscode": "^1.91.0-20240624"`. This ensures that the extension will only be installed and activated in a version of VS Code that supports the new API.
+When making a change to proposed API that adds a new feature but doesn't break backwards compatibility, you don't have to update the API version, because an older version of the extension will still work with the new Trixty IDE build. But, once you adopt that new API, you must update the date part of the `engines.vscode` field in `package.json`. For example, `"vscode": "^1.91.0-20240624"`. This ensures that the extension will only be installed and activated in a version of Trixty IDE that supports the new API.
 
 Examples of additive changes
 - Adding a new response type to `ChatResponseStream`

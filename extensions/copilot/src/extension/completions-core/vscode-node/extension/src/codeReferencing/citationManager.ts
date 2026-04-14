@@ -16,7 +16,7 @@ import { notify } from './matchNotifier';
 import { GitHubCopilotLogger } from './outputChannel';
 
 /**
- * Citation manager that logs citations to the VS Code log. On the first citation encountered,
+ * Citation manager that logs citations to the Trixty IDE log. On the first citation encountered,
  * the user gets a notification.
  */
 export class LoggingCitationManager extends Disposable implements ICompletionsCitationManager {

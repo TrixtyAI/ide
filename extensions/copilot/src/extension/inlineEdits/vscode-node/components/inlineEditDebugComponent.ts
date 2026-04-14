@@ -168,8 +168,8 @@ stest({ description: 'MyTest', language: 'typescript' }, collection => tester.ru
 const SENSITIVE_FILE_PATTERNS = {
 	// Exact basename matches (case-insensitive)
 	exactNames: new Set([
-		'settings.json',      // VS Code settings
-		'keybindings.json',   // VS Code keybindings (may contain custom bindings)
+		'settings.json',      // Trixty IDE settings
+		'keybindings.json',   // Trixty IDE keybindings (may contain custom bindings)
 		'launch.json',        // Debug configs often contain env vars with secrets
 		'.npmrc',             // npm auth tokens
 		'.netrc',             // Network credentials

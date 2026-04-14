@@ -97,7 +97,7 @@ export class AnthropicLMProvider extends AbstractLanguageModelChatProvider {
 
 	async provideLanguageModelChatResponse(model: ExtendedLanguageModelChatInformation<LanguageModelChatConfiguration>, messages: Array<LanguageModelChatMessage | LanguageModelChatMessage2>, options: ProvideLanguageModelChatResponseOptions, progress: Progress<LanguageModelResponsePart2>, token: CancellationToken): Promise<void> {
 		// Restore CapturingToken context if correlation ID was passed through modelOptions.
-		// This handles the case where AsyncLocalStorage context was lost crossing VS Code IPC.
+		// This handles the case where AsyncLocalStorage context was lost crossing Trixty IDE IPC.
 		const correlationId = (options as { modelOptions?: OTelModelOptions }).modelOptions?._capturingTokenCorrelationId;
 		const capturingToken = correlationId ? retrieveCapturingTokenByCorrelation(correlationId) : undefined;
 

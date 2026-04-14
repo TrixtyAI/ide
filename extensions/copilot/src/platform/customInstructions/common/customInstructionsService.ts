@@ -84,7 +84,7 @@ export interface ICustomInstructionsService {
 	getSkillInfo(uri: URI): ISkillInfo | undefined;
 
 	/**
-	 * Refreshes the cached extension prompt files by querying VS Code's extension prompt file provider.
+	 * Refreshes the cached extension prompt files by querying Trixty IDE's extension prompt file provider.
 	 * The cache is normally initialized lazily on first use in {@link isExternalInstructionsFile}, so
 	 * callers only need to invoke this explicitly when they require the latest extension state before
 	 * that first lookup or want to force a manual refresh of the cached prompt file list.

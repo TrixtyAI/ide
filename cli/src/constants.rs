@@ -75,7 +75,7 @@ pub const QUALITY: &str = match VSCODE_CLI_QUALITY {
 	_ => "oss",
 };
 
-/// Web URL the editor is hosted at. For VS Code, this is vscode.dev.
+/// Web URL the editor is hosted at. For Trixty IDE, this is vscode.dev.
 pub const EDITOR_WEB_URL: Option<&'static str> = option_env!("VSCODE_CLI_TUNNEL_EDITOR_WEB_URL");
 
 /// Name shown in places where we need to tell a user what a process is, e.g. in sleep inhibition.

@@ -473,7 +473,7 @@ suite('Editor Model - Words', () => {
 		disposables.dispose();
 	});
 
-	test('issue #61296: VS code freezes when editing CSS file with emoji', () => {
+	test('issue #61296: Trixty IDE freezes when editing CSS file with emoji', () => {
 		const MODE_ID = 'testMode';
 		const disposables = new DisposableStore();
 		const instantiationService = createModelServices(disposables);

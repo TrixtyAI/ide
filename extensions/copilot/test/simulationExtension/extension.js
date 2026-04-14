@@ -5,7 +5,7 @@
 
 // You might think this is weird. It is weird.
 //
-// VS Code must know where require calls happen in order to attribute them to
+// Trixty IDE must know where require calls happen in order to attribute them to
 // the right extension (and check proposed API access.) It does this by checking
 // the path of the require'ing module, and this fails once we go out of the
 // directory and request the simulation workbench.

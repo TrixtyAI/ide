@@ -281,7 +281,7 @@ export function _hasSupportedNotebooks(uri: Uri, workspaceNotebookDocuments: rea
 
 	// often users won't have associations that take priority, so check the priority of our valid providers
 	// a provider with priority !default will only be chosen if there is an association that matches, so we need default at this point
-	// In VS Code, if priority is empty, it defaults to `default`, vscode/main/src/vs/workbench/contrib/notebook/browser/notebookExtensionPoint.ts#L110
+	// In Trixty IDE, if priority is empty, it defaults to `default`, vscode/main/src/vs/workbench/contrib/notebook/browser/notebookExtensionPoint.ts#L110
 	if (validNotebookEditorContribs.some(notebookEditorContrib => (notebookEditorContrib.priority ?? RegisteredEditorPriority.default) === RegisteredEditorPriority.default)) {
 		return true;
 	} else {

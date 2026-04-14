@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `vs/sessions` layer hosts the implementation of the **Agentic Window**, a dedicated workbench experience optimized for agent session workflows. This is a distinct top-level layer within the VS Code architecture, sitting alongside `vs/workbench`.
+The `vs/sessions` layer hosts the implementation of the **Agentic Window**, a dedicated workbench experience optimized for agent session workflows. This is a distinct top-level layer within the Trixty IDE architecture, sitting alongside `vs/workbench`.
 
 ## Architecture
 
@@ -101,7 +101,7 @@ src/vs/sessions/
 
 ## What is the Agentic Window?
 
-The Agentic Window (`Workbench`) provides a simplified, fixed-layout workbench tailored for agent session workflows. Unlike the standard VS Code workbench:
+The Agentic Window (`Workbench`) provides a simplified, fixed-layout workbench tailored for agent session workflows. Unlike the standard Trixty IDE workbench:
 
 - **Fixed layout** — Part positions are not configurable via settings
 - **Simplified chrome** — No activity bar, no status bar, no banner

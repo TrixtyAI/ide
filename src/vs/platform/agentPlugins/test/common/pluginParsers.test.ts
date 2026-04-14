@@ -213,7 +213,7 @@ suite('pluginParsers', () => {
 
 	suite('convertBareEnvVarsToVsCodeSyntax', () => {
 
-		test('converts bare env vars to VS Code syntax', () => {
+		test('converts bare env vars to Trixty IDE syntax', () => {
 			const def = {
 				name: 'test',
 				uri: URI.file('/plugin'),

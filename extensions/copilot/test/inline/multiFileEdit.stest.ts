@@ -193,7 +193,7 @@ forEditsAndAgent((strategy, variant, model, configurations) => {
 			});
 		});
 
-		stest({ description: 'add a command and dependency to a VS Code extension', language: 'typescript', model }, (testingServiceCollection) => {
+		stest({ description: 'add a command and dependency to a Trixty IDE extension', language: 'typescript', model }, (testingServiceCollection) => {
 			return executeEditTest(strategy, testingServiceCollection, {
 				files: [
 					fromFixture('multiFileEdit/asciiart/package.json'),

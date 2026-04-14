@@ -396,7 +396,7 @@
   },
   {
     "Location": "inline",
-    "Request": "help me reformat the text, replace '/n' by default as another new line to make it more readable within the vs code",
+    "Request": "help me reformat the text, replace '/n' by default as another new line to make it more readable within the Trixty IDE",
     "Intent": "edit"
   },
   {

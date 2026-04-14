@@ -17,7 +17,7 @@ import { FileLinkificationInstructions } from '../fileLinkificationInstructions'
 import { CopilotIdentityRulesConstructor, IAgentPrompt, PromptRegistry, SafetyRulesConstructor, SystemPrompt } from '../promptRegistry';
 
 /**
- * This is inspired by the Codex CLI prompt, with some custom tweaks for VS Code.
+ * This is inspired by the Codex CLI prompt, with some custom tweaks for Trixty IDE.
  */
 class Gpt51CodexPrompt extends PromptElement<DefaultAgentPromptProps> {
 	async render(state: void, sizing: PromptSizing) {
@@ -82,7 +82,7 @@ class Gpt51CodexPrompt extends PromptElement<DefaultAgentPromptProps> {
 				- Ensure the page loads properly on both desktop and mobile.<br />
 			</Tag>
 			<Tag name='presenting_your_work_and_final_message'>
-				You are producing text that will be rendered as markdown by the VS Code UI. Follow these rules exactly. Formatting should make results easy to scan, but not feel mechanical. Use judgment to decide how much structure adds value.<br />
+				You are producing text that will be rendered as markdown by the Trixty IDE UI. Follow these rules exactly. Formatting should make results easy to scan, but not feel mechanical. Use judgment to decide how much structure adds value.<br />
 				<br />
 				- Default: be very concise; friendly coding teammate tone.<br />
 				- Ask only when needed; suggest ideas; mirror the user's style.<br />

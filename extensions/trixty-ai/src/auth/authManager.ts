@@ -50,7 +50,7 @@ export class TrixtyAuthManager {
 			password: true,
 			placeHolder: 'trx_xxxxxxxxxxxxxxxxxxxxxxxx',
 			ignoreFocusOut: true,
-			validateInput: (value) => {
+			validateInput: (value: string) => {
 				if (!value || value.trim().length < 10) {
 					return 'API key must be at least 10 characters';
 				}
@@ -72,7 +72,7 @@ export class TrixtyAuthManager {
 
 		// Validate key against /cli/init
 		try {
-			const endpoint = vscode.workspace.getConfiguration('trixtyAI').get<string>('trixty.endpoint', 'http://localhost:3000/api/v1');
+			const endpoint = vscode.workspace.getConfiguration('trixtyAI').get<string>('trixty.endpoint', 'https://trixty.vercel.app/api/v1');
 			const response = await fetch(`${endpoint}/cli/init`, {
 				headers: {
 					'Authorization': `Bearer ${apiKey.trim()}`
@@ -137,7 +137,7 @@ export class TrixtyAuthManager {
 		}
 
 		try {
-			const endpoint = vscode.workspace.getConfiguration('trixtyAI').get<string>('trixty.endpoint', 'http://localhost:3000/api/v1');
+			const endpoint = vscode.workspace.getConfiguration('trixtyAI').get<string>('trixty.endpoint', 'https://trixty.vercel.app/api/v1');
 			const response = await fetch(`${endpoint}/cli/init`, {
 				headers: { 'Authorization': `Bearer ${apiKey}` }
 			});

@@ -7,7 +7,7 @@
 // See protocol.md for the full design rationale.
 //
 // Most types are imported from the auto-generated protocol layer
-// (synced from the agent-host-protocol repo). This file adds VS Code-specific
+// (synced from the agent-host-protocol repo). This file adds Trixty IDE-specific
 // helpers and re-exports.
 
 import { hasKey } from '../../../../base/common/types.js';
@@ -118,7 +118,7 @@ export const enum FileEditKind {
 /** URI for the root state subscription. */
 export const ROOT_STATE_URI = 'agenthost:/root';
 
-// ---- VS Code-specific derived types -----------------------------------------
+// ---- Trixty IDE-specific derived types -----------------------------------------
 
 /**
  * A tool call in a terminal state, stored in completed turns.

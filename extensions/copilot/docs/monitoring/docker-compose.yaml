@@ -13,7 +13,7 @@
 #   # View traces in Jaeger:
 #   open http://localhost:16687
 #
-#   # Then launch VS Code with:
+#   # Then launch Trixty IDE with:
 #   COPILOT_OTEL_ENABLED=true OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4328 code .
 
 services:

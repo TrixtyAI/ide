@@ -54,7 +54,7 @@ export class GitHubOrgCustomAgentProvider extends Disposable implements vscode.C
 
 	private async pollAgents(orgId: string): Promise<void> {
 		try {
-			// Convert VS Code API options to internal options
+			// Convert Trixty IDE API options to internal options
 			// It's okay to include enterprise agents here which may take from other orgs, as we only retrieve per org
 			const internalOptions = { includeSources: ['org', 'enterprise'] } satisfies CustomAgentListOptions;
 

@@ -19,7 +19,7 @@ import { ChatReferenceDiagnostic, Diagnostic, DiagnosticRelatedInformation, Diag
 import { PromptFileIdPrefix } from '../../prompt/common/chatVariablesCollection';
 
 /**
- * Converts a ChatPromptReference into a PromptVariable entry that is used in VS code.
+ * Converts a ChatPromptReference into a PromptVariable entry that is used in Trixty IDE.
  */
 export function convertReferenceToVariable(ref: ChatPromptReference, attachments: readonly Attachment[]) {
 	const value = ref.value;

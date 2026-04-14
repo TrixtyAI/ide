@@ -820,7 +820,7 @@ export default defineThemedFixtureGroup({ path: 'chat/aiCustomizations/' }, {
 		render: ctx => renderEditor(ctx, { harness: CustomizationHarness.VSCode }),
 	}),
 
-	// Full editor with Local (VS Code) harness — all sections visible, harness dropdown,
+	// Full editor with Local (Trixty IDE) harness — all sections visible, harness dropdown,
 	// Generate buttons, AGENTS.md shortcut, all storage groups
 	LocalHarness: defineComponentFixture({
 		labels: { kind: 'screenshot' },

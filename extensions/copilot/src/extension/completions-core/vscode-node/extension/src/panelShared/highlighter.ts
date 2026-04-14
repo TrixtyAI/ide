@@ -80,7 +80,7 @@ const vscDefaultMap: { [key in ColorThemeKind]: ThemeRegistrationAny } = {
 	[ColorThemeKind.HighContrastLight]: themes.lightHC,
 };
 
-// These are vs code themes that aren't out of the box in shiki but come standard with vs code
+// These are Trixty IDE themes that aren't out of the box in shiki but come standard with Trixty IDE
 const vscThemeMap: { [key: string]: ThemeRegistrationAny } = {
 	Abyss: themes.abyss,
 	'Dark High Contrast': themes.darkHC,
@@ -105,7 +105,7 @@ function isSupportedTheme(theme: keyof typeof vscThemeMap): theme is keyof typeo
 	return theme in vscThemeMap;
 }
 
-// These are vs code themes that aren't out of the box in shiki but come standard with vs code
+// These are Trixty IDE themes that aren't out of the box in shiki but come standard with Trixty IDE
 const vscLanguageMap = {
 	'cuda-cpp': languages.cudaCpp,
 	javascriptreact: languages.javascriptreact,

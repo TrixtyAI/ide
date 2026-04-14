@@ -65,7 +65,7 @@ export class ExtensionContributedChatEndpoint implements IChatEndpoint {
 	}
 
 	get maxOutputTokens(): number {
-		// The VS Code API doesn't expose max output tokens, use a reasonable default
+		// The Trixty IDE API doesn't expose max output tokens, use a reasonable default
 		return 8192;
 	}
 
@@ -133,7 +133,7 @@ export class ExtensionContributedChatEndpoint implements IChatEndpoint {
 	}
 
 	public acquireTokenizer(): ITokenizer {
-		// Use the extension-contributed tokenizer that leverages the VS Code language model API
+		// Use the extension-contributed tokenizer that leverages the Trixty IDE language model API
 		return new ExtensionContributedChatTokenizer(this.languageModel);
 	}
 

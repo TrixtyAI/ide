@@ -46,13 +46,13 @@ export interface IRemoteAgentHostSSHConnection {
 	 * SSH config host alias (e.g. `myserver`). When set, the SSH tunnel is
 	 * automatically re-established on startup using the user's SSH config.
 	 * This takes precedence over {@link hostName} when constructing the
-	 * VS Code Remote SSH authority.
+	 * Trixty IDE Remote SSH authority.
 	 */
 	readonly sshConfigHost?: string;
 	/**
 	 * The actual SSH hostname or IP address of the remote machine
 	 * (e.g. `myserver.example.com`). This is the host that the SSH
-	 * client connects to, and is used to construct the VS Code Remote
+	 * client connects to, and is used to construct the Trixty IDE Remote
 	 * SSH authority when {@link sshConfigHost} is not available.
 	 */
 	readonly hostName: string;
@@ -70,7 +70,7 @@ export interface IRemoteAgentHostTunnelConnection {
 	readonly clusterId: string;
 	/**
 	 * User-defined display name for this tunnel (derived from tunnel tags).
-	 * Used as the tunnel name in the VS Code Remote Tunnels authority
+	 * Used as the tunnel name in the Trixty IDE Remote Tunnels authority
 	 * (e.g. `tunnel+<label>`). Falls back to {@link tunnelId} if not set.
 	 */
 	readonly label?: string;

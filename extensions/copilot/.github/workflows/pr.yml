@@ -136,13 +136,13 @@ jobs:
       - name: Run simulation tests with cache
         run: npm run simulate-ci
 
-      - name: Run extension tests using VS Code
+      - name: Run extension tests using Trixty IDE
         run: xvfb-run -a npm run test:extension
 
       - name: Run Completions Core prompt tests
         run: npm run test:prompt
 
-      - name: Run Completions Core lib tests using VS Code
+      - name: Run Completions Core lib tests using Trixty IDE
         run: xvfb-run -a npm run test:completions-core
 
       - name: Archive simulation output
@@ -225,11 +225,11 @@ jobs:
       - name: Run simulation tests with cache
         run: npm run simulate-ci
 
-      - name: Run extension tests using VS Code
+      - name: Run extension tests using Trixty IDE
         run: npm run test:extension
 
       - name: Run Completions Core prompt tests
         run: npm run test:prompt
 
-      - name: Run Completions Core lib tests using VS Code
+      - name: Run Completions Core lib tests using Trixty IDE
         run: npm run test:completions-core

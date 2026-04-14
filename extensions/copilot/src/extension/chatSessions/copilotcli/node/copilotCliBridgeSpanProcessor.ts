@@ -77,7 +77,7 @@ function flattenAttributes(attrs: Readonly<Record<string, unknown>>): Record<str
  */
 export class CopilotCliBridgeSpanProcessor implements SpanProcessor {
 	/**
-	 * Maps OTel traceId → VS Code chat session ID.
+	 * Maps OTel traceId → Trixty IDE chat session ID.
 	 * Populated when copilotcliSession.ts creates its root `invoke_agent copilotcli` span.
 	 */
 	private readonly _traceIdToSessionId = new Map<string, string>();

@@ -1,6 +1,6 @@
 # Claude Code Integration
 
-This folder contains the Claude Code integration for VS Code Chat. It enables users to open a new Chat window and interact with a Claude Code instance directly within VS Code. **VS Code provides the UI, Claude Code provides the smarts.**
+This folder contains the Claude Code integration for Trixty IDE Chat. It enables users to open a new Chat window and interact with a Claude Code instance directly within Trixty IDE. **Trixty IDE provides the UI, Claude Code provides the smarts.**
 
 > 📖 **New to the Claude session target?** See the **[User Guide](./CLAUDE_SESSION_USER_GUIDE.md)** for a comprehensive walkthrough of features, slash commands, permission modes, and best practices.
 
@@ -50,7 +50,7 @@ This folder contains the Claude Code integration for VS Code Chat. It enables us
 
 ## Overview
 
-The Claude Code integration allows VS Code's chat interface to communicate with Claude Code, Anthropic's agentic coding assistant. When a user sends a message in a VS Code Chat window using this integration, the message is routed to a Claude Code session that can:
+The Claude Code integration allows Trixty IDE's chat interface to communicate with Claude Code, Anthropic's agentic coding assistant. When a user sends a message in a Trixty IDE Chat window using this integration, the message is routed to a Claude Code session that can:
 
 - Read and analyze code
 - Execute shell commands
@@ -58,13 +58,13 @@ The Claude Code integration allows VS Code's chat interface to communicate with 
 - Search the workspace
 - Manage tasks and todos
 
-All interactions are displayed through VS Code's native chat UI, providing a seamless experience.
+All interactions are displayed through Trixty IDE's native chat UI, providing a seamless experience.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         VS Code Chat UI                          │
+│                         Trixty IDE Chat UI                          │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
                           ▼
@@ -98,20 +98,20 @@ All interactions are displayed through VS Code's native chat UI, providing a sea
 ### `node/claudeCodeAgent.ts`
 
 **ClaudeAgentManager**
-- Entry point for handling chat requests from VS Code
+- Entry point for handling chat requests from Trixty IDE
 - Starts and manages the language model server (`LanguageModelServer`)
 - Creates and caches `ClaudeCodeSession` instances by session ID
-- Resolves prompts by replacing VS Code references (files, locations) with actual paths
+- Resolves prompts by replacing Trixty IDE references (files, locations) with actual paths
 
 **ClaudeCodeSession**
 - Represents a single Claude Code conversation session
-- Manages a queue of incoming requests from VS Code Chat
+- Manages a queue of incoming requests from Trixty IDE Chat
 - Uses an async iterable to feed prompts to Claude Code SDK
 - Processes three message types:
   - **Assistant messages**: Text responses and tool use requests
   - **User messages**: Tool results from executed tools
   - **Result messages**: Session completion or error states
-- Handles tool confirmation dialogs via VS Code's chat API
+- Handles tool confirmation dialogs via Trixty IDE's chat API
 - Auto-approves safe operations (file edits in workspace)
 - Tracks external edits to show proper diffs
 
@@ -143,19 +143,19 @@ Defines Claude Code's tool interface:
 
 ### `common/toolInvocationFormatter.ts`
 
-Formats tool invocations for display in VS Code's chat UI:
+Formats tool invocations for display in Trixty IDE's chat UI:
 - Creates `ChatToolInvocationPart` instances with appropriate messaging
 - Handles tool-specific formatting (Bash commands, file reads, searches, etc.)
 - Suppresses certain tools from display (TodoWrite, Edit, Write) where other UI handles them
 
 ## Message Flow
 
-1. **User sends message** in VS Code Chat
+1. **User sends message** in Trixty IDE Chat
 2. **ClaudeAgentManager** receives the request and routes to existing or new session
 3. **ClaudeCodeSession** queues the request and feeds the prompt to Claude Code SDK
 4. **Claude Code SDK** returns streaming messages:
    - Text content → rendered as markdown in chat
-   - Tool use requests → shown as progress, then confirmed via VS Code's confirmation API
+   - Tool use requests → shown as progress, then confirmed via Trixty IDE's confirmation API
    - Tool results → formatted and displayed in chat
 5. **Result message** signals turn completion, request is resolved
 
@@ -266,7 +266,7 @@ The slash command registry manages custom slash commands available in Claude cha
 **Key Features:**
 - Register handlers using `registerClaudeSlashCommand(handler)`
 - Each handler implements `IClaudeSlashCommandHandler` interface
-- Commands can optionally register with VS Code Command Palette
+- Commands can optionally register with Trixty IDE Command Palette
 - Handlers receive arguments, response stream, and cancellation token
 
 **Handler Interface:**
@@ -274,7 +274,7 @@ The slash command registry manages custom slash commands available in Claude cha
 interface IClaudeSlashCommandHandler {
 	readonly commandName: string;        // Command name (without /)
 	readonly description: string;         // Human-readable description
-	readonly commandId?: string;          // Optional VS Code command ID
+	readonly commandId?: string;          // Optional Trixty IDE command ID
 	handle(args: string, stream: ChatResponseStream | undefined, token: CancellationToken): Promise<ChatResult | void>;
 }
 ```
@@ -319,7 +319,7 @@ Tool permission handlers control what actions Claude can take without user confi
 
 **Auto-approval Rules:**
 - File edits are auto-approved if the file is within the workspace
-- All other tools show a confirmation dialog via VS Code's chat API
+- All other tools show a confirmation dialog via Trixty IDE's chat API
 - User denials send appropriate messages back to Claude
 
 ### MCP Server Registry
@@ -350,7 +350,7 @@ interface IClaudeMcpServerContributor {
 **Index Chain:**
 - `common/mcpServers/index.ts` → Platform-agnostic contributors
 - `node/mcpServers/index.ts` → Node-specific contributors (imports common first)
-- `vscode-node/mcpServers/index.ts` → VS Code-specific contributors (imports node first)
+- `vscode-node/mcpServers/index.ts` → Trixty IDE-specific contributors (imports node first)
 
 **Extending the Registries:**
 
@@ -386,7 +386,7 @@ To add new functionality:
 
 ## Configuration
 
-The integration respects VS Code settings:
+The integration respects Trixty IDE settings:
 - `github.copilot.advanced.claudeCodeDebugEnabled`: Enables debug logging from Claude Code SDK
 
 ## Upgrading Anthropic SDK Packages

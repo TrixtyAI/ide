@@ -94,7 +94,7 @@ suite('Isolated LastGhostText tests', function () {
 		assert.strictEqual(event.measurements.numLines, 3);
 	});
 
-	test('partial acceptance for VS Code sends total number of lines accepted with telemetry', async function () {
+	test('partial acceptance for Trixty IDE sends total number of lines accepted with telemetry', async function () {
 		last.setState({ uri: 'file:///test' }, { line: 0, character: 0 });
 		const cmp = makeCompletion(0, 'line1\nline2\nline3', 0);
 		handleGhostTextShown(accessor, cmp);
@@ -108,7 +108,7 @@ suite('Isolated LastGhostText tests', function () {
 		assert.strictEqual(event.measurements.numLines, 1);
 	});
 
-	test('additional partial acceptance for VS Code sends total number of lines accepted with telemetry', async function () {
+	test('additional partial acceptance for Trixty IDE sends total number of lines accepted with telemetry', async function () {
 		last.setState({ uri: 'file:///test' }, { line: 0, character: 0 });
 		const cmp = makeCompletion(0, 'line1\nline2\nline3', 0);
 		handleGhostTextShown(accessor, cmp);

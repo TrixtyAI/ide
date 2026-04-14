@@ -1,6 +1,6 @@
-# GitHub Copilot Chat in VS Code - Changelog
+# GitHub Copilot Chat in Trixty IDE - Changelog
 
-You can find the latest AI-related updates for GitHub Copilot in VS Code in the weekly [VS Code release notes](https://code.visualstudio.com/updates).
+You can find the latest AI-related updates for GitHub Copilot in Trixty IDE in the weekly [Trixty IDE release notes](https://code.visualstudio.com/updates).
 
 For more frequent updates, check the [Commit log](https://github.com/Microsoft/vscode/commits/main) and [vscode-copilot-chat commit log](https://github.com/microsoft/vscode-copilot-chat/commits/main) on GitHub.
 
@@ -10,7 +10,7 @@ For more frequent updates, check the [Commit log](https://github.com/Microsoft/v
 
 ## 0.41 (2026-03-25)
 
-GitHub Copilot updates for [VS Code 1.113](https://code.visualstudio.com/updates/v1_113):
+GitHub Copilot updates for [Trixty IDE 1.113](https://code.visualstudio.com/updates/v1_113):
 
 - MCP support in Copilot CLI & Claude agents
 - Forking sessions in Copilot CLI & Claude agents
@@ -25,7 +25,7 @@ GitHub Copilot updates for [VS Code 1.113](https://code.visualstudio.com/updates
 
 ## 0.40 (2026-03-18)
 
-GitHub Copilot updates for [VS Code 1.112](https://code.visualstudio.com/updates/v1_112):
+GitHub Copilot updates for [Trixty IDE 1.112](https://code.visualstudio.com/updates/v1_112):
 
 - Message steering and queueing in Copilot CLI
 - Preview changes before delegating to Copilot CLI
@@ -44,7 +44,7 @@ GitHub Copilot updates for [VS Code 1.112](https://code.visualstudio.com/updates
 
 ## 0.39 (2026-03-09)
 
-GitHub Copilot updates for [VS Code 1.111](https://code.visualstudio.com/updates/v1_111):
+GitHub Copilot updates for [Trixty IDE 1.111](https://code.visualstudio.com/updates/v1_111):
 
 - Autopilot and agent permissions
 - Agent-scoped hooks (Preview)
@@ -63,8 +63,8 @@ GitHub Copilot updates from [February 2026](https://code.visualstudio.com/update
 - **Agent Debug panel (Preview)** — New panel showing chat events in real time, including system prompts, tool calls, and customization events. Includes a chart view for visual event hierarchy. Open via **Developer: Open Agent Debug Panel** or the gear icon in the Chat view.
 - **Auto approve slash commands** — Toggle global auto approve directly from chat input with `/autoApprove` and `/disableAutoApprove` (aliases: `/yolo`, `/disableYolo`).
 - **Edit mode hidden by default** — Agent mode now handles everything edit mode can do; edit mode is hidden from the agent picker by default, controlled by the `chat.editMode.hidden` setting. Ask mode is now backed by a custom agent definition.
-- **Ask questions tool improvements** — The `askQuestions` tool moved into VS Code core for improved reliability. You can now send steering messages without dismissing pending questions first.
-- **Prevent auto-suspend during chat** — VS Code asks the OS not to suspend the machine while a chat request is running.
+- **Ask questions tool improvements** — The `askQuestions` tool moved into Trixty IDE core for improved reliability. You can now send steering messages without dismissing pending questions first.
+- **Prevent auto-suspend during chat** — Trixty IDE asks the OS not to suspend the machine while a chat request is running.
 
 ### Agent extensibility
 
@@ -141,7 +141,7 @@ GitHub Copilot updates from [January 2026](https://code.visualstudio.com/updates
 
 ### Agent extensibility
 
-- **Claude compatibility** — VS Code reads Claude configuration files directly: `CLAUDE.md` instructions, `.claude/agents`, `.claude/skills`, `.claude/settings.json` hooks.
+- **Claude compatibility** — Trixty IDE reads Claude configuration files directly: `CLAUDE.md` instructions, `.claude/agents`, `.claude/skills`, `.claude/settings.json` hooks.
 - **Agent orchestration** — Building blocks for multi-agent workflows using custom agents, subagents, and invocation controls. Community examples: Copilot Orchestra, GitHub Copilot Atlas.
 - **Claude Agent (Preview)** — Delegate tasks to Claude Agent SDK using Copilot subscription models. Uses official Anthropic agent harness.
 - **Anthropic model improvements** — Messages API with interleaved thinking, tool search tool, context editing (Experimental).
@@ -208,9 +208,9 @@ GitHub Copilot updates from [November 2025](https://code.visualstudio.com/update
 - **Adding context to background agents** — Attach selections, problems, symbols, search results, git commits, and more as context to background agent prompts.
 - **Share custom agents across your GitHub organization (Experimental)** — Define custom agents at the organization level for shared use across teams.
 - **Custom agents with background agents (Experimental)** — Use custom agents defined in `.github/agents` with background agents.
-- **Agent tooling reorganization** — Renamed tool references for better compatibility with GitHub custom agents across VS Code and GitHub environments.
+- **Agent tooling reorganization** — Renamed tool references for better compatibility with GitHub custom agents across Trixty IDE and GitHub environments.
 - **Run agents as subagents (Experimental)** — Custom agents can be used as subagents for delegating subtasks within a chat session, each with its own context window.
-- **Reuse Claude skills (Experimental)** — VS Code can discover and use Claude Code skills from `~/.claude/skills/` and workspace `.claude/skills/` folders.
+- **Reuse Claude skills (Experimental)** — Trixty IDE can discover and use Claude Code skills from `~/.claude/skills/` and workspace `.claude/skills/` folders.
 
 ### Chat
 
@@ -289,7 +289,7 @@ GitHub Copilot updates from [October 2025](https://code.visualstudio.com/updates
 ### Language-specific AI features
 
 - **Python: Copilot Hover Summaries as docstring** — Insert AI-generated summaries directly as docstrings.
-- **Python: Localized Copilot Hover Summaries** — Respects VS Code display language.
+- **Python: Localized Copilot Hover Summaries** — Respects Trixty IDE display language.
 
 ### Preview
 
@@ -317,7 +317,7 @@ You can still use the previous notation, however a code actions helps migrating 
 
 **Setting**: `github.copilot.chat.customOAIModels`
 
-To make working with custom models better integrated with VS Code built-in tools, we improved the set of edit tools given to [Bring Your Own Key (BYOK)](https://code.visualstudio.com/docs/copilot/customization/language-models#_bring-your-own-language-model-key) custom models. In addition, we enhanced our default tools and added a 'learning' mechanism to select the optimal tool set for custom models.
+To make working with custom models better integrated with Trixty IDE built-in tools, we improved the set of edit tools given to [Bring Your Own Key (BYOK)](https://code.visualstudio.com/docs/copilot/customization/language-models#_bring-your-own-language-model-key) custom models. In addition, we enhanced our default tools and added a 'learning' mechanism to select the optimal tool set for custom models.
 
 If you're [using OpenAI-compatible models](https://code.visualstudio.com/docs/copilot/customization/language-models#_use-an-openaicompatible-model), you can also explicitly configure the list of edit tools with the `github.copilot.chat.customOAIModels` setting.
 
@@ -327,9 +327,9 @@ If you're [using OpenAI-compatible models](https://code.visualstudio.com/docs/co
 
 **Setting**: `chat.notifyWindowOnResponseReceived`
 
-In VS Code 1.103, we introduced OS notifications for chat sessions that required a user confirmation when the VS Code window was not focused. In this release, we are expanding this functionality to show an OS badge and notification toast when a chat response is received. The notification includes a preview of the response, and selecting it brings focus to the chat input.
+In Trixty IDE 1.103, we introduced OS notifications for chat sessions that required a user confirmation when the Trixty IDE window was not focused. In this release, we are expanding this functionality to show an OS badge and notification toast when a chat response is received. The notification includes a preview of the response, and selecting it brings focus to the chat input.
 
-![Screenshot showing an OS notification while the VS Code window is unfocused.](https://code.visualstudio.com/assets/updates/1_105/chat-notification.png)
+![Screenshot showing an OS notification while the Trixty IDE window is unfocused.](https://code.visualstudio.com/assets/updates/1_105/chat-notification.png)
 
 You can control the notification behavior with the `chat.notifyWindowOnResponseReceived` setting.
 
@@ -390,7 +390,7 @@ If you're working in a repository that has [Copilot coding agent enabled](https:
 
 ![Screenshot of the Chat view with the Delegate to coding agent button highlighted.](https://code.visualstudio.com/assets/updates/1_105/delegate-button.png)
 
-When you use the delegate action, all the context from your chat conversation, including file references, are forwarded to the coding agent. If your conversation exceeds the coding agent's context window, VS Code automatically summarizes and condenses the information to fit the window.
+When you use the delegate action, all the context from your chat conversation, including file references, are forwarded to the coding agent. If your conversation exceeds the coding agent's context window, Trixty IDE automatically summarizes and condenses the information to fit the window.
 
 #### Terminal commands
 
@@ -412,7 +412,7 @@ This milestone, we added support for the following models in chat. The available
 
 * **Claude Sonnet 4.5**, Anthropic’s most advanced model for coding and real-world agents.
 
-You can choose between different models with the model picker in chat. Learn more about [language models in VS Code](https://code.visualstudio.com/docs/copilot/customization/language-models).
+You can choose between different models with the model picker in chat. Learn more about [language models in Trixty IDE](https://code.visualstudio.com/docs/copilot/customization/language-models).
 
 ### MCP
 
@@ -420,7 +420,7 @@ You can choose between different models with the model picker in chat. Learn mor
 
 **Setting**: `chat.mcp.gallery.enabled`
 
-VS Code now includes a built-in MCP marketplace that enables users to browse and install MCP servers directly from the Extensions view. This is powered by the [GitHub MCP registry](https://github.com/mcp) and provides a seamless experience for discovering and managing MCP servers directly within the editor.
+Trixty IDE now includes a built-in MCP marketplace that enables users to browse and install MCP servers directly from the Extensions view. This is powered by the [GitHub MCP registry](https://github.com/mcp) and provides a seamless experience for discovering and managing MCP servers directly within the editor.
 
 > **Note**: This feature is currently in preview. Not all features are available yet and the experience might still have some rough edges.
 
@@ -434,13 +434,13 @@ To browse the MCP servers from the Extensions view:
 * Select **MCP Servers** from the filter dropdown in the Extensions view
 * Search for specific MCP servers by name
 
-![Screenshot showing the GitHub MCP server details from the MCP server marketplace inside VS Code.](https://code.visualstudio.com/assets/updates/1_105/mcp-server-editor.png)
+![Screenshot showing the GitHub MCP server details from the MCP server marketplace inside Trixty IDE.](https://code.visualstudio.com/assets/updates/1_105/mcp-server-editor.png)
 
 #### Autostart MCP servers
 
 **Setting**: `chat.mcp.autostart`
 
-In this release, new or outdated MCP servers are now started automatically when you send a chat message. VS Code also avoids triggering interactions such as dialogs when autostarting a server, and instead adds an indicator in chat to let you know that a server needs attention.
+In this release, new or outdated MCP servers are now started automatically when you send a chat message. Trixty IDE also avoids triggering interactions such as dialogs when autostarting a server, and instead adds an indicator in chat to let you know that a server needs attention.
 
 ![Screenshot of the Chat view, showing a notification message that the GitHub MCP requires restarting.](https://code.visualstudio.com/assets/updates/1_105/mcp_autostart_prompt.png)
 
@@ -450,7 +450,7 @@ For extension developers, we also added support for the `when` clause on the `mc
 
 #### Improved representation of MCP resources returned from tools
 
-Previously, our implementation of tool results that contain resources left it up to the model to retrieve those resources, without clear instructions on how to do so. In this version of VS Code, by default, we include a preview of the resource content and add instructions to retrieve the complete contents. This should lead to better model performance when using such tools.
+Previously, our implementation of tool results that contain resources left it up to the model to retrieve those resources, without clear instructions on how to do so. In this version of Trixty IDE, by default, we include a preview of the resource content and add instructions to retrieve the complete contents. This should lead to better model performance when using such tools.
 
 #### MCP specification updates
 
@@ -494,7 +494,7 @@ To add a file from a history item to chat, select a history item to view the lis
 
 #### Run tests with code coverage
 
-If you have a testing extension installed for your code, the `runTests` tool in chat enables the agent to run tests in your codebase by using the [VS Code testing integration](https://code.visualstudio.com/docs/debugtest/testing) rather than running them from the command line.
+If you have a testing extension installed for your code, the `runTests` tool in chat enables the agent to run tests in your codebase by using the [Trixty IDE testing integration](https://code.visualstudio.com/docs/debugtest/testing) rather than running them from the command line.
 
 In this release, the `runTests` tool now also reports test code coverage to the agent. This enables the agent to generate and verify tests that cover the entirety of your code.
 
@@ -508,19 +508,19 @@ GitHub Copilot updates from [August 2025](https://code.visualstudio.com/updates/
 
 #### Auto model selection (Preview)
 
-This iteration, we're introducing auto model selection in chat. When you choose the **Auto** model in the model picker, VS Code automatically selects a model to ensure that you get the optimal performance and avoid rate limits.
+This iteration, we're introducing auto model selection in chat. When you choose the **Auto** model in the model picker, Trixty IDE automatically selects a model to ensure that you get the optimal performance and avoid rate limits.
 
-Auto model selection is currently in preview and we are rolling it out to all GitHub Copilot users in VS Code in the following weeks, starting with the individual Copilot plans.
+Auto model selection is currently in preview and we are rolling it out to all GitHub Copilot users in Trixty IDE in the following weeks, starting with the individual Copilot plans.
 
 ![Screenshot that shows the model picker in the Chat view, showing the Auto option.](https://code.visualstudio.com/assets/updates/1_104/model-dropdown-auto.png)
 
-Auto will choose between Claude Sonnet 4, GPT-5, GPT-5 mini, and GPT-4.1 and Gemini Pro 2.5, unless your organization has disabled access to these models. When using auto model selection, VS Code uses a variable model multiplier, based on the selected model. If you are a paid user, auto will apply a 10% request discount.
+Auto will choose between Claude Sonnet 4, GPT-5, GPT-5 mini, and GPT-4.1 and Gemini Pro 2.5, unless your organization has disabled access to these models. When using auto model selection, Trixty IDE uses a variable model multiplier, based on the selected model. If you are a paid user, auto will apply a 10% request discount.
 
 You can view the selected model and the model multiplier by hovering over the response in the Chat view.
 
 ![Screenshot of a chat response, showing the selected model on hover.](https://code.visualstudio.com/assets/updates/1_104/auto-model-multiplier.png)
 
-Learn more about [auto model selection in VS Code](https://code.visualstudio.com/docs/copilot/customization/language-models).
+Learn more about [auto model selection in Trixty IDE](https://code.visualstudio.com/docs/copilot/customization/language-models).
 
 #### Confirm edits to sensitive files
 
@@ -542,7 +542,7 @@ An `AGENTS.md` file lets you provide context and instructions to the agent. Star
 
 Support for `AGENTS.md` files is enabled by default and can be controlled with the `chat.useAgentsMdFile` setting. See <https://agents.md/> for more information about `AGENTS.md` files.
 
-Learn more about [customizing chat in VS Code](https://code.visualstudio.com/docs/copilot/customization/overview) to your practices and team workflows.
+Learn more about [customizing chat in Trixty IDE](https://code.visualstudio.com/docs/copilot/customization/overview) to your practices and team workflows.
 
 #### Improved changed files experience
 
@@ -566,7 +566,7 @@ You can specify which chat mode should be used for running the prompt file. Prev
 
 ![Screenshot showing IntelliSense for custom chat modes in prompt files.](https://code.visualstudio.com/assets/updates/1_104/custom_modes_in_prompt_files.png)
 
-Learn more about [customizing chat in VS Code](https://code.visualstudio.com/docs/copilot/customization/overview) with prompt files, chat modes, and custom instructions.
+Learn more about [customizing chat in Trixty IDE](https://code.visualstudio.com/docs/copilot/customization/overview) with prompt files, chat modes, and custom instructions.
 
 #### Configure prompt file suggestions (Experimental)
 
@@ -591,7 +591,7 @@ This helps teams surface the right AI workflows at the right time, making custom
 
 #### Select tools in tool sets
 
-[Tool sets](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode#_define-tool-sets) are a convenient way to group related tools together and VS Code has several built-in tool sets like `edit` or `search`.
+[Tool sets](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode#_define-tool-sets) are a convenient way to group related tools together and Trixty IDE has several built-in tool sets like `edit` or `search`.
 
 The tools picker now shows which tools are part of each tool set and you can individually enable or disable each tool. You can access the tools picker via the `Configure Tools...` button in the Chat view.
 
@@ -601,7 +601,7 @@ The tools picker now shows which tools are part of each tool set and you can ind
 
 **Settings**: `chat.fontFamily`, `chat.fontSize`
 
-VS Code lets you choose which font to use across the editor, however the Chat view lacked that configurability. We have now added two new settings for configuring the font family (`chat.fontFamily`) and font size (`chat.fontSize`) of chat messages.
+Trixty IDE lets you choose which font to use across the editor, however the Chat view lacked that configurability. We have now added two new settings for configuring the font family (`chat.fontFamily`) and font size (`chat.fontSize`) of chat messages.
 
 ![Screenshot showing the Chat view with a custom font and font size.](https://code.visualstudio.com/assets/updates/1_104/chat-configure-font.png)
 
@@ -635,7 +635,7 @@ We've improved the integration of [GitHub coding agents](https://code.visualstud
 
 ##### Delegate to coding agent
 
-We continued to expand on ways to delegate local tasks in VS Code to a Copilot coding agent:
+We continued to expand on ways to delegate local tasks in Trixty IDE to a Copilot coding agent:
 
 * Fix todos with coding agent:
 
@@ -654,7 +654,7 @@ _Theme: [Sharp Solarized](https://marketplace.visualstudio.com/items?itemName=jo
 
 #### Social sign in with Google
 
-The option to sign in or sign up to GitHub Copilot with a Google account is now generally available and rolling out to all users in VS Code.
+The option to sign in or sign up to GitHub Copilot with a Google account is now generally available and rolling out to all users in Trixty IDE.
 
 ![Screenshot showing the sign in dialog showing the option to use a Google account.](https://code.visualstudio.com/assets/updates/1_104/google.png)
 
@@ -736,9 +736,9 @@ When you first open a workspace, the Secondary Side Bar with the Chat view is vi
 
     Agent mode now supports running compound tasks. When you run a compound task, the agent indicates progress and output for each dependent task, including any prompts for user input. This enables more complex workflows and better visibility into multi-step task execution.
 
-    In the example below, the VS Code - Build task is run. Output is assessed for each dependency task and a problem is surfaced to the user in the response and in the progress message dropdown.
+    In the example below, the Trixty IDE - Build task is run. Output is assessed for each dependency task and a problem is surfaced to the user in the response and in the progress message dropdown.
 
-    <video src="https://code.visualstudio.com/assets/updates/1_104/build-task.mp4" title="Example of agent running the VS Code - Build task" autoplay loop controls muted></video>
+    <video src="https://code.visualstudio.com/assets/updates/1_104/build-task.mp4" title="Example of agent running the Trixty IDE - Build task" autoplay loop controls muted></video>
 
 #### Improved terminal support
 
@@ -770,7 +770,7 @@ When the agent requests confirmation for a tool call, you can now choose to skip
 
 We've upgraded the `#codebase` tool to use a new [embeddings](https://en.wikipedia.org/wiki/Embedding_(machine_learning)) model for semantic searching for code in your workspace. This new model provides better results for code searches. The new embeddings also use less storage space, requiring only 6% of our previous model's on-disk storage size for each embedding.
 
-We'll be gradually rolling out this new embeddings model over the next few weeks. Your workspace will be automatically updated to use this new embeddings model, so no action is required. VS Code Insiders is already using the new model if you want to try it out before it rolls out to you.
+We'll be gradually rolling out this new embeddings model over the next few weeks. Your workspace will be automatically updated to use this new embeddings model, so no action is required. Trixty IDE Insiders is already using the new model if you want to try it out before it rolls out to you.
 
 #### Hide and disable GitHub Copilot AI features
 
@@ -792,19 +792,19 @@ The command to "Hide AI Features" was renamed to reflect this change and will no
 
 #### Support for server instructions
 
-VS Code now reads MCP server instructions and will include them in its base prompt.
+Trixty IDE now reads MCP server instructions and will include them in its base prompt.
 
 #### MCP auto discovery disabled by default
 
 **Setting**: `chat.mcp.discovery.enabled`
 
-VS Code supports [automatic discovery of MCP servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) installed in other apps like Claude Code. As MCP support has matured in VS Code, auto-discovery is now disabled by default, but you can re-enable it using the `chat.mcp.discovery.enabled` setting.
+Trixty IDE supports [automatic discovery of MCP servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) installed in other apps like Claude Code. As MCP support has matured in Trixty IDE, auto-discovery is now disabled by default, but you can re-enable it using the `chat.mcp.discovery.enabled` setting.
 
 #### Enable MCP
 
 **Setting**: `chat.mcp.access`
 
-The `chat.mcp.enabled` setting that previously controlled whether MCP servers could run in VS Code has been migrated to a new `chat.mcp.access` setting with more descriptive options:
+The `chat.mcp.enabled` setting that previously controlled whether MCP servers could run in Trixty IDE has been migrated to a new `chat.mcp.access` setting with more descriptive options:
 
 * `all`: allow all MCP servers to run (equivalent to the previous `true` value)
 * `none`: disable MCP support entirely (equivalent to the previous `false` value)
@@ -845,7 +845,7 @@ GitHub Copilot updates from [July 2025](https://code.visualstudio.com/updates/v1
 
 We've introduced checkpoints that enable you to restore different states of your chat conversations. You can easily revert edits and go back to certain points in your chat conversation. This can be particularly useful if multiple files were changed in a chat session.
 
-When you select a checkpoint, VS Code reverts workspace changes and the chat history to that point. After restoring a checkpoint, you can redo that action as well!
+When you select a checkpoint, Trixty IDE reverts workspace changes and the chat history to that point. After restoring a checkpoint, you can redo that action as well!
 
 <video src="https://code.visualstudio.com/assets/updates/1_103/chat-checkpoints.mp4" title="Video that shows creating and managing chat checkpoints." autoplay loop controls muted></video>
 
@@ -872,7 +872,7 @@ Let us know what you think!
 
 The maximum number of tools that you can use for a single chat request is currently 128. Previously, you could quickly reach this limit by installing MCP servers with many tools, requiring you to deselect some tools in order to proceed.
 
-In this release of VS Code, we have enabled an experimental tool-calling mode for when the number of tools exceeds the maximum limit. Tools are automatically grouped and the model is given the ability to activate and call groups of tools.
+In this release of Trixty IDE, we have enabled an experimental tool-calling mode for when the number of tools exceeds the maximum limit. Tools are automatically grouped and the model is given the ability to activate and call groups of tools.
 
 This behavior, including the threshold, is configurable via the setting `github.copilot.chat.virtualTools.threshold`.
 
@@ -915,7 +915,7 @@ We plan to finalize this new API in the coming months and would appreciate any f
 
 The [`#codebase` tool](https://code.visualstudio.com/docs/copilot/chat/copilot-chat-context#_perform-a-codebase-search) now supports remote indexes for workspaces that are linked to Azure DevOps repos. This enables `#codebase` to search for relevant snippets almost instantly without any initialization. This even works for larger repos with tens of thousands of indexable files. Previously, this feature only worked with GitHub linked repos.
 
-Remote indexes are used automatically when working in a workspace that is linked to Azure DevOps through git. Make sure you are also logged into VS Code with the Microsoft account you use to access the Azure DevOps repos.
+Remote indexes are used automatically when working in a workspace that is linked to Azure DevOps through git. Make sure you are also logged into Trixty IDE with the Microsoft account you use to access the Azure DevOps repos.
 
 We're gradually rolling out support for this feature on the services side, so not every organization might be able to use it initially. Based on the success of the rollout, we hope to turn on remote indexing for Azure DevOps for as many organizations as possible.
 
@@ -976,7 +976,7 @@ We added two extra options for configuring the default visibility of the Seconda
 
 #### Pending chat confirmation
 
-To help prevent accidentally closing a workspace where an agent session is actively changing files or responding to your request, we now show a dialog when you try to quit VS Code or close its window when a chat response is in progress:
+To help prevent accidentally closing a workspace where an agent session is actively changing files or responding to your request, we now show a dialog when you try to quit Trixty IDE or close its window when a chat response is in progress:
 
 ![Screenshot of confirmation to exit with running chat.](https://code.visualstudio.com/assets/updates/1_103/confirm-chat-exit.png)
 
@@ -1014,7 +1014,7 @@ When you scaffold a new project with `#new` in chat, you can now make sure that 
 
 **Setting**: `chat.mcp.autostart:newAndOutdated`
 
-Previously, when you added or updated an MCP server configuration, VS Code would show a blue "refresh" icon in the Chat view, enabling you to manually refresh the list of tools. In the milestone, you can now configure the auto-start behavior for MCP servers, so you no longer have to manually restart the MCP server.
+Previously, when you added or updated an MCP server configuration, Trixty IDE would show a blue "refresh" icon in the Chat view, enabling you to manually refresh the list of tools. In the milestone, you can now configure the auto-start behavior for MCP servers, so you no longer have to manually restart the MCP server.
 
 Use the `chat.mcp.autostart:newAndOutdated` setting to control this behavior. You can also change this setting within the icon's tooltip and see which servers will be started:
 
@@ -1022,15 +1022,15 @@ Use the `chat.mcp.autostart:newAndOutdated` setting to control this behavior. Yo
 
 The first time an MCP server is started after being updated or changed, we now show a dialog asking you to trust the server. Giving trust to these servers is particularly important with autostart turned on to prevent running undesirable commands unknowingly.
 
-Learn more about [using MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) in our documentation.
+Learn more about [using MCP servers in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) in our documentation.
 
 #### Client credentials flow for remote MCP servers
 
-The ideal flow for a remote MCP server that wants to support authentication is to use an auth provider that supports Dynamic Client Registration (DCR). This enables the client (VS Code) to register itself with that auth provider, so the auth flow is seamless.
+The ideal flow for a remote MCP server that wants to support authentication is to use an auth provider that supports Dynamic Client Registration (DCR). This enables the client (Trixty IDE) to register itself with that auth provider, so the auth flow is seamless.
 
 However, not every auth provider supports DCR, so we introduced a client-credentials flow that enables you to supply your own client ID and (optionally) client secret that will be used when taking you through the auth provider's auth flow. Here's what that looks like:
 
-* Step 1: VS Code detects that DCR can't be used, and asks if you want to do the client credentials flow:
+* Step 1: Trixty IDE detects that DCR can't be used, and asks if you want to do the client credentials flow:
 
     ![Screenshot of a modal dialog saying that DCR is not supported but you can provide client credentials manually.](https://code.visualstudio.com/assets/updates/1_103/mcp-auth-no-dcr1.png)
 
@@ -1060,7 +1060,7 @@ or at the root of the menu if you don't have any MCP server accounts yet:
 
 #### Support for `resource_link` and structured output
 
-VS Code now fully supports the latest MCP specification, version `2025-06-18`, with support for `resource_link`s and structured output in tool results.
+Trixty IDE now fully supports the latest MCP specification, version `2025-06-18`, with support for `resource_link`s and structured output in tool results.
 
 ### Editor Experience
 
@@ -1100,7 +1100,7 @@ We're excited to announce that we've open sourced the GitHub Copilot Chat extens
 
 This marks a significant milestone in our commitment to transparency and community collaboration. By open sourcing the extension, we're enabling the community to:
 
-* **Contribute directly** to the development of AI-powered chat experiences in VS Code
+* **Contribute directly** to the development of AI-powered chat experiences in Trixty IDE
 * **Understand the implementation** of chat modes, custom instructions, and AI integrations
 * **Build upon our work** to create even better AI developer tools
 * **Participate in shaping the future** of AI-assisted coding
@@ -1141,7 +1141,7 @@ Selecting **Modes** shows all currently installed custom modes and enables you t
 
 You can now import a chat mode file from an external link, such as a gist. For example, the following link will import the chat mode file for Burke's GPT 4.1 Beast Mode:
 
-[Burke's GPT 4.1 Beast Mode (VS Code)](vscode:chat-mode/install?url=https://gist.githubusercontent.com/burkeholland/a232b706994aa2f4b2ddd3d97b11f9a7/raw/6e497f4b4ef5e7ea36787ef38fdf4385433591c1/4.1.chatmode.md)
+[Burke's GPT 4.1 Beast Mode (Trixty IDE)](vscode:chat-mode/install?url=https://gist.githubusercontent.com/burkeholland/a232b706994aa2f4b2ddd3d97b11f9a7/raw/6e497f4b4ef5e7ea36787ef38fdf4385433591c1/4.1.chatmode.md)
 
 This will prompt for a destination folder and a name for the mode and then import the mode file from the URL in the link. The same mechanism is also available for prompt and instruction files.
 
@@ -1227,11 +1227,11 @@ Agent mode sometimes wants to run commands with a `cd` statement, just in case. 
 
 Agent mode now understands which background terminals it has created and which tasks are actively running. The agent can read task output by using the new `GetTaskOutput` tool, which helps prevent running duplicate tasks and improves workspace context.
 
-![Screenshot of VS Code window showing two build tasks running in the terminal panel. The left terminal displays several errors. The chat agent replies to describe status of my build tasks with a summary of each task's output.](https://code.visualstudio.com/assets/updates/1_102/task-status.png)
+![Screenshot of Trixty IDE window showing two build tasks running in the terminal panel. The left terminal displays several errors. The chat agent replies to describe status of my build tasks with a summary of each task's output.](https://code.visualstudio.com/assets/updates/1_102/task-status.png)
 
 #### Maximized chat view
 
-You can now maximize the Secondary Side Bar to span the editor area and hide the Primary Side Bar and panel area. VS Code will remember this state between restarts and will restore the Chat view when you open an editor or view.
+You can now maximize the Secondary Side Bar to span the editor area and hide the Primary Side Bar and panel area. Trixty IDE will remember this state between restarts and will restore the Chat view when you open an editor or view.
 
 <video src="https://code.visualstudio.com/assets/updates/1_102/auxmax.mp4" title="Video showing maximizing the Secondary Side Bar." autoplay loop controls muted></video>
 
@@ -1241,13 +1241,13 @@ You can toggle in and out of the maximized state by using the new icon next to t
 
 We now show a badge over the application icon in the dock when the window is not focused and the agent needs user confirmation to continue. The badge will disappear as soon as the related window that triggered it receives focus.
 
-![Screenshot of the VS Code dock icon showing an agent confirmation as a badge.](https://code.visualstudio.com/assets/updates/1_102/badge.png)
+![Screenshot of the Trixty IDE dock icon showing an agent confirmation as a badge.](https://code.visualstudio.com/assets/updates/1_102/badge.png)
 
 You can enable or disable this badge via the `chat.notifyWindowOnConfirmation` setting.
 
 #### Start chat from the command line
 
-A new subcommand `chat` is added to the VS Code CLI that enables you to start a chat session in the current working directory with the prompt provided.
+A new subcommand `chat` is added to the Trixty IDE CLI that enables you to start a chat session in the current working directory with the prompt provided.
 
 <video src="https://code.visualstudio.com/assets/updates/1_102/chatcli.mp4" title="Video showing the Chat CLI in action to open the Chat view from the command line and run a prompt." autoplay loop controls muted></video>
 
@@ -1277,29 +1277,29 @@ We think this is clearer... That said, in a future release we will explore more 
 
 ### MCP
 
-#### MCP support in VS Code is generally available
+#### MCP support in Trixty IDE is generally available
 
-We've have been working on expanding MCP support in VS Code for the past few months, and [support the full range of MCP features in the specification](https://code.visualstudio.com/blogs/2025/06/12/full-mcp-spec-support). As of this release, MCP support is now generally available in VS Code!
+We've have been working on expanding MCP support in Trixty IDE for the past few months, and [support the full range of MCP features in the specification](https://code.visualstudio.com/blogs/2025/06/12/full-mcp-spec-support). As of this release, MCP support is now generally available in Trixty IDE!
 
-You can get started by installing some of the [popular MCP servers from our curated list](https://code.visualstudio.com/mcp). Learn more about [using MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) and how you can use them to extend agent mode.
+You can get started by installing some of the [popular MCP servers from our curated list](https://code.visualstudio.com/mcp). Learn more about [using MCP servers in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) and how you can use them to extend agent mode.
 
 ![Screenshot that shows the MCP Servers page.](https://code.visualstudio.com/assets/updates/1_102/mcp-servers-page.png)
 
-If you want to build your own MCP server, check our [MCP developer guide](https://code.visualstudio.com/api/extension-guides/ai/mcp) for more details about how to take advantage of the MCP capabilities in VS Code.
+If you want to build your own MCP server, check our [MCP developer guide](https://code.visualstudio.com/api/extension-guides/ai/mcp) for more details about how to take advantage of the MCP capabilities in Trixty IDE.
 
 #### Support for elicitations
 
-The latest MCP specification added support for [Elicitations](https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation) as a way for MCP servers to request input from MCP clients. The latest version of VS Code adopts this specification and includes support for elicitations.
+The latest MCP specification added support for [Elicitations](https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation) as a way for MCP servers to request input from MCP clients. The latest version of Trixty IDE adopts this specification and includes support for elicitations.
 
 <video src="https://code.visualstudio.com/assets/updates/1_102/mcp-server-elicit.mp4" autoplay loop controls muted></video>
 
 #### MCP server discovery and installation
 
-The new **MCP Servers** section in the Extensions view includes welcome content that links directly to the [popular MCP servers from our curated list](https://code.visualstudio.com/mcp). Visit the website to explore available MCP servers and select **Install** on any MCP server. This automatically launches VS Code and opens the MCP server editor that displays the server's readme and manifest information. You can review the server details and select **Install** to add the server to your VS Code instance.
+The new **MCP Servers** section in the Extensions view includes welcome content that links directly to the [popular MCP servers from our curated list](https://code.visualstudio.com/mcp). Visit the website to explore available MCP servers and select **Install** on any MCP server. This automatically launches Trixty IDE and opens the MCP server editor that displays the server's readme and manifest information. You can review the server details and select **Install** to add the server to your Trixty IDE instance.
 
 Once installed, MCP servers automatically appear in your Extensions view under the **MCP SERVERS - INSTALLED** section, and their tools become available in the Chat view's tools Quick Pick. This makes it easy to verify that your MCP server is working correctly and access its capabilities immediately.
 
-<video src="https://code.visualstudio.com/assets/updates/1_102/mcp-servers-discovery-install.mp4" title="Video showing installing an MCP server from the MCP page on the VS Code website." autoplay loop controls muted></video>
+<video src="https://code.visualstudio.com/assets/updates/1_102/mcp-servers-discovery-install.mp4" title="Video showing installing an MCP server from the MCP page on the Trixty IDE website." autoplay loop controls muted></video>
 
 #### MCP server management view
 
@@ -1318,30 +1318,30 @@ The view lists the installed MCP servers and provides several management actions
 * **Configure Model Access**: Manage which language models the server can access
 * **Show Sampling Requests**: View sampling requests for debugging
 * **Browse Resources**: Explore resources provided by the server
-* **Uninstall**: Remove the server from your VS Code instance
+* **Uninstall**: Remove the server from your Trixty IDE instance
 
-When you select an installed MCP server, VS Code opens the MCP server editor displaying the server's readme details, manifest, and its runtime configuration. This provides an overview of the server's capabilities and current settings, making it easy to understand what the server does and how it's configured.
+When you select an installed MCP server, Trixty IDE opens the MCP server editor displaying the server's readme details, manifest, and its runtime configuration. This provides an overview of the server's capabilities and current settings, making it easy to understand what the server does and how it's configured.
 
 ![Screenshot showing the MCP server editor with runtime configuration.](https://code.visualstudio.com/assets/updates/1_102/mcp-server-editor-configuration.png)
 
-The **MCP SERVERS - INSTALLED** view also provides a **Browse MCP Servers...** action that takes you directly to the community website, making server discovery always accessible from within VS Code.
+The **MCP SERVERS - INSTALLED** view also provides a **Browse MCP Servers...** action that takes you directly to the community website, making server discovery always accessible from within Trixty IDE.
 
 ![Screenshot that shows the Browse MCP Servers action in the MCP Servers view.](https://code.visualstudio.com/assets/updates/1_102/mcp-servers-browse-action.png)
 
 #### MCP servers as first-class resources
 
-MCP servers are now treated as first-class resources in VS Code, similar to user tasks and other profile-specific configurations. This represents a significant architectural improvement from the previous approach where MCP servers were stored in user settings. This change makes MCP server management more robust and provides better separation of concerns between your general VS Code settings and your MCP server configurations. When you install or configure MCP servers, they're automatically stored in the appropriate [profile](https://code.visualstudio.com/docs/configure/profiles)-specific location to ensure that your main settings file stays clean and focused.
+MCP servers are now treated as first-class resources in Trixty IDE, similar to user tasks and other profile-specific configurations. This represents a significant architectural improvement from the previous approach where MCP servers were stored in user settings. This change makes MCP server management more robust and provides better separation of concerns between your general Trixty IDE settings and your MCP server configurations. When you install or configure MCP servers, they're automatically stored in the appropriate [profile](https://code.visualstudio.com/docs/configure/profiles)-specific location to ensure that your main settings file stays clean and focused.
 
 * **Dedicated storage**: MCP servers are now stored in a dedicated `mcp.json` file within each profile, rather than cluttering your user settings file
-* **Profile-specific**: Each VS Code profile maintains its own set of MCP servers, enabling you to have different server configurations for different workflows or projects
+* **Profile-specific**: Each Trixty IDE profile maintains its own set of MCP servers, enabling you to have different server configurations for different workflows or projects
 * **Settings Sync integration**: MCP servers sync seamlessly across your devices through [Settings Sync](https://code.visualstudio.com/docs/configure/settings-sync), with granular control over what gets synchronized
 
 ##### MCP migration support
 
-With MCP servers being first-class resources and the associated change to their configuration, VS Code provides comprehensive migration support for users upgrading from the previous MCP server configuration format:
+With MCP servers being first-class resources and the associated change to their configuration, Trixty IDE provides comprehensive migration support for users upgrading from the previous MCP server configuration format:
 
 * **Automatic detection**: Existing MCP servers in `settings.json` are automatically detected and migrated to the new profile-specific `mcp.json` format
-* **Real-time migration**: When you add MCP servers to user settings, VS Code immediately migrates them with a helpful notification explaining the change
+* **Real-time migration**: When you add MCP servers to user settings, Trixty IDE immediately migrates them with a helpful notification explaining the change
 * **Cross-platform support**: Migration works seamlessly across all development scenarios including local, remote, WSL, and Codespaces environments
 
 This migration ensures that your existing MCP server configurations continue to work without any manual intervention while providing the enhanced management capabilities of the new architecture.
@@ -1372,7 +1372,7 @@ You are now able to sign out or disconnect accounts from the MCP gear menu and q
 * MCP quick pick:
     ![Screenshot showing the Disconnect Account action shown in MCP quick pick menu.](https://code.visualstudio.com/assets/updates/1_102/mcp-qp-signout.png)
 
-The **Disconnect** action is shown when the account is used by either other MCP servers or extensions, while **Sign Out** is shown when the account is only used by the MCP server. The sign out action completely removes the account from VS Code, while disconnect only removes access to the account from the MCP server.
+The **Disconnect** action is shown when the account is used by either other MCP servers or extensions, while **Sign Out** is shown when the account is only used by the MCP server. The sign out action completely removes the account from Trixty IDE, while disconnect only removes access to the account from the MCP server.
 
 ### Code Editing
 
@@ -1416,7 +1416,7 @@ GitHub Copilot updates from [May 2025](https://code.visualstudio.com/updates/v1_
 
 #### Chat tool sets
 
-VS Code now enables you to define tool sets, either through a proposed API or through the UI. A tool set is a collection of different tools that can be used just like individual tools. Tool sets make it easier to group related tools together, and quickly enable or disable them in agent mode. For instance, the tool set below is for managing GitHub notifications (using the [GitHub MCP server](https://github.com/github/github-mcp-server)).
+Trixty IDE now enables you to define tool sets, either through a proposed API or through the UI. A tool set is a collection of different tools that can be used just like individual tools. Tool sets make it easier to group related tools together, and quickly enable or disable them in agent mode. For instance, the tool set below is for managing GitHub notifications (using the [GitHub MCP server](https://github.com/github/github-mcp-server)).
 
 ```json
 {
@@ -1442,7 +1442,7 @@ Learn more about [tools sets](https://code.visualstudio.com/docs/copilot/chat/ch
 
 #### MCP support for prompts
 
-VS Code's Model Context Protocol support now includes prompt support. Prompts can be defined by MCP servers to generate reusable snippets or tasks for the language model. Prompts are accessible as slash `/` commands in chat, in the format `/mcp.servername.promptname`. You can enter plain text or include command output in prompt variables, and we also support completions when servers provide it.
+Trixty IDE's Model Context Protocol support now includes prompt support. Prompts can be defined by MCP servers to generate reusable snippets or tasks for the language model. Prompts are accessible as slash `/` commands in chat, in the format `/mcp.servername.promptname`. You can enter plain text or include command output in prompt variables, and we also support completions when servers provide it.
 
 The following example shows how we generate a prompt using AI, save it using the [Gistpad MCP server](https://github.com/lostintangent/gistpad-mcp), and then use it to generate a changelog entry:
 
@@ -1450,7 +1450,7 @@ The following example shows how we generate a prompt using AI, save it using the
 
 #### MCP support for resources
 
-VS Code's Model Context Protocol support now includes resource support, which includes support for resource templates. It is available in several places:
+Trixty IDE's Model Context Protocol support now includes resource support, which includes support for resource templates. It is available in several places:
 
 1. Resources returned from MCP tool calls are available to the model and can be saved in chat, either via a **Save** button or by dragging the resource onto the Explorer view.
 1. Resources can be attached as context via the **Add Context...** button in chat, then selecting **MCP Resources...**.
@@ -1462,7 +1462,7 @@ Here's an example of attaching resources from the [Gistpad MCP server](https://g
 
 #### MCP support for sampling (Experimental)
 
-VS Code's Model Context Protocol support now includes sampling, which allows MCP servers to make requests back to the model. You'll be asked to confirm the first time an MCP server makes a sampling request, and you can configure the models the MCP server has access to as well as see a request log by selecting the server in **MCP: List Servers.**
+Trixty IDE's Model Context Protocol support now includes sampling, which allows MCP servers to make requests back to the model. You'll be asked to confirm the first time an MCP server makes a sampling request, and you can configure the models the MCP server has access to as well as see a request log by selecting the server in **MCP: List Servers.**
 
 <video src="https://code.visualstudio.com/assets/updates/1_101/mcp-sampling.mp4" autoplay loop controls muted></video>
 
@@ -1470,7 +1470,7 @@ Sampling support is still preliminary and we plan to expand and improve it in fu
 
 #### MCP support for auth
 
-VS Code now supports MCP servers that require authentication, allowing you to interact with an MCP server that operates on behalf of your user account for that service.
+Trixty IDE now supports MCP servers that require authentication, allowing you to interact with an MCP server that operates on behalf of your user account for that service.
 
 This feature implements the MCP authorization specification for clients, and supports both:
 
@@ -1493,7 +1493,7 @@ For other MCP servers that rely on dynamic client registration, we include the a
 
 There you can also sign out. For these we support not only the code authorization flow but also the device code flow should your authorization server support it.
 
-We have also introduced the command `Authentication: Remove Dynamic Authentication Providers` that allows you to clean up any of these dynamic client registrations. This will throw away the client id issued to VS Code and all data associated with this authentication provider.
+We have also introduced the command `Authentication: Remove Dynamic Authentication Providers` that allows you to clean up any of these dynamic client registrations. This will throw away the client id issued to Trixty IDE and all data associated with this authentication provider.
 
 Remember, you can use the **MCP: Add Server...** command to add MCP servers. This is the same entry point for servers with authentication.
 
@@ -1520,7 +1520,7 @@ You can enable _development mode_ for MCP servers by adding a `dev` key to the s
 
 #### Chat UX improvements
 
-We're continuously working to improve the chat user experience in VS Code based on your feedback. One such feedback was that it can be difficult to distinguish between user messages and AI responses in the chat. To address this, we've made the appearance of user messages more distinct.
+We're continuously working to improve the chat user experience in Trixty IDE based on your feedback. One such feedback was that it can be difficult to distinguish between user messages and AI responses in the chat. To address this, we've made the appearance of user messages more distinct.
 
 Undoing previous requests is now also more visible - just hover over a request and select the `X` button to undo that request and any following requests. Or even quicker, use the <kbd>Delete</kbd> keyboard shortcut!
 
@@ -1528,11 +1528,11 @@ Finally, attachments from the chat input box are now more navigable.
 
 <video src="https://code.visualstudio.com/assets/updates/1_101/new-chat-ui-ux.mp4" title="A video of the new chat UI/UX where a request is removed to undo edits since that point." autoplay loop controls muted></video>
 
-Learn more about using [chat in VS Code](https://code.visualstudio.com/docs/copilot/chat/copilot-chat) in our documentation.
+Learn more about using [chat in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/copilot-chat) in our documentation.
 
 #### Apply edits more efficiently
 
-When editing files, VS Code can take two different approaches: it either rewrites the file top to bottom or it makes multiple, smaller edits. Both approaches differ, for example the former can be slower for large files and intermediate states do often not compile successfully. Because of that the UI adopts and conditionally disables auto-save and squiggles, but only when needed.
+When editing files, Trixty IDE can take two different approaches: it either rewrites the file top to bottom or it makes multiple, smaller edits. Both approaches differ, for example the former can be slower for large files and intermediate states do often not compile successfully. Because of that the UI adopts and conditionally disables auto-save and squiggles, but only when needed.
 
 We have also aligned the keybindings for the **Keep** and **Undo** commands. Keeping and undoing individual changes is now done with <kbd>Ctrl+Y</kbd> and <kbd>Ctrl+N</kbd>. In the same spirit, we have also aligned the keybinding for keeping and undoing all changes in a file, they are now <kbd>Ctrl+Shift+Y</kbd> and <kbd>Ctrl+Shift+N</kbd>. This is not just for alignment but also removes prior conflicts with popular editing commands (like **Delete All Left**).
 
@@ -1584,7 +1584,7 @@ The plan consists of a Markdown document that describes the implementation plan,
 * Testing: A list of tests that need to be implemented to verify the feature or refactoring task.
 ```
 
-> **Note**: The feature is work in progress, but please try it out! Please follow the latest progress in VS Code Insiders and let us know what's not working or is missing.
+> **Note**: The feature is work in progress, but please try it out! Please follow the latest progress in Trixty IDE Insiders and let us know what's not working or is missing.
 
 #### Task diagnostic awareness
 
@@ -1598,7 +1598,7 @@ When agent mode has opened a terminal and shell integration is active, the chat 
 
 When you move a chat session into a floating window, there are now two new actions available in the title bar:
 
-* Dock the chat back into the VS Code window where it came from
+* Dock the chat back into the Trixty IDE window where it came from
 * Start a new chat session in the floating window.
 
 ![Screenshot of the Chat view in a floating window, highlighting the Dock and New Chat buttons in the title bar.](https://code.visualstudio.com/assets/updates/1_101/chat-floating.png)
@@ -1651,7 +1651,7 @@ When a confirmation dialog appears in a response, the action’s title is now in
 
 This milestone, we added a toggle to the Settings editor that starts an AI search to find semantically similar results instead of results that are based on string matching. For example, the AI search finds the `editor.fontSize` setting when you search for "increase text size".
 
-To see the toggle, enable the setting and reload VS Code. We are also in the process of identifying and fixing some of the less accurate settings search results, and we welcome feedback on when a natural language query did not find an expected setting.
+To see the toggle, enable the setting and reload Trixty IDE. We are also in the process of identifying and fixing some of the less accurate settings search results, and we welcome feedback on when a natural language query did not find an expected setting.
 
 For the next milestone, we are also considering removing the toggle and changing the experimental setting to one that controls when to directly append the slower AI search results to the end of the list.
 
@@ -1663,7 +1663,7 @@ For the next milestone, we are also considering removing the toggle and changing
 
 Last milestone, we introduced [keyword suggestions](https://code.visualstudio.com/updates/v1_100#_semantic-text-search-with-keyword-suggestions-experimental) in the Search view to help you find relevant results faster. We have now significantly improved the performance of the suggestions, so you will see the results ~5x faster than before.
 
-We have also moved the setting from the Chat extension into VS Code core, and renamed it from `github.copilot.chat.search.keywordSuggestions` to `search.searchView.keywordSuggestions`.
+We have also moved the setting from the Chat extension into Trixty IDE core, and renamed it from `github.copilot.chat.search.keywordSuggestions` to `search.searchView.keywordSuggestions`.
 
 #### Semantic search behavior options (Preview)
 
@@ -1728,11 +1728,11 @@ A snippet of the code is shown from a notebook cell when the agent requests conf
 
 #### Copilot coding agent integration
 
-With Copilot coding agent, GitHub Copilot can work independently in the background to complete tasks, just like a human developer. We have expanded the GitHub Pull Requests extension to make it easier to assign and track tasks for the agent from within VS Code.
+With Copilot coding agent, GitHub Copilot can work independently in the background to complete tasks, just like a human developer. We have expanded the GitHub Pull Requests extension to make it easier to assign and track tasks for the agent from within Trixty IDE.
 
 We have added the following features to the extension:
 
-* **Assign to Copilot**: assign a pull request or issue to Copilot from the issue or PR view in VS Code
+* **Assign to Copilot**: assign a pull request or issue to Copilot from the issue or PR view in Trixty IDE
 * **Copilot on My Behalf** PR query: quickly see all pull requests that Copilot is working on for you.
 * **PR view**: see the status of the Copilot coding agent and open the session details in the browser.
 
@@ -1754,7 +1754,7 @@ GitHub Copilot updates from [April 2025](https://code.visualstudio.com/updates/v
 
 #### Prompt and instructions files
 
-You can tailor your AI experience in VS Code to your specific coding practices and technology stack by using Markdown-based instructions and prompt files. We've aligned the implementation and usage of these two related concepts, however they each have distinct purposes.
+You can tailor your AI experience in Trixty IDE to your specific coding practices and technology stack by using Markdown-based instructions and prompt files. We've aligned the implementation and usage of these two related concepts, however they each have distinct purposes.
 
 ##### Instructions files
 
@@ -1837,15 +1837,15 @@ Learn more about [prompt files](https://code.visualstudio.com/docs/copilot/copil
 
 #### Faster agent mode edits with GPT 4.1
 
-We've implemented support for OpenAI's apply patch editing format when using GPT 4.1 and o4-mini in agent mode. This means that you benefit from significantly faster edits, especially in large files. The tool is enabled by default in VS Code Insiders and will be progressively rolled out in VS Code Stable.
+We've implemented support for OpenAI's apply patch editing format when using GPT 4.1 and o4-mini in agent mode. This means that you benefit from significantly faster edits, especially in large files. The tool is enabled by default in Trixty IDE Insiders and will be progressively rolled out in Trixty IDE Stable.
 
 #### Use GPT 4.1 as the base model
 
-When you're using chat in VS Code, the base model is now updated to GPT-4.1. You can still use the model switcher in the Chat view to change to another model.
+When you're using chat in Trixty IDE, the base model is now updated to GPT-4.1. You can still use the model switcher in the Chat view to change to another model.
 
 #### Search code of a GitHub repository with the `#githubRepo` tool
 
-Imagine you need to ask a question about a GitHub repository, but you don't have it open in your editor. You can now use the `#githubRepo` tool to search for code snippets in any GitHub repository that you have access to. This tool takes a `USER/REPO` and is a great way to quickly ask about a project you don't currently have open in VS Code.
+Imagine you need to ask a question about a GitHub repository, but you don't have it open in your editor. You can now use the `#githubRepo` tool to search for code snippets in any GitHub repository that you have access to. This tool takes a `USER/REPO` and is a great way to quickly ask about a project you don't currently have open in Trixty IDE.
 
 You can also use [custom instructions](https://code.visualstudio.com/docs/copilot/copilot-customization#_custom-instructions) to hint to Copilot when and how to use this tool:
 
@@ -1853,7 +1853,7 @@ You can also use [custom instructions](https://code.visualstudio.com/docs/copilo
 ---
 applyTo: '**'
 ---
-Use the `#githubRepo` tool with `microsoft/vscode` to find relevant code snippets in the VS Code codebase.
+Use the `#githubRepo` tool with `microsoft/vscode` to find relevant code snippets in the Trixty IDE codebase.
 Use the `#githubRepo` tool with `microsoft/typescript` to answer questions about how TypeScript is implemented.
 ```
 
@@ -1861,7 +1861,7 @@ Use the `#githubRepo` tool with `microsoft/typescript` to answer questions about
 
 If you want to ask about the repo you are currently working on, you can just use the [`#codebase` tool](https://code.visualstudio.com/docs/copilot/reference/workspace-context#_making-copilot-chat-an-expert-in-your-workspace).
 
-Also, the `#githubRepo` tool is only for searching for relevant code snippets. The [GitHub MCP server](https://github.com/github/github-mcp-server?tab=readme-ov-file#github-mcp-server) provides tools for working with GitHub issues and pull requests. Learn more about [adding MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server).
+Also, the `#githubRepo` tool is only for searching for relevant code snippets. The [GitHub MCP server](https://github.com/github/github-mcp-server?tab=readme-ov-file#github-mcp-server) provides tools for working with GitHub issues and pull requests. Learn more about [adding MCP servers in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server).
 
 #### Find Marketplace extensions with the extensions tool
 
@@ -1930,7 +1930,7 @@ This release adds support for the new Streamable HTTP transport for Model Contex
 }
 ```
 
-Learn more about [MCP support in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
+Learn more about [MCP support in Trixty IDE](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
 #### MCP support for image output
 
@@ -1984,11 +1984,11 @@ In the previous release, we introduced the `chat.newWorkspaceCreation.enabled` (
 
 Now, at the end of this creation flow, you are prompted to create and run a task for launching your app or project. This streamlines the project launch process and enables easy task reuse.
 
-### Configure VS Code
+### Configure Trixty IDE
 
-#### Prevent installation of Copilot Chat pre-release versions in VS Code stable
+#### Prevent installation of Copilot Chat pre-release versions in Trixty IDE stable
 
-VS Code now prevents the installation of the pre-release version of the Copilot Chat extension in VS Code Stable. This helps avoid situations where you inadvertently install the Copilot Chat pre-release version and get stuck in a broken state. This means that you can only install the Copilot Chat extension pre-release version in the Insiders build of VS Code.
+Trixty IDE now prevents the installation of the pre-release version of the Copilot Chat extension in Trixty IDE Stable. This helps avoid situations where you inadvertently install the Copilot Chat pre-release version and get stuck in a broken state. This means that you can only install the Copilot Chat extension pre-release version in the Insiders build of Trixty IDE.
 
 #### Semantic text search with keyword suggestions (Experimental)
 
@@ -2061,13 +2061,13 @@ Additionally, a new accessibility help dialog is available in [agent mode](https
 
 #### Accessibility Signals for chat edit actions
 
-VS Code now provides auditory signals when you keep or undo AI-generated edits. These signals are configurable via `accessibility.signals.editsKept` and `accessibility.signals.editsUndone`.
+Trixty IDE now provides auditory signals when you keep or undo AI-generated edits. These signals are configurable via `accessibility.signals.editsKept` and `accessibility.signals.editsUndone`.
 
 ### Configure the editor
 
 #### Unified chat experience
 
-We have streamlined the chat experience in VS Code into a single unified Chat view. Instead of having to move between separate views and lose the context of a conversation, you can now easily switch between the different chat modes.
+We have streamlined the chat experience in Trixty IDE into a single unified Chat view. Instead of having to move between separate views and lose the context of a conversation, you can now easily switch between the different chat modes.
 
 ![Screenshot that shows the chat mode picker in the Chat view.](https://code.visualstudio.com/assets/updates/1_99/chat-modes.png)
 
@@ -2083,7 +2083,7 @@ Get more details about the [unified chat view](#unified-chat-view).
 
 [Remote workspace indexes](https://code.visualstudio.com/docs/copilot/reference/workspace-context#remote-index) accelerate searching large codebases for relevant code snippets that AI uses while answering questions and generating edits. These remote indexes are especially useful for large codebases with tens or even hundreds of thousands of files.
 
-Previously, you'd have to press a button or run a command to build and start using a remote workspace index. With our new instant indexing support, we now automatically build the remote workspace index when you first try to ask a `#codebase`/`@workspace` question. In most cases, this remote index can be built in a few seconds. Once built, any codebase searches that you or anyone else working with that repo in VS Code makes will automatically use the remote index.
+Previously, you'd have to press a button or run a command to build and start using a remote workspace index. With our new instant indexing support, we now automatically build the remote workspace index when you first try to ask a `#codebase`/`@workspace` question. In most cases, this remote index can be built in a few seconds. Once built, any codebase searches that you or anyone else working with that repo in Trixty IDE makes will automatically use the remote index.
 
 Keep in mind that remote workspaces indexes are currently only available for code stored on GitHub. To use a remote workspace index, make sure your workspace contains a git project with a GitHub remote. You can use the [Copilot status menu](#copilot-status-menu) to see the type of index currently being used:
 
@@ -2119,11 +2119,11 @@ If you want to see this experience for yourself, enable the `chat.setupFromDialo
 
 #### Chat prerelease channel mismatch
 
-If you have the prerelease version of the Copilot Chat extension installed in VS Code Stable, a new welcome screen will inform you that this configuration is not supported. Due to rapid development of chat features, the extension will not activate in VS Code Stable.
+If you have the prerelease version of the Copilot Chat extension installed in Trixty IDE Stable, a new welcome screen will inform you that this configuration is not supported. Due to rapid development of chat features, the extension will not activate in Trixty IDE Stable.
 
-The welcome screen provides options to either switch to the release version of the extension or download [VS Code Insiders](https://code.visualstudio.com/insiders/).
+The welcome screen provides options to either switch to the release version of the extension or download [Trixty IDE Insiders](https://code.visualstudio.com/insiders/).
 
-![Screenshot that shows the welcome view of chat, indicating that the pre-release version of the extension is not supported in VS Code stable. A button is shown to switch to the release version, and a secondary link is shown to switch to VS Code Insiders.](https://code.visualstudio.com/assets/updates/1_99/welcome-pre-release.png)
+![Screenshot that shows the welcome view of chat, indicating that the pre-release version of the extension is not supported in Trixty IDE stable. A button is shown to switch to the release version, and a secondary link is shown to switch to Trixty IDE Insiders.](https://code.visualstudio.com/assets/updates/1_99/welcome-pre-release.png)
 
 #### Semantic text search improvements (Experimental)
 
@@ -2139,11 +2139,11 @@ You can also reference the semantic search results in your chat prompt by using 
 
 ### Code Editing
 
-#### Agent mode is available in VS Code Stable
+#### Agent mode is available in Trixty IDE Stable
 
 **Setting**: `chat.agent.enabled:true`
 
-We're happy to announce that agent mode is available in VS Code Stable! Enable it by setting `chat.agent.enabled:true`. Enabling the setting will no longer be needed in the following weeks, as we roll out enablement by default to all users.
+We're happy to announce that agent mode is available in Trixty IDE Stable! Enable it by setting `chat.agent.enabled:true`. Enabling the setting will no longer be needed in the following weeks, as we roll out enablement by default to all users.
 
 Check out the [agent mode documentation](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode) or select agent mode from the chat mode picker in the Chat view.
 
@@ -2178,7 +2178,7 @@ A downside is that this means that the new mode only works with the same reduced
 
 We've learned that prompting to get consistent results across different models is harder when using tools, but we are working on getting these models lit up for edit (and agent) modes.
 
-This setting will be enabled gradually for users in VS Code Stable.
+This setting will be enabled gradually for users in Trixty IDE Stable.
 
 #### Inline suggestion syntax highlighting
 
@@ -2196,7 +2196,7 @@ If you prefer inline suggestions without syntax highlighting, you can disable it
 
 #### Model Context Protocol server support
 
-This release supports [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers in agent mode. Once configured in VS Code, MCP servers provide tools for agent mode to interact with other systems, such as databases, cloud platforms, search engines, or any 3rd party API.
+This release supports [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers in agent mode. Once configured in Trixty IDE, MCP servers provide tools for agent mode to interact with other systems, such as databases, cloud platforms, search engines, or any 3rd party API.
 
 MCP servers can be configured under the `mcp` section in your user, remote, or `.code-workspace` settings, or in `.vscode/mcp.json` in your workspace. The configuration supports input variables to avoid hard-coding secrets and constants. For example, you can use `${env:API_KEY}` to reference an environment variable or `${input:ENDPOINT}` to prompt for a value when the server is started.
 
@@ -2207,15 +2207,15 @@ When a new MCP server is added, a refresh action is shown in the Chat view, whic
 <video src="https://code.visualstudio.com/assets/updates/1_99/mcp.mp4" title="Video that shows using a Github MCP tool in chat." autoplay loop controls muted></video>
 _Theme: [Codesong](https://marketplace.visualstudio.com/items?itemName=connor4312.codesong) (preview on [vscode.dev](https://vscode.dev/editor/theme/connor4312.codesong))_
 
-If you've already been using MCP servers in other applications such as Claude Desktop, VS Code will discover them and offer to run them for you. This behavior can be toggled with the setting `chat.mcp.discovery.enabled`.
+If you've already been using MCP servers in other applications such as Claude Desktop, Trixty IDE will discover them and offer to run them for you. This behavior can be toggled with the setting `chat.mcp.discovery.enabled`.
 
 You can see the list of MCP servers and their current status using the **MCP: List Servers** command, and pick the tools available for use in chat by using the **Select Tools** button in agent mode.
 
 You can read more about how to install and use MCP servers in [our documentation](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
-#### Making agent mode available in VS Code Stable
+#### Making agent mode available in Trixty IDE Stable
 
-We're happy to announce that agent mode is available in VS Code Stable! Enable it by setting `chat.agent.enabled:true`. Enabling the setting will no longer be needed in the following weeks, as we roll out enablement by default to all users.
+We're happy to announce that agent mode is available in Trixty IDE Stable! Enable it by setting `chat.agent.enabled:true`. Enabling the setting will no longer be needed in the following weeks, as we roll out enablement by default to all users.
 
 Check out the [agent mode documentation](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode) or select agent mode from the chat mode picker in the Chat view.
 
@@ -2258,17 +2258,17 @@ In agent mode this tool will be picked up automatically but you can also referen
 
 **Setting**: `github.copilot.chat.newWorkspaceCreation.enabled`
 
-You can now scaffold a new VS Code workspace in [agent mode](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode). Whether you’re setting up a VS Code extension, an MCP server, or other development environments, agent mode helps you to initialize, configure, and launch these projects with the necessary dependencies and settings.
+You can now scaffold a new Trixty IDE workspace in [agent mode](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode). Whether you’re setting up a Trixty IDE extension, an MCP server, or other development environments, agent mode helps you to initialize, configure, and launch these projects with the necessary dependencies and settings.
 
 <video src="https://code.visualstudio.com/assets/updates/1_99/new-workspace-demo.mp4" title="Video showing creation of a new MCP server to fetch top N stories from hacker news using Agent mode." autoplay loop controls muted></video>
 
-#### VS Code extension tools in agent mode
+#### Trixty IDE extension tools in agent mode
 
-Several months ago, we finalized our extension API for [language model tools](https://code.visualstudio.com/api/extension-guides/tools#create-a-language-model-tool) contributed by VS Code extensions. Now, you can use these tools in agent mode.
+Several months ago, we finalized our extension API for [language model tools](https://code.visualstudio.com/api/extension-guides/tools#create-a-language-model-tool) contributed by Trixty IDE extensions. Now, you can use these tools in agent mode.
 
 Any tool contributed to this API which sets `toolReferenceName` and `canBeReferencedInPrompt` in its configuration is automatically available in agent mode.
 
-By contributing a tool in an extension, it has access to the full VS Code extension APIs, and can be easily installed via the Extension Marketplace.
+By contributing a tool in an extension, it has access to the full Trixty IDE extension APIs, and can be easily installed via the Extension Marketplace.
 
 Similar to tools from MCP servers, you can enable and disable these with the **Select Tools** button in agent mode. See our [language model tools extension guide](https://code.visualstudio.com/api/extension-guides/tools#create-a-language-model-tool) to build your own!
 
@@ -2280,13 +2280,13 @@ To optimize this experience, you can now remember that approval on a session, wo
 
 ![Screenshot that shows the agent mode tool Continue button dropdown options for remembering approval.](https://code.visualstudio.com/assets/updates/1_99/chat-tool-approval.png)
 
-In case you want to auto-approve _all_ tools, you can now use the experimental `chat.tools.autoApprove:true` setting. This will auto-approve all tools, and VS Code will not ask for confirmation when a language model wishes to run tools. Bear in mind that with this setting enabled, you will not have the opportunity to cancel potentially destructive actions a model wants to take.
+In case you want to auto-approve _all_ tools, you can now use the experimental `chat.tools.autoApprove:true` setting. This will auto-approve all tools, and Trixty IDE will not ask for confirmation when a language model wishes to run tools. Bear in mind that with this setting enabled, you will not have the opportunity to cancel potentially destructive actions a model wants to take.
 
 We plan to expand this setting with more granular capabilities in the future.
 
 #### Agent evaluation on SWE-bench
 
-VS Code's agent achieves a pass rate of 56.0% on `swebench-verified` with Claude 3.7 Sonnet, following Anthropic's [research](https://www.anthropic.com/engineering/swe-bench-sonnet) on configuring agents to execute without user input in the SWE-bench environment. Our experiments have translated into shipping improved prompts, tool descriptions and tool design for agent mode, including new tools for file edits that are in-distribution for Claude 3.5 and 3.7 Sonnet models.
+Trixty IDE's agent achieves a pass rate of 56.0% on `swebench-verified` with Claude 3.7 Sonnet, following Anthropic's [research](https://www.anthropic.com/engineering/swe-bench-sonnet) on configuring agents to execute without user input in the SWE-bench environment. Our experiments have translated into shipping improved prompts, tool descriptions and tool design for agent mode, including new tools for file edits that are in-distribution for Claude 3.5 and 3.7 Sonnet models.
 
 #### Unified Chat view
 
@@ -2295,7 +2295,7 @@ For the past several months, we've had a "Chat" view for asking questions to the
 ![Screenshot that shows the chat mode picker in the Chat view.](https://code.visualstudio.com/assets/updates/1_99/chat-modes.png)
 
 - **[Ask](https://code.visualstudio.com/docs/copilot/chat/chat-ask-mode)**: This is the same as the previous Chat view. Ask questions about your workspace or coding in general, using any model. Use `@` to invoke built-in chat participants or from installed [extensions](https://marketplace.visualstudio.com/search?term=chat-participant&target=VSCode&category=All%20categories&sortBy=Relevance). Use `#` to attach any kind of context manually.
-- **[Agent](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode)**: Start an agentic coding flow with a set of tools that let it autonomously collect context, run terminal commands, or take other actions to complete a task. Agent mode is enabled for all [VS Code Insiders](https://code.visualstudio.com/insiders/) users, and we are rolling it out to more and more users in VS Code Stable.
+- **[Agent](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode)**: Start an agentic coding flow with a set of tools that let it autonomously collect context, run terminal commands, or take other actions to complete a task. Agent mode is enabled for all [Trixty IDE Insiders](https://code.visualstudio.com/insiders/) users, and we are rolling it out to more and more users in Trixty IDE Stable.
 - **[Edit](https://code.visualstudio.com/docs/copilot/chat/copilot-edits)**: In Edit mode, the model can make directed edits to multiple files. Attach `#codebase` to let it find the files to edit automatically. But it won't run terminal commands or do anything else automatically.
 
 > **Note**: If you don't see agent mode in this list, then either it has not yet been enabled for you, or it's disabled by organization policy and needs to be enabled by the [organization owner](https://aka.ms/github-copilot-org-enable-features).
@@ -2304,7 +2304,7 @@ Besides making your chat experience simpler, this unification enables a few new 
 
 - **Switch modes in the middle of a conversation**: For example, you might start brainstorming an app idea in ask mode, then switch to agent mode to execute the plan. Tip: press <kbd>Ctrl+.</kbd> to change modes quickly.
 - **Edit sessions in history**: Use the **Show Chats** command (clock icon at the top of the Chat view) to restore past edit sessions and keep working on them.
-- **Move chat to editor or window**: Select **Open Chat in New Editor/New Window** to pop out your chat conversation from the side bar into a new editor tab or separate VS Code window. Chat has supported this for a long time, but now you can run your edit/agent sessions from an editor pane or a separate window as well.
+- **Move chat to editor or window**: Select **Open Chat in New Editor/New Window** to pop out your chat conversation from the side bar into a new editor tab or separate Trixty IDE window. Chat has supported this for a long time, but now you can run your edit/agent sessions from an editor pane or a separate window as well.
 - **Multiple agent sessions**: Following from the above point, this means that you can even run multiple agent sessions at the same time. You might like to have one chat in agent mode working on implementing a feature, and another independent session for doing research and using other tools. Directing two agent sessions to edit files at the same time is not recommended, it can lead to confusion.
 
 #### Bring Your Own Key (BYOK) (Preview)
@@ -2354,13 +2354,13 @@ This release, you can attach images from any browser via drag and drop. Images d
 
 #### AI notebook editing improvements
 
-AI-powered editing support for notebooks (including agent mode) is now available in the Stable release. This was added last month as a preview feature in [VS Code Insiders](https://code.visualstudio.com/insiders).
+AI-powered editing support for notebooks (including agent mode) is now available in the Stable release. This was added last month as a preview feature in [Trixty IDE Insiders](https://code.visualstudio.com/insiders).
 
 You can now use chat to edit notebook files with the same intuitive experience as editing code files: modify content across multiple cells, insert and delete cells, and change cell types. This feature provides a seamless workflow when working with data science or documentation notebooks.
 
 ##### New notebook tool
 
-VS Code now provides a dedicated tool for creating new Jupyter notebooks directly from chat. This tool plans and creates a new notebook based on your query.
+Trixty IDE now provides a dedicated tool for creating new Jupyter notebooks directly from chat. This tool plans and creates a new notebook based on your query.
 
 Use the new notebook tool in agent mode or edit mode (make sure to enable the improved edit mode with `chat.edits2.enabled:true)`. If you're using ask mode, type `/newNotebook` in the chat prompt to create a new notebook.
 
@@ -2398,7 +2398,7 @@ To attach the cell output image as chat context:
 
 The tool that allows agent mode to run commands in the terminal has a number of reliability and compatibility improvements. You should expect fewer cases where the tool gets stuck or where the command finishes without the output being present.
 
-One of the bigger changes is the introduction of the concept of "rich" quality [shell integration](https://code.visualstudio.com/docs/terminal/shell-integration), as opposed to "basic" and "none". The shell integration scripts shipped with VS Code should generally all enable rich shell integration which provides the best experience in the run in terminal tool (and terminal usage in general). You can view the shell integration quality by hovering over the terminal tab.
+One of the bigger changes is the introduction of the concept of "rich" quality [shell integration](https://code.visualstudio.com/docs/terminal/shell-integration), as opposed to "basic" and "none". The shell integration scripts shipped with Trixty IDE should generally all enable rich shell integration which provides the best experience in the run in terminal tool (and terminal usage in general). You can view the shell integration quality by hovering over the terminal tab.
 
 ---
 
@@ -2410,9 +2410,9 @@ GitHub Copilot updates from [February 2025](https://code.visualstudio.com/update
 
 #### Agent mode improvements (Experimental)
 
-Last month, we introduced _agent mode_ for Copilot Edits in [VS Code Insiders](https://code.visualstudio.com/insiders/). In agent mode, Copilot can automatically search your workspace for relevant context, edit files, check them for errors, and run terminal commands (with your permission) to complete a task end-to-end.
+Last month, we introduced _agent mode_ for Copilot Edits in [Trixty IDE Insiders](https://code.visualstudio.com/insiders/). In agent mode, Copilot can automatically search your workspace for relevant context, edit files, check them for errors, and run terminal commands (with your permission) to complete a task end-to-end.
 
-> **Note**: Agent mode is available today in [VS Code Insiders](https://code.visualstudio.com/insiders/), and we just started rolling it out gradually in **VS Code Stable**. Once agent mode is enabled for you, you will see a mode dropdown in the Copilot Edits view — simply select **Agent**.
+> **Note**: Agent mode is available today in [Trixty IDE Insiders](https://code.visualstudio.com/insiders/), and we just started rolling it out gradually in **Trixty IDE Stable**. Once agent mode is enabled for you, you will see a mode dropdown in the Copilot Edits view — simply select **Agent**.
 
 We made several improvements to the UX of tool usages this month:
 
@@ -2439,7 +2439,7 @@ Learn more about [Copilot Edits agent mode](https://code.visualstudio.com/docs/c
 
 We are introducing notebook support in Copilot Edits. You can now use Copilot to edit notebook files with the same intuitive experience as editing code files. Create new notebooks from scratch, modify content across multiple cells, insert and delete cells, and change cell types. This preview feature provides a seamless workflow when working with data science or documentation notebooks.
 
-> For the best notebook editing experience with Copilot, we recommend using [VS Code Insiders](https://code.visualstudio.com/insiders/) and the pre-release version of GitHub Copilot Chat, where you'll get the latest improvements to this feature as they're developed.
+> For the best notebook editing experience with Copilot, we recommend using [Trixty IDE Insiders](https://code.visualstudio.com/insiders/) and the pre-release version of GitHub Copilot Chat, where you'll get the latest improvements to this feature as they're developed.
 
 <video src="https://code.visualstudio.com/assets/updates/1_98/notebook_copilot_edits.mp4" title="Video that shows using Copilot Edits to modify a notebook." autoplay loop controls muted></video>
 
@@ -2473,7 +2473,7 @@ Previously, you were limited to attach 10 files to your prompt in Copilot Edits.
 
 If you host your source code in a GitHub repository, you're able to leverage several features, including advanced code searching, the `@github` chat participant, and more!
 
-However, for private GitHub repositories, VS Code needs to have permission to interact with your repositories on GitHub. For a while, this was presented with our usual VS Code authentication flow, where a modal dialog showed up when you invoked certain functionality (for example, asking `@workspace` or `@github` a question, or using the `#codebase` tool).
+However, for private GitHub repositories, Trixty IDE needs to have permission to interact with your repositories on GitHub. For a while, this was presented with our usual Trixty IDE authentication flow, where a modal dialog showed up when you invoked certain functionality (for example, asking `@workspace` or `@github` a question, or using the `#codebase` tool).
 
 To make this experience smoother, we've introduced this confirmation in chat:
 
@@ -2482,10 +2482,10 @@ To make this experience smoother, we've introduced this confirmation in chat:
 Not only is it not as jarring as a modal dialog, but it also has new functionality:
 
 1. **Grant:** you're taken through the regular authentication flow like before (via the modal).
-1. **Not Now:** VS Code remembers your choice and won't bother you again until your next VS Code window session. The only exception to this is if the feature needs this additional permission to function, like `@github`.
-1. **Never Ask Again:** VS Code remembers your choice and persists it via the `github.copilot.advanced.authPermissions` setting. Any feature that needs this additional permission will fail.
+1. **Not Now:** Trixty IDE remembers your choice and won't bother you again until your next Trixty IDE window session. The only exception to this is if the feature needs this additional permission to function, like `@github`.
+1. **Never Ask Again:** Trixty IDE remembers your choice and persists it via the `github.copilot.advanced.authPermissions` setting. Any feature that needs this additional permission will fail.
 
-It's important to note that this confirmation does not confirm or deny Copilot (the service) access to your repositories. This is only how VS Code's Copilot experience authenticates. To configure what Copilot can access, please read the docs [on content exclusion](https://docs.github.com/en/copilot/managing-copilot/configuring-and-auditing-content-exclusion/excluding-content-from-github-copilot).
+It's important to note that this confirmation does not confirm or deny Copilot (the service) access to your repositories. This is only how Trixty IDE's Copilot experience authenticates. To configure what Copilot can access, please read the docs [on content exclusion](https://docs.github.com/en/copilot/managing-copilot/configuring-and-auditing-content-exclusion/excluding-content-from-github-copilot).
 
 ### More advanced codebase search in Copilot Chat
 
@@ -2547,7 +2547,7 @@ This release, we added more models to choose from when using Copilot. The follow
 
 ### Copilot Vision (Preview)
 
-We're quickly rolling out end-to-end vision support in this version of Copilot Chat. This lets you attach images and interact with images in chat prompts. For example, if you encounter an error while debugging, attach a screenshot of VS Code, and ask Copilot to help you resolve the issue. You might also use it to attach some UI mockup and let Copilot provide some HTML and CSS to implement the mockup.
+We're quickly rolling out end-to-end vision support in this version of Copilot Chat. This lets you attach images and interact with images in chat prompts. For example, if you encounter an error while debugging, attach a screenshot of Trixty IDE, and ask Copilot to help you resolve the issue. You might also use it to attach some UI mockup and let Copilot provide some HTML and CSS to implement the mockup.
 
 ![Animation that shows an attached image in a Copilot Chat prompt. Hovering over the image shows a preview of it.](https://code.visualstudio.com/assets/updates/1_97/image-attachments.gif)
 
@@ -2555,7 +2555,7 @@ You can attach images in multiple ways:
 
 * Drag and drop images from your OS or from the Explorer view
 * Paste an image from your clipboard
-* Attach a screenshot of the VS Code window (select the **paperclip 📎 button** > **Screenshot Window**)
+* Attach a screenshot of the Trixty IDE window (select the **paperclip 📎 button** > **Screenshot Window**)
 
 A warning is shown if the selected model currently does not have the capability to handle the file type. The only supported model at the moment will be `GPT 4o`, but support for image attachments with `Claude 3.5 Sonnet` and `Gemini 2.0 Flash` will be rolling out soon as well. Currently, the supported image types are `JPEG/JPG`, `PNG`, `GIF`, and `WEBP`.
 

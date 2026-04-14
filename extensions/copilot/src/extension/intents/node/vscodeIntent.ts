@@ -144,7 +144,7 @@ export class VscodeIntent implements IIntent {
 	static readonly ID = Intent.VSCode;
 	readonly id: string = VscodeIntent.ID;
 	readonly locations = [ChatLocation.Panel];
-	readonly description: string = l10n.t('Ask questions about VS Code');
+	readonly description: string = l10n.t('Ask questions about Trixty IDE');
 
 	readonly commandInfo: IIntentSlashCommandInfo = {
 		allowsEmptyArgs: true,

@@ -568,7 +568,7 @@ suite('SnippetsService', function () {
 		assert.strictEqual(completions.items.length, 1);
 	});
 
-	test('issue #61296: VS code freezes when editing CSS fi`le with emoji', async function () {
+	test('issue #61296: Trixty IDE freezes when editing CSS fi`le with emoji', async function () {
 		const languageConfigurationService = disposables.add(new TestLanguageConfigurationService());
 		disposables.add(languageConfigurationService.register('fooLang', {
 			wordPattern: /(#?-?\d*\.\d\w*%?)|(::?[\w-]*(?=[^,{;]*[,{]))|(([@#.!])?[\w\-?]+%?|[@#!.])/g

@@ -74,7 +74,7 @@ export class LoggingActionsContrib {
 			await appendText(editor, `## GitHub Copilot Chat
 
 - Extension: ${this.envService.getVersion()} (${this.envService.getBuildType()})
-- VS Code: ${vscode.version} (${product.commit || 'out-of-source'})
+- Trixty IDE: ${vscode.version} (${product.commit || 'out-of-source'})
 - OS: ${os.platform()} ${os.release()} ${os.arch()}${vscode.env.remoteName ? `
 - Remote Name: ${vscode.env.remoteName}` : ''}${vscode.env.remoteName && ext ? `
 - Extension Kind: ${vscode.ExtensionKind[ext.extensionKind]}` : ''}

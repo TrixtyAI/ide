@@ -66,7 +66,7 @@ export function parseToolResult<T = unknown>(result: unknown): T {
 }
 
 /**
-* Creates a mock VS Code text editor for testing selection and text retrieval.
+* Creates a mock Trixty IDE text editor for testing selection and text retrieval.
 */
 export function createMockEditor(
 	filePath: string,
@@ -107,7 +107,7 @@ export function createMockEditor(
 }
 
 /**
-* Creates a mock VS Code URI for testing.
+* Creates a mock Trixty IDE URI for testing.
 */
 export function createMockUri(path: string) {
 	return {
@@ -118,7 +118,7 @@ export function createMockUri(path: string) {
 }
 
 /**
-* Creates a mock VS Code text editor with a specific URI scheme for testing.
+* Creates a mock Trixty IDE text editor with a specific URI scheme for testing.
 */
 export function createMockEditorWithScheme(
 	filePath: string,
@@ -144,7 +144,7 @@ export function createMockEditorWithScheme(
 }
 
 /**
-* Creates a mock VS Code Diagnostic for testing.
+* Creates a mock Trixty IDE Diagnostic for testing.
 */
 export function createMockDiagnostic(
 	message: string,

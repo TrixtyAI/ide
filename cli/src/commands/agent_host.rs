@@ -25,7 +25,7 @@ use crate::util::prereqs::PreReqChecker;
 
 use super::{args::AgentHostArgs, CommandContext};
 
-/// Runs a local agent host server. Downloads the latest VS Code server on
+/// Runs a local agent host server. Downloads the latest Trixty IDE server on
 /// demand, starts it with `--enable-remote-auto-shutdown`, and proxies
 /// WebSocket connections from a local TCP port to the server's agent host
 /// socket. The server auto-shuts down when idle; the CLI checks for updates

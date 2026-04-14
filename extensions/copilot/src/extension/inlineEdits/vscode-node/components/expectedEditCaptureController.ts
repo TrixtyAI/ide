@@ -364,7 +364,7 @@ export class ExpectedEditCaptureController extends Disposable {
 	/**
 	 * Filter out documents that had no user interaction (background/virtual documents).
 	 * Real documents will have user selection, visibility, or edit events.
-	 * This removes startup noise like package.json files from node_modules that VS Code
+	 * This removes startup noise like package.json files from node_modules that Trixty IDE
 	 * opens in the background, while preserving real workspace files that existed before capture.
 	 */
 	private _filterLogForNonInteractedDocuments(log: LogEntry[]): LogEntry[] {

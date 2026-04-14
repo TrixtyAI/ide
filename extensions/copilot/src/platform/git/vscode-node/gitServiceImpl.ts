@@ -381,9 +381,9 @@ export class GitServiceImpl extends Disposable implements IGitService {
 		const gitAPI = this.gitExtensionService.getExtensionApi();
 		const gitPath = gitAPI?.git.path ?? 'git';
 		const gitEnv = Object.assign({}, process.env, env, {
-			GIT_AUTHOR_NAME: 'VS Code',
+			GIT_AUTHOR_NAME: 'Trixty IDE',
 			GIT_AUTHOR_EMAIL: 'vscode@users.noreply.github.com',
-			GIT_COMMITTER_NAME: 'VS Code',
+			GIT_COMMITTER_NAME: 'Trixty IDE',
 			GIT_COMMITTER_EMAIL: 'vscode@users.noreply.github.com',
 			LANG: 'en_US.UTF-8',
 			LANGUAGE: 'en',

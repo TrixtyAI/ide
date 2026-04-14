@@ -7,7 +7,7 @@
 // See protocol.md for the full design.
 //
 // Most types are re-exported from the auto-generated protocol layer.
-// This file adds VS Code-specific additions (ISetAuthTokenParams, ProtocolError)
+// This file adds Trixty IDE-specific additions (ISetAuthTokenParams, ProtocolError)
 // and backward-compatible aliases.
 
 // ---- Re-exports from protocol -----------------------------------------------
@@ -106,7 +106,7 @@ export function isJsonRpcResponse(msg: IProtocolMessage): msg is IAhpSuccessResp
 	return 'id' in msg && !('method' in msg);
 }
 
-// ---- VS Code-specific types ------------------------------------------------
+// ---- Trixty IDE-specific types ------------------------------------------------
 
 /**
  * Error with a JSON-RPC error code for protocol-level failures.
@@ -119,7 +119,7 @@ export class ProtocolError extends Error {
 }
 
 /**
- * VS Code-specific extension: set the auth token on the server.
+ * Trixty IDE-specific extension: set the auth token on the server.
  * Not yet part of the official protocol.
  */
 export interface ISetAuthTokenParams {

@@ -5,7 +5,7 @@ applyTo: src/vs/sessions/**
 
 # Agents Window
 
-The Agents window is a **standalone application** built as a new top-level layer (`vs/sessions`) in the VS Code architecture. It provides an agents-first experience optimized for agent workflows — a simplified, fixed-layout workbench where chat is the primary interaction surface and editors appear as modal overlays.
+The Agents window is a **standalone application** built as a new top-level layer (`vs/sessions`) in the Trixty IDE architecture. It provides an agents-first experience optimized for agent workflows — a simplified, fixed-layout workbench where chat is the primary interaction surface and editors appear as modal overlays.
 
 When working on files under `src/vs/sessions/`, use these skills for detailed guidance:
 

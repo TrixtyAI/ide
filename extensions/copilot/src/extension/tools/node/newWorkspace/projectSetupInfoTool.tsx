@@ -36,7 +36,7 @@ interface ProjectSetupInfo {
 const setupInfo: ProjectSetupInfo[] = [
 	{
 		projectType: 'vscode-extension',
-		description: 'A template for creating a VS Code extension using Yeoman and Generator-Code.',
+		description: 'A template for creating a Trixty IDE extension using Yeoman and Generator-Code.',
 		executionCommands: [{
 			command: 'npx --package yo --package generator-code -- yo code . --skipOpen',
 			arguments: [
@@ -105,8 +105,8 @@ const setupInfo: ProjectSetupInfo[] = [
 			'- mcp-server-name: The name of the MCP server. Create a unique name that reflects what this MCP server does.',
 			'- command-to-run: The command to run to start the MCP server. This is the command you would use to run the project you just created.',
 			'- list-of-args: The arguments to pass to the command. This is the list of arguments you would use to run the project you just created.',
-			'5. Install any required VS Code extensions based on the chosen language (e.g., Python extension for Python projects).',
-			'6. Inform the user that they can now debug this MCP server using VS Code.',
+			'5. Install any required Trixty IDE extensions based on the chosen language (e.g., Python extension for Python projects).',
+			'6. Inform the user that they can now debug this MCP server using Trixty IDE.',
 		]
 	},
 	{
@@ -115,7 +115,7 @@ const setupInfo: ProjectSetupInfo[] = [
 		requiredExtensions: ['ms-python.python', 'ms-python.vscode-python-envs'],
 		rules: [
 			'Follow these rules strictly and do not deviate from them.',
-			`1. Call the tool ${ToolName.RunVscodeCmd} to correctly create a new Python script project in VS Code. Call the command with the following arguments.`,
+			`1. Call the tool ${ToolName.RunVscodeCmd} to correctly create a new Python script project in Trixty IDE. Call the command with the following arguments.`,
 			`Note that "python-script" and "true" are constants while  "New Project Name" and "/path/to/new/project" are placeholders for the project name and path respectively.`,
 			`{ `,
 			`"name": "python-envs.createNewProjectFromTemplate",`,
@@ -130,7 +130,7 @@ const setupInfo: ProjectSetupInfo[] = [
 		requiredExtensions: ['ms-python.python', 'ms-python.vscode-python-envs'],
 		rules: [
 			'Follow these rules strictly and do not deviate from them.',
-			`1. Call the tool ${ToolName.RunVscodeCmd} to correctly create a new Python package project in VS Code. Call the command with the following arguments:`,
+			`1. Call the tool ${ToolName.RunVscodeCmd} to correctly create a new Python package project in Trixty IDE. Call the command with the following arguments:`,
 			`Note that "python-package" and "true" are constants while  "New Package Name" and "/path/to/new/project" are placeholders for the package name and path respectively.`,
 			`{ `,
 			`"name": "python-envs.createNewProjectFromTemplate",`,

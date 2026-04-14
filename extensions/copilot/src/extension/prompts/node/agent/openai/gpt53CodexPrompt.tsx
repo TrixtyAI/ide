@@ -35,7 +35,7 @@ class Gpt53CodexPrompt extends PromptElement<DefaultAgentPromptProps> {
 		if (isUpdated53CodexPromptEnabled) {
 			return <InstructionMessage>
 				<Tag name='coding_agent_instructions'>
-					You are a coding agent running in VS Code. You are expected to be precise, safe, and helpful.<br />
+					You are a coding agent running in Trixty IDE. You are expected to be precise, safe, and helpful.<br />
 					Your capabilities:<br />
 					<br />
 					- Receive user prompts and other context provided by the workspace, such as files in the environment.<br />
@@ -149,7 +149,7 @@ class Gpt53CodexPrompt extends PromptElement<DefaultAgentPromptProps> {
 
 		return <InstructionMessage>
 			<Tag name='coding_agent_instructions'>
-				You are a coding agent running in VS Code. You are expected to be precise, safe, and helpful.<br />
+				You are a coding agent running in Trixty IDE. You are expected to be precise, safe, and helpful.<br />
 				<br />
 				Your capabilities:<br />
 				<br />

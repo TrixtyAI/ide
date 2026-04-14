@@ -391,7 +391,7 @@
 	},
 	{
 		"Location": "panel",
-		"Request": "how to change position of explorer in vs code",
+		"Request": "how to change position of explorer in Trixty IDE",
 		"Intent": "vscode"
 	},
 	{
@@ -561,7 +561,7 @@
 	},
 	{
 		"Location": "panel",
-		"Request": "How to change colour theme in VS Code?",
+		"Request": "How to change colour theme in Trixty IDE?",
 		"Intent": "vscode"
 	},
 	{

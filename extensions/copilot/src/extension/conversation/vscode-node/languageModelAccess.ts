@@ -619,7 +619,7 @@ export class CopilotLanguageModelWrapper extends Disposable {
 
 		// Restore CapturingToken context if correlation ID was passed through modelOptions.
 		// This handles BYOK providers where the original AsyncLocalStorage context was lost
-		// when crossing the VS Code IPC boundary.
+		// when crossing the Trixty IDE IPC boundary.
 		const correlationId = (_options as { modelOptions?: OTelModelOptions }).modelOptions?._capturingTokenCorrelationId;
 		const capturingToken = correlationId ? retrieveCapturingTokenByCorrelation(correlationId) : undefined;
 

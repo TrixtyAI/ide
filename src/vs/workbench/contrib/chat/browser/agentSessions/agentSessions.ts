@@ -94,7 +94,7 @@ export function getAgentSessionProviderIcon(provider: AgentSessionTarget): Theme
 }
 
 /**
- * Returns the VS Code or VS Code Insiders icon depending on product quality.
+ * Returns the Trixty IDE or Trixty IDE Insiders icon depending on product quality.
  */
 export function getAgentHostIcon(productService: IProductService): ThemeIcon {
 	return productService.quality === 'stable' ? Codicon.vscode : Codicon.vscodeInsiders;
@@ -150,7 +150,7 @@ export function getAgentCanContinueIn(provider: AgentSessionTarget): boolean {
 export function getAgentSessionProviderDescription(provider: AgentSessionTarget): string {
 	switch (provider) {
 		case AgentSessionProviders.Local:
-			return localize('chat.session.providerDescription.local', "Run tasks within VS Code chat. The agent iterates via chat and works interactively to implement changes on your main workspace.");
+			return localize('chat.session.providerDescription.local', "Run tasks within Trixty IDE chat. The agent iterates via chat and works interactively to implement changes on your main workspace.");
 		case AgentSessionProviders.Background:
 			return localize('chat.session.providerDescription.background', "Delegate tasks to a background agent running locally on your machine. The agent iterates via chat and works asynchronously in a Git worktree to implement changes isolated from your main workspace using the GitHub Copilot CLI.");
 		case AgentSessionProviders.Cloud:

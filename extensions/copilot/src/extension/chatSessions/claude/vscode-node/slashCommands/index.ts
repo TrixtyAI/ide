@@ -7,7 +7,7 @@
 // This chains: common/slashCommands -> node/slashCommands -> vscode-node/slashCommands
 import '../../node/slashCommands/index';
 
-// Import all VS Code-specific slash command handlers to trigger self-registration
+// Import all Trixty IDE-specific slash command handlers to trigger self-registration
 // Add new command imports here as they are created
 
 import './agentsCommand';

@@ -1531,7 +1531,7 @@ describe('ChatSessionMetadataStore', () => {
 		});
 
 		it('should survive crash recovery: entry with only additionalWorkspaces is re-persisted not deleted', async () => {
-			// Simulate VS Code crash: bulk file has the entry but writtenToDisc is falsy
+			// Simulate Trixty IDE crash: bulk file has the entry but writtenToDisc is falsy
 			// (updateSessionMetadata never completed before the crash).
 			mockFs.mockFile(BULK_METADATA_FILE, JSON.stringify({
 				'session-crash': {
