@@ -23,7 +23,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Trixty IDE
         shell: pwsh
@@ -39,6 +41,7 @@ jobs:
 
   build-linux:
     name: Build Linux x64
+    needs: build-windows # Wait for Windows
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +61,9 @@ jobs:
           sudo apt-get install -y libxkbfile-dev libsecret-1-dev pkg-config build-essential libkrb5-dev
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Trixty IDE
         run: bash ./scripts/build-trixty.sh
@@ -74,6 +79,7 @@ jobs:
 
   build-macos:
     name: Build macOS arm64
+    needs: build-linux # Wait for Linux
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -88,7 +94,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Trixty IDE
         run: bash ./scripts/build-trixty.sh
@@ -103,7 +111,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-windows, build-linux, build-macos]
+    needs: build-macos # Wait for Mac (which waited for the others)
     runs-on: ubuntu-latest
     permissions:
       contents: write
