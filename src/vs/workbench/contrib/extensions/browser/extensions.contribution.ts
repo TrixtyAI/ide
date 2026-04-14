@@ -366,12 +366,12 @@ CommandsRegistry.registerCommand({
 				schema: {
 					'type': 'object',
 					'properties': {
-		'trixtyIDE.marketplace': {
-			type: 'string',
-			enum: ['openvsx', 'vscode'],
-			default: 'openvsx',
-			description: 'Select the marketplace to use for extensions. Require restart.',
-		},
+						'trixtyIDE.marketplace': {
+							type: 'string',
+							enum: ['openvsx', 'vscode'],
+							default: 'openvsx',
+							description: 'Select the marketplace to use for extensions. Require restart.',
+						},
 						'installOnlyNewlyAddedFromExtensionPackVSIX': {
 							'type': 'boolean',
 							'description': localize('workbench.extensions.installExtension.option.installOnlyNewlyAddedFromExtensionPackVSIX', "When enabled, Trixty IDE installs only newly added extensions from the extension pack VSIX. This option is considered only while installing a VSIX."),
