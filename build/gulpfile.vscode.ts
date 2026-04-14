@@ -139,15 +139,15 @@ const bootstrapEntryPoints = [
 	'out-build/bootstrap-fork.js'
 ];
 
-const bundleVSCodeTask = task.define('bundle-vscode', task.series(
-	util.rimraf('out-vscode'),
+const bundleTrixtyTask = task.define('bundle-trixty', task.series(
+	util.rimraf('out-trixty'),
 	// Optimize: bundles source files automatically based on
 	// import statements based on the passed in entry points.
 	// In addition, concat window related bootstrap files into
 	// a single file.
 	optimize.bundleTask(
 		{
-			out: 'out-vscode',
+			out: 'out-trixty',
 			esm: {
 				src: 'out-build',
 				entryPoints: [
@@ -160,7 +160,7 @@ const bundleVSCodeTask = task.define('bundle-vscode', task.series(
 		}
 	)
 ));
-gulp.task(bundleVSCodeTask);
+gulp.task(bundleTrixtyTask);
 
 // esbuild-based bundle tasks (drop-in replacement for bundle-vscode / minify-vscode)
 function runEsbuildTranspile(outDir: string, excludeTests: boolean): Promise<void> {
@@ -242,12 +242,12 @@ const sourceMappingURLBase = `https://main.vscode-cdn.net/sourcemaps/${commit}`;
 const isCI = !!process.env['CI'] || !!process.env['BUILD_ARTIFACTSTAGINGDIRECTORY'] || !!process.env['GITHUB_WORKSPACE'];
 const useCdnSourceMapsForPackagingTasks = isCI;
 const stripSourceMapsInPackagingTasks = isCI;
-const minifyVSCodeTask = task.define('minify-vscode', task.series(
-	bundleVSCodeTask,
-	util.rimraf('out-vscode-min'),
-	optimize.minifyTask('out-vscode', `${sourceMappingURLBase}/core`)
+const minifyTrixtyTask = task.define('minify-trixty', task.series(
+	bundleTrixtyTask,
+	util.rimraf('out-trixty-min'),
+	optimize.minifyTask('out-trixty', `${sourceMappingURLBase}/core`)
 ));
-gulp.task(minifyVSCodeTask);
+gulp.task(minifyTrixtyTask);
 
 gulp.task(task.define('core-ci-old', task.series(
 	gulp.task('compile-build-with-mangling') as task.Task,
@@ -269,9 +269,9 @@ gulp.task(task.define('core-ci', task.series(
 	task.define('esbuild-out-build', () => runEsbuildTranspile('out-build', false)),
 	// Then bundle for shipping (bundles also write NLS files to out-build)
 	task.parallel(
-		task.define('esbuild-vscode-min', () => runEsbuildBundle('out-vscode-min', true, true, 'desktop', `${sourceMappingURLBase}/core`)),
-		task.define('esbuild-vscode-reh-min', () => runEsbuildBundle('out-vscode-reh-min', true, true, 'server', `${sourceMappingURLBase}/core`)),
-		task.define('esbuild-vscode-reh-web-min', () => runEsbuildBundle('out-vscode-reh-web-min', true, true, 'server-web', `${sourceMappingURLBase}/core`)),
+		task.define('esbuild-trixty-min', () => runEsbuildBundle('out-trixty-min', true, true, 'desktop', `${sourceMappingURLBase}/core`)),
+		task.define('esbuild-trixty-reh-min', () => runEsbuildBundle('out-trixty-reh-min', true, true, 'server', `${sourceMappingURLBase}/core`)),
+		task.define('esbuild-trixty-reh-web-min', () => runEsbuildBundle('out-trixty-reh-web-min', true, true, 'server-web', `${sourceMappingURLBase}/core`)),
 	)
 )));
 
@@ -709,9 +709,9 @@ BUILD_TARGETS.forEach(buildTarget => {
 	const arch = buildTarget.arch;
 	const opts = buildTarget.opts;
 
-	const [vscode, vscodeMin] = ['', 'min'].map(minified => {
-		const sourceFolderName = `out-vscode${dashed(minified)}`;
-		const destinationFolderName = `VSCode${dashed(platform)}${dashed(arch)}`;
+	const [trixty, trixtyMin] = ['', 'min'].map(minified => {
+		const sourceFolderName = `out-trixty${dashed(minified)}`;
+		const destinationFolderName = `Trixty${dashed(platform)}${dashed(arch)}`;
 
 		const packageTasks: task.Task[] = [
 			compileNativeExtensionsBuildTask,
@@ -723,10 +723,11 @@ BUILD_TARGETS.forEach(buildTarget => {
 			packageTasks.push(patchWin32DependenciesTask(destinationFolderName));
 		}
 
-		const vscodeTaskCI = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
-		gulp.task(vscodeTaskCI);
+		const trixtyTaskCI = task.define(`trixty${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
+		gulp.task(trixtyTaskCI);
+		gulp.task(task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(trixtyTaskCI)));
 
-		let vscodeTask: task.Task;
+		let trixtyTask: task.Task;
 		if (useEsbuildTranspile) {
 			const esbuildBundleTask = task.define(
 				`esbuild-bundle${dashed(platform)}${dashed(arch)}${dashed(minified)}`,
@@ -738,33 +739,36 @@ BUILD_TARGETS.forEach(buildTarget => {
 					minified && useCdnSourceMapsForPackagingTasks ? `${sourceMappingURLBase}/core` : undefined
 				)
 			);
-			vscodeTask = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
+			trixtyTask = task.define(`trixty${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
 				copyCodiconsTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
 				compileExtensionMediaBuildTask,
 				writeISODate('out-build'),
 				esbuildBundleTask,
-				vscodeTaskCI
+				trixtyTaskCI
 			));
 		} else {
-			vscodeTask = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
+			trixtyTask = task.define(`trixty${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
 				minified ? compileBuildWithManglingTask : compileBuildWithoutManglingTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
 				compileExtensionMediaBuildTask,
-				minified ? minifyVSCodeTask : bundleVSCodeTask,
-				vscodeTaskCI
+				minified ? minifyTrixtyTask : bundleTrixtyTask,
+				trixtyTaskCI
 			));
 		}
-		gulp.task(vscodeTask);
+		gulp.task(trixtyTask);
+		gulp.task(task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(trixtyTask)));
 
-		return vscodeTask;
+		return trixtyTask;
 	});
 
 	if (process.platform === platform && process.arch === arch) {
-		gulp.task(task.define('vscode', task.series(vscode)));
-		gulp.task(task.define('vscode-min', task.series(vscodeMin)));
+		gulp.task(task.define('trixty', task.series(trixty)));
+		gulp.task(task.define('trixty-min', task.series(trixtyMin)));
+		gulp.task(task.define('vscode', task.series(trixty)));
+		gulp.task(task.define('vscode-min', task.series(trixtyMin)));
 	}
 });
 

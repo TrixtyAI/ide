@@ -64,7 +64,7 @@ function runEsbuildBundle(outDir: string, minify: boolean, nls: boolean, sourceM
 	});
 }
 
-export const vscodeWebResourceIncludes = [
+export const trixtyWebResourceIncludes = [
 
 	// NLS
 	'out-build/nls.messages.js',
@@ -92,10 +92,10 @@ export const vscodeWebResourceIncludes = [
 	'out-build/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html'
 ];
 
-const vscodeWebResources = [
+const trixtyWebResources = [
 
 	// Includes
-	...vscodeWebResourceIncludes,
+	...trixtyWebResourceIncludes,
 
 	// Excludes
 	'!out-build/vs/**/{node,electron-browser,electron-main,electron-utility}/**',
@@ -105,7 +105,7 @@ const vscodeWebResources = [
 	'!**/test/**'
 ];
 
-const vscodeWebEntryPoints = [
+const trixtyWebEntryPoints = [
 	buildfile.workerEditor,
 	buildfile.workerExtensionHost,
 	buildfile.workerNotebook,
@@ -121,7 +121,7 @@ const vscodeWebEntryPoints = [
  * @param extensionsRoot The location where extension will be read from
  * @param product The parsed product.json file contents
  */
-export const createVSCodeWebFileContentMapper = (extensionsRoot: string, product: typeof import('../product.json')) => {
+export const createTrixtyWebFileContentMapper = (extensionsRoot: string, product: typeof import('../product.json')) => {
 	return (path: string): ((content: string) => string) | undefined => {
 		if (path.endsWith('vs/platform/product/common/product.js')) {
 			return content => {
@@ -144,32 +144,32 @@ export const createVSCodeWebFileContentMapper = (extensionsRoot: string, product
 	};
 };
 
-const bundleVSCodeWebTask = task.define('bundle-vscode-web-OLD', task.series(
-	util.rimraf('out-vscode-web'),
+const bundleTrixtyWebTask = task.define('bundle-trixty-web-OLD', task.series(
+	util.rimraf('out-trixty-web'),
 	optimize.bundleTask(
 		{
-			out: 'out-vscode-web',
+			out: 'out-trixty-web',
 			esm: {
 				src: 'out-build',
-				entryPoints: vscodeWebEntryPoints,
-				resources: vscodeWebResources,
-				fileContentMapper: createVSCodeWebFileContentMapper('.build/web/extensions', product)
+				entryPoints: trixtyWebEntryPoints,
+				resources: trixtyWebResources,
+				fileContentMapper: createTrixtyWebFileContentMapper('.build/web/extensions', product)
 			}
 		}
 	)
 ));
 
-const minifyVSCodeWebTask = task.define('minify-vscode-web-OLD', task.series(
-	bundleVSCodeWebTask,
-	util.rimraf('out-vscode-web-min'),
-	optimize.minifyTask('out-vscode-web', `https://main.vscode-cdn.net/sourcemaps/${commit}/core`)
+const minifyTrixtyWebTask = task.define('minify-trixty-web-OLD', task.series(
+	bundleTrixtyWebTask,
+	util.rimraf('out-trixty-web-min'),
+	optimize.minifyTask('out-trixty-web', `https://main.vscode-cdn.net/sourcemaps/${commit}/core`)
 ));
-gulp.task(minifyVSCodeWebTask);
+gulp.task(minifyTrixtyWebTask);
 
 // esbuild-based tasks (new)
 const sourceMappingURLBase = `https://main.vscode-cdn.net/sourcemaps/${commit}`;
-const esbuildBundleVSCodeWebTask = task.define('esbuild-vscode-web', () => runEsbuildBundle('out-vscode-web', false, true));
-const esbuildBundleVSCodeWebMinTask = task.define('esbuild-vscode-web-min', () => runEsbuildBundle('out-vscode-web-min', true, true, `${sourceMappingURLBase}/core`));
+const esbuildBundleTrixtyWebTask = task.define('esbuild-trixty-web', () => runEsbuildBundle('out-trixty-web', false, true));
+const esbuildBundleTrixtyWebMinTask = task.define('esbuild-trixty-web-min', () => runEsbuildBundle('out-trixty-web-min', true, true, `${sourceMappingURLBase}/core`));
 
 function packageTask(sourceFolderName: string, destinationFolderName: string) {
 	const destination = path.join(BUILD_ROOT, destinationFolderName);
@@ -232,21 +232,21 @@ gulp.task(compileWebExtensionsBuildTask);
 const dashed = (str: string) => (str ? `-${str}` : ``);
 
 ['', 'min'].forEach(minified => {
-	const sourceFolderName = `out-vscode-web${dashed(minified)}`;
-	const destinationFolderName = `vscode-web`;
+	const sourceFolderName = `out-trixty-web${dashed(minified)}`;
+	const destinationFolderName = `trixty-web`;
 
-	const vscodeWebTaskCI = task.define(`vscode-web${dashed(minified)}-ci`, task.series(
+	const trixtyWebTaskCI = task.define(`trixty-web${dashed(minified)}-ci`, task.series(
 		copyCodiconsTask,
 		compileWebExtensionsBuildTask,
-		minified ? esbuildBundleVSCodeWebMinTask : esbuildBundleVSCodeWebTask,
+		minified ? esbuildBundleTrixtyWebMinTask : esbuildBundleTrixtyWebTask,
 		util.rimraf(path.join(BUILD_ROOT, destinationFolderName)),
 		packageTask(sourceFolderName, destinationFolderName)
 	));
-	gulp.task(vscodeWebTaskCI);
+	gulp.task(trixtyWebTaskCI);
 
-	const vscodeWebTask = task.define(`vscode-web${dashed(minified)}`, task.series(
+	const trixtyWebTask = task.define(`trixty-web${dashed(minified)}`, task.series(
 		compileBuildWithManglingTask,
-		vscodeWebTaskCI
+		trixtyWebTaskCI
 	));
-	gulp.task(vscodeWebTask);
+	gulp.task(trixtyWebTask);
 });

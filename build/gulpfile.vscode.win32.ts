@@ -21,7 +21,7 @@ const require = createRequire(import.meta.url);
 
 const repoPath = path.dirname(import.meta.dirname);
 const commit = getVersion(repoPath);
-const buildPath = (arch: string) => path.join(path.dirname(repoPath), `VSCode-win32-${arch}`);
+const buildPath = (arch: string) => path.join(path.dirname(repoPath), `Trixty-win32-${arch}`);
 const setupDir = (arch: string, target: string) => path.join(repoPath, '.build', `win32-${arch}`, `${target}-setup`);
 const innoSetupPath = path.join(path.dirname(path.dirname(require.resolve('innosetup'))), 'bin', 'ISCC.exe');
 const signWin32Path = path.join(repoPath, 'build', 'azure-pipelines', 'common', 'sign-win32.ts');
@@ -131,7 +131,8 @@ function buildWin32Setup(arch: string, target: string): task.CallbackTask {
 			definitions['ProxyMutex'] = embedded.win32MutexName;
 		}
 
-		if (quality === 'stable' || quality === 'insider') {
+		const appxPath = path.join(sourcePath, 'appx', `${quality === 'stable' ? 'code' : 'code_insider'}_${arch}.appx`);
+		if ((quality === 'stable' || quality === 'insider') && fs.existsSync(appxPath)) {
 			definitions['AppxPackage'] = `${quality === 'stable' ? 'code' : 'code_insider'}_${arch}.appx`;
 			definitions['AppxPackageDll'] = `${quality === 'stable' ? 'code' : 'code_insider'}_explorer_command_${arch}.dll`;
 			definitions['AppxPackageName'] = `${product.win32AppUserModelId}`;
@@ -142,16 +143,6 @@ function buildWin32Setup(arch: string, target: string): task.CallbackTask {
 		packageInnoSetup(issPath, { definitions }, cb as (err?: Error | null) => void);
 	};
 }
-
-function defineWin32SetupTasks(arch: string, target: string) {
-	const cleanTask = util.rimraf(setupDir(arch, target));
-	gulp.task(task.define(`vscode-win32-${arch}-${target}-setup`, task.series(cleanTask, buildWin32Setup(arch, target))));
-}
-
-defineWin32SetupTasks('x64', 'system');
-defineWin32SetupTasks('arm64', 'system');
-defineWin32SetupTasks('x64', 'user');
-defineWin32SetupTasks('arm64', 'user');
 
 function copyInnoUpdater(arch: string) {
 	return () => {
@@ -167,5 +158,28 @@ function updateIcon(executablePath: string): task.CallbackTask {
 	};
 }
 
-gulp.task(task.define('vscode-win32-x64-inno-updater', task.series(copyInnoUpdater('x64'), updateIcon(path.join(buildPath('x64'), 'tools', 'inno_updater.exe')))));
-gulp.task(task.define('vscode-win32-arm64-inno-updater', task.series(copyInnoUpdater('arm64'), updateIcon(path.join(buildPath('arm64'), 'tools', 'inno_updater.exe')))));
+const x64InnoUpdaterTask = task.define('trixty-win32-x64-inno-updater', task.series(copyInnoUpdater('x64'), updateIcon(path.join(buildPath('x64'), 'tools', 'inno_updater.exe'))));
+gulp.task(x64InnoUpdaterTask);
+
+const arm64InnoUpdaterTask = task.define('trixty-win32-arm64-inno-updater', task.series(copyInnoUpdater('arm64'), updateIcon(path.join(buildPath('arm64'), 'tools', 'inno_updater.exe'))));
+gulp.task(arm64InnoUpdaterTask);
+
+// Aliases for CI compatibility
+gulp.task(task.define('vscode-win32-x64-inno-updater', task.series(x64InnoUpdaterTask)));
+gulp.task(task.define('vscode-win32-arm64-inno-updater', task.series(arm64InnoUpdaterTask)));
+
+function defineWin32SetupTasks(arch: string, target: string) {
+	const cleanTask = util.rimraf(setupDir(arch, target));
+	const updaterTask = arch === 'arm64' ? arm64InnoUpdaterTask : x64InnoUpdaterTask;
+
+	const trixtySetupTask = task.define(`trixty-win32-${arch}-${target}-setup`, task.series(cleanTask, updaterTask, buildWin32Setup(arch, target)));
+	gulp.task(trixtySetupTask);
+
+	// Aliases for CI compatibility
+	gulp.task(task.define(`vscode-win32-${arch}-${target}-setup`, task.series(trixtySetupTask)));
+}
+
+defineWin32SetupTasks('x64', 'system');
+defineWin32SetupTasks('arm64', 'system');
+defineWin32SetupTasks('x64', 'user');
+defineWin32SetupTasks('arm64', 'user');

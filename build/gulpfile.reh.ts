@@ -29,7 +29,7 @@ import { promisify } from 'util';
 import rceditCallback from 'rcedit';
 import { compileBuildWithManglingTask } from './gulpfile.compile.ts';
 import { cleanExtensionsBuildTask, compileNonNativeExtensionsBuildTask, compileNativeExtensionsBuildTask, compileExtensionMediaBuildTask } from './gulpfile.extensions.ts';
-import { vscodeWebResourceIncludes, createVSCodeWebFileContentMapper } from './gulpfile.vscode.web.ts';
+import { trixtyWebResourceIncludes, createTrixtyWebFileContentMapper } from './gulpfile.vscode.web.ts';
 import * as cp from 'child_process';
 import log from 'fancy-log';
 import buildfile from './buildfile.ts';
@@ -103,7 +103,7 @@ const serverResources = [
 const serverWithWebResourceIncludes = [
 	...serverResourceIncludes,
 	'out-build/vs/code/browser/workbench/*.html',
-	...vscodeWebResourceIncludes
+	...trixtyWebResourceIncludes
 ];
 
 const serverWithWebResourceExcludes = [
@@ -475,11 +475,11 @@ function tweakProductForServerWeb(product: typeof import('../product.json')) {
 }
 
 ['reh', 'reh-web'].forEach(type => {
-	const bundleTask = task.define(`bundle-vscode-${type}`, task.series(
-		util.rimraf(`out-vscode-${type}`),
+	const bundleTask = task.define(`bundle-trixty-${type}`, task.series(
+		util.rimraf(`out-trixty-${type}`),
 		optimize.bundleTask(
 			{
-				out: `out-vscode-${type}`,
+				out: `out-trixty-${type}`,
 				esm: {
 					src: 'out-build',
 					entryPoints: [
@@ -487,16 +487,16 @@ function tweakProductForServerWeb(product: typeof import('../product.json')) {
 						...bootstrapEntryPoints
 					],
 					resources: type === 'reh' ? serverResources : serverWithWebResources,
-					fileContentMapper: createVSCodeWebFileContentMapper('.build/extensions', type === 'reh-web' ? tweakProductForServerWeb(product) : product)
+					fileContentMapper: createTrixtyWebFileContentMapper('.build/extensions', type === 'reh-web' ? tweakProductForServerWeb(product) : product)
 				}
 			}
 		)
 	));
 
-	const minifyTask = task.define(`minify-vscode-${type}`, task.series(
+	const minifyTask = task.define(`minify-trixty-${type}`, task.series(
 		bundleTask,
-		util.rimraf(`out-vscode-${type}-min`),
-		optimize.minifyTask(`out-vscode-${type}`, `https://main.vscode-cdn.net/sourcemaps/${commit}/core`)
+		util.rimraf(`out-trixty-${type}-min`),
+		optimize.minifyTask(`out-trixty-${type}`, `https://main.vscode-cdn.net/sourcemaps/${commit}/core`)
 	));
 	gulp.task(minifyTask);
 
@@ -506,8 +506,8 @@ function tweakProductForServerWeb(product: typeof import('../product.json')) {
 		const arch = buildTarget.arch;
 
 		['', 'min'].forEach(minified => {
-			const sourceFolderName = `out-vscode-${type}${dashed(minified)}`;
-			const destinationFolderName = `vscode-${type}${dashed(platform)}${dashed(arch)}`;
+			const sourceFolderName = `out-trixty-${type}${dashed(minified)}`;
+			const destinationFolderName = `trixty-${type}${dashed(platform)}${dashed(arch)}`;
 
 			const packageTasks: task.Task[] = [
 				compileNativeExtensionsBuildTask,
@@ -520,10 +520,10 @@ function tweakProductForServerWeb(product: typeof import('../product.json')) {
 				packageTasks.push(patchWin32DependenciesTask(destinationFolderName));
 			}
 
-			const serverTaskCI = task.define(`vscode-${type}${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
+			const serverTaskCI = task.define(`trixty-${type}${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
 			gulp.task(serverTaskCI);
 
-			const serverTask = task.define(`vscode-${type}${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
+			const serverTask = task.define(`trixty-${type}${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
 				compileBuildWithManglingTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
