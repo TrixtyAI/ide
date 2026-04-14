@@ -6,7 +6,7 @@
 	"version": "1.0.0",
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.0.7"
+		"vscode": "^1.0.8"
 	},
 	"categories": [
 		"AI",
@@ -140,7 +140,7 @@
 		"watch": "tsc -w -p ./tsconfig.json"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.0.7",
+		"@types/vscode": "^1.0.8",
 		"typescript": "^5.7.0"
 	}
 }
