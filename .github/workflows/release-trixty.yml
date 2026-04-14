@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -37,9 +37,73 @@ jobs:
             ../*.exe
             ../*.zip
 
+  build-linux:
+    name: Build Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbfile-dev libsecret-1-dev pkg-config build-essential libkrb5-dev
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Trixty IDE
+        run: bash ./scripts/build-trixty.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trixty-linux-x64
+          path: |
+            ../*.tar.gz
+            ../*.deb
+            ../*.rpm
+
+  build-macos:
+    name: Build macOS arm64
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Trixty IDE
+        run: bash ./scripts/build-trixty.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trixty-macos-arm64
+          path: |
+            ../*.dmg
+            ../*.zip
+
   create-release:
     name: Create GitHub Release
-    needs: [build-windows]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -54,7 +118,12 @@ jobs:
           files: |
             trixty-win32-x64/*.exe
             trixty-win32-x64/*.zip
-          body: "Release of Trixty IDE"
+            trixty-linux-x64/*.tar.gz
+            trixty-linux-x64/*.deb
+            trixty-linux-x64/*.rpm
+            trixty-macos-arm64/*.dmg
+            trixty-macos-arm64/*.zip
+          body: "Release of Trixty IDE - Multi-platform support enabled."
           draft: false
           prerelease: false
         env:
