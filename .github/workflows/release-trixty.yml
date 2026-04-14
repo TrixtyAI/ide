@@ -39,7 +39,7 @@ jobs:
           cp ../*.zip dist/ 2>/dev/null || true
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trixty-win32-x64
           path: dist/
@@ -81,7 +81,7 @@ jobs:
           cp ../*.rpm dist/ 2>/dev/null || true
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trixty-linux-x64
           path: dist/
@@ -117,7 +117,7 @@ jobs:
           cp ../*.zip dist/ 2>/dev/null || true
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trixty-macos-arm64
           path: dist/
