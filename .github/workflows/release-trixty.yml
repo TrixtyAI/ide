@@ -17,9 +17,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 22.22.0
           cache: 'npm'
 
       - name: Install Dependencies
@@ -50,9 +50,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 22.22.0
           cache: 'npm'
 
       - name: Install System Dependencies
@@ -88,9 +88,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 22.22.0
           cache: 'npm'
 
       - name: Install Dependencies

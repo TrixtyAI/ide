@@ -1,6 +1,6 @@
 {
   "name": "trixty-ide",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "distro": "21295cb9c61fb628376d109be52cb7c6e5e396bd",
   "author": {
     "name": "Trixty Team"
@@ -9,6 +9,9 @@
   "main": "./out/main.js",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": "22.22.0"
+  },
   "scripts": {
     "test": "echo Please run any of the test scripts from the scripts folder.",
     "test-browser": "npx playwright install && node test/unit/browser/index.js",
