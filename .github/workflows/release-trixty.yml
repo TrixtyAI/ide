@@ -41,7 +41,7 @@ jobs:
 
   build-linux:
     name: Build Linux x64
-    needs: build-windows # Wait for Windows
+    needs: build-windows
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,7 +79,7 @@ jobs:
 
   build-macos:
     name: Build macOS arm64
-    needs: build-linux # Wait for Linux
+    needs: build-linux
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -111,7 +111,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: build-macos # Wait for Mac (which waited for the others)
+    needs: build-macos
     runs-on: ubuntu-latest
     permissions:
       contents: write
