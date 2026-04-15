@@ -1,0 +1,10 @@
+{
+  "marketplace": [
+    {
+      "id": "trixty.example-addon",
+      "repository": "https://github.com/TrixtyAI/example-addon.git",
+      "branch": "main",
+      "data": "https://raw.githubusercontent.com/TrixtyAI/example-addon/main/package.json"
+    }
+  ]
+}
