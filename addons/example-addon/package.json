@@ -1,0 +1,14 @@
+{
+  "name": "trixty.example-addon",
+  "version": "0.0.1",
+  "description": "An example addon for Trixty IDE",
+  "author": "TrixtyAI",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
