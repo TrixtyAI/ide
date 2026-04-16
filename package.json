@@ -1,0 +1,16 @@
+{
+  "name": "trixty-ide",
+  "private": true,
+  "repository": {
+    "url": "https://github.com/TrixtyAI/ide",
+    "type": "git"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "desktop": "pnpm --filter @trixty/desktop tauri"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1e1e1e;
+  --foreground: #cccccc;
+  
+  --activity-bar-bg: #333333;
+  --activity-bar-fg: #858585;
+  --activity-bar-active: #ffffff;
+  
+  --sidebar-bg: #252526;
+  --sidebar-border: #1e1e1e;
+  
+  --editor-bg: #1e1e1e;
+  
+  --status-bar-bg: #007acc;
+  --status-bar-fg: #ffffff;
+  
+  --selection-bg: #264f78;
+  
+  --panel-bg: #1e1e1e;
+  --panel-border: #333333;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-activity-bar: var(--activity-bar-bg);
+  --color-sidebar: var(--sidebar-bg);
+  --color-status-bar: var(--status-bar-bg);
+  --color-editor: var(--editor-bg);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Global Modern Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+  background-clip: content-box;
+}
+
+/* For Firefox compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.05) transparent;
+}

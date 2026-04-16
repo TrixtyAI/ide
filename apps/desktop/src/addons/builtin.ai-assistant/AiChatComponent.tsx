@@ -1,0 +1,845 @@
+"use client";
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { X, Send, Sparkles, Brain, Code2, ChevronDown, ListRestart, History, Plus, Trash2, MessageSquare, Save, Square, Download } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+import ReactMarkdown from "react-markdown";
+import { useL10n } from "@/hooks/useL10n";
+import remarkGfm from "remark-gfm";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { safeInvoke as invoke } from "@/api/tauri";
+import { IDE_TOOLS } from "./tools";
+
+interface OllamaModel {
+  name: string;
+  size: number;
+  details: {
+    family: string;
+    parameter_size: string;
+    quantization_level: string;
+  };
+}
+
+interface PendingTool {
+  id: string;
+  name: string;
+  args: any;
+}
+
+const AiChatComponent: React.FC = () => {
+  const {
+    isRightPanelOpen,
+    setRightPanelOpen,
+    rootPath,
+    openFiles,
+    currentFile,
+    chatSessions,
+    activeSessionId,
+    createSession,
+    deleteSession,
+    switchSession,
+    addMessageToSession,
+    aiSettings,
+    updateAISettings
+  } = useApp();
+  const { t } = useL10n();
+
+  const activeSession = chatSessions.find(s => s.id === activeSessionId);
+  const [input, setInput] = useState("");
+  const [models, setModels] = useState<OllamaModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<any>(null);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [projectTree, setProjectTree] = useState<string[]>([]);
+  const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
+  const [toolResults, setToolResults] = useState<Record<string, any>>({});
+  const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    // Load last used model from storage
+    const savedModel = localStorage.getItem("trixty_ai_last_model");
+    if (savedModel) setSelectedModel(savedModel);
+  }, []);
+
+  useEffect(() => {
+    if (selectedModel) {
+      localStorage.setItem("trixty_ai_last_model", selectedModel);
+    }
+  }, [selectedModel]);
+
+  const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: any) => {
+    const result = await invoke<{ status: number; body: string }>("ollama_proxy", {
+      method,
+      url,
+      body: body || null
+    });
+    return {
+      ok: result.status >= 200 && result.status < 300,
+      status: result.status,
+      json: async () => JSON.parse(result.body),
+      text: async () => result.body
+    };
+  }, []);
+
+  // Fetch project tree
+  useEffect(() => {
+    const fetchTree = async () => {
+      if (!rootPath) {
+        setProjectTree([]);
+        return;
+      }
+      try {
+        const files = await invoke<string[]>("get_recursive_file_list", { rootPath });
+        setProjectTree(files);
+      } catch (err) {
+        console.error("Failed to fetch project tree:", err);
+      }
+    };
+    fetchTree();
+  }, [rootPath]);
+
+  // Fetch Ollama models
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        setOllamaStatus('checking');
+        const response = await proxyFetch(`${aiSettings.endpoint}/api/tags`);
+        const data = await response.json();
+        if (data.models) {
+          const models = data.models;
+          setModels(models);
+          setOllamaStatus('connected');
+          if (models.length > 0) {
+            const savedModel = localStorage.getItem("trixty_ai_last_model");
+            const exists = models.find((m: any) => m.name === savedModel);
+            if (exists) {
+              setSelectedModel(savedModel);
+            } else if (!selectedModel) {
+              setSelectedModel(models[0].name);
+            }
+          }
+        } else {
+           setOllamaStatus('not_found');
+        }
+      } catch (err) {
+        console.error("Failed to fetch Ollama models:", err);
+        setOllamaStatus('not_found');
+      }
+    };
+    fetchModels();
+  }, [aiSettings.endpoint, selectedModel, proxyFetch]);
+
+  // Check for updates on mount
+  useEffect(() => {
+    const checkUpdate = async () => {
+        try {
+            const update = await check();
+            if (update) setAvailableUpdate(update);
+        } catch (e) {
+            // Silently fail in dev if no updater server is configured
+            if (process.env.NODE_ENV !== 'development') {
+                console.error("Update check failed", e);
+            }
+        }
+    };
+    checkUpdate();
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [activeSession?.messages, isTyping]);
+
+  // Close menus on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowModelMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const getModelFamilyIcon = (family: string) => {
+    const f = family.toLowerCase();
+    if (f.includes('llama')) return <Sparkles size={14} className="text-blue-400" />;
+    if (f.includes('deepseek')) return <Brain size={14} className="text-yellow-500" />;
+    if (f.includes('mistral') || f.includes('mixtral')) return <Code2 size={14} className="text-orange-500" />;
+    return <MessageSquare size={14} className="text-white/40" />;
+  };
+
+  const getModelColor = (family: string) => {
+    const f = family.toLowerCase();
+    if (f.includes('llama')) return 'border-blue-500/20 bg-blue-500/5 text-blue-300';
+    if (f.includes('deepseek')) return 'border-yellow-500/20 bg-yellow-500/5 text-yellow-500';
+    if (f.includes('mistral')) return 'border-orange-500/20 bg-orange-500/5 text-orange-400';
+    return 'border-white/10 bg-white/5 text-white/50';
+  };
+  useEffect(() => {
+    if (!isTyping || !activeSessionId) return;
+
+    let warningShown = false;
+    const interval = setInterval(async () => {
+      try {
+        const stats = await invoke<{ cpu_usage: number; memory_usage: number }>("get_system_health");
+
+        // Hard Stop at 97%
+        if (stats.cpu_usage > 97 || stats.memory_usage > 97) {
+          handleStop();
+          unloadModel(); // Crucial: clear RAM/VRAM immediately
+          addMessageToSession(activeSessionId, {
+            role: "warning",
+            text: t('ai.freeze_stop_msg')
+          });
+          clearInterval(interval);
+          return;
+        }
+
+        // Warning at 90%
+        if (!warningShown && (stats.cpu_usage > 90 || stats.memory_usage > 90)) {
+          addMessageToSession(activeSessionId, {
+            role: "warning",
+            text: t('ai.freeze_warning_msg')
+          });
+          warningShown = true;
+        }
+      } catch (err) {
+        console.error("System monitor error:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isTyping, aiSettings.freezeProtection, activeSessionId]);
+
+
+
+
+  const resolvePath = (p: string) => {
+    if (!rootPath) return p;
+    // Check if it's already an absolute path
+    if (p.startsWith('/') || p.match(/^[a-zA-Z]:[\\/]/)) return p;
+    // Join with root
+    const separator = rootPath.includes('\\') ? '\\' : '/';
+    const cleanRoot = rootPath.endsWith(separator) ? rootPath : rootPath + separator;
+    return cleanRoot + p;
+  };
+
+  const executeToolInternal = async (name: string, args: any) => {
+    try {
+      switch (name) {
+        case 'list_directory':
+          return await invoke("read_directory", { path: resolvePath(args.path) });
+        case 'read_file':
+          return await invoke("read_file", { path: resolvePath(args.path) });
+        case 'write_file':
+          await invoke("write_file", { path: resolvePath(args.path), content: args.content });
+          return "File written successfully.";
+        case 'execute_command':
+          return await invoke("execute_command", {
+            command: args.command,
+            args: args.args || [],
+            cwd: args.cwd || rootPath
+          });
+        case 'get_workspace_structure':
+          return await invoke("get_recursive_file_list", { rootPath });
+        default:
+          return `Error: Unknown tool ${name}`;
+      }
+    } catch (err: any) {
+      return `Error executing tool ${name}: ${err}`;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsTyping(false);
+  };
+
+  const unloadModel = async () => {
+    if (!selectedModel || !aiSettings.endpoint) return;
+    try {
+      await proxyFetch(`${aiSettings.endpoint}/api/generate`, "POST", {
+        model: selectedModel,
+        keep_alive: 0
+      });
+    } catch (err) {
+      console.error("Failed to unload model:", err);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !selectedModel || isTyping || !activeSessionId || !activeSession) return;
+
+    const userMessage = input;
+    addMessageToSession(activeSessionId, { role: "user", text: userMessage });
+    setInput("");
+    setIsTyping(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      // Build context for the system prompt
+      const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
+      const currentContext = currentFile ? `Focused File: ${currentFile.path}\n` : "";
+
+      const systemMessage = {
+        role: "system",
+        content: `${aiSettings.systemPrompt}\n\n${workspaceContext}${currentContext}`
+      };
+
+      let history = [
+        systemMessage,
+        ...activeSession.messages.map(m => ({
+          role: m.role === "ai" ? "assistant" : m.role,
+          content: m.text,
+          tool_calls: m.tool_calls,
+          tool_id: m.tool_id
+        })),
+        { role: "user", content: userMessage }
+      ];
+
+      let loop = true;
+      let maxIterations = aiSettings.deepMode ? 15 : 5;
+
+      while (loop && maxIterations > 0) {
+        maxIterations--;
+        let response;
+        const body = {
+            model: selectedModel,
+            messages: history,
+            stream: false,
+            tools: rootPath ? IDE_TOOLS : undefined, // Tools only available if project is open
+            think: aiSettings.deepMode,
+            options: {
+              temperature: aiSettings.temperature,
+              num_predict: aiSettings.maxTokens,
+            }
+        };
+
+        try {
+            response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", body);
+            
+            // If failed because model doesn't support 'think', retry without it
+            if (!response.ok && aiSettings.deepMode) {
+                const errorData = await response.json();
+                if (response.status === 400 || (errorData.error && errorData.error.includes("think"))) {
+                    console.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
+                    delete (body as any).think;
+                    response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", body);
+                }
+            }
+        } catch (err) {
+            throw err;
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Ollama Request Failed");
+        }
+
+        const data = await response.json();
+        const message = data.message;
+
+        if (message.tool_calls && message.tool_calls.length > 0) {
+          // Add the assistant's tool call to history
+          history.push(message);
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: t('ai.status.interacting'),
+            thinking: message.thinking,
+            tool_calls: message.tool_calls
+          });
+
+          for (const toolCall of message.tool_calls) {
+            const toolName = toolCall.function.name;
+            const toolArgs = toolCall.function.arguments;
+            const callId = toolCall.id || Math.random().toString(36).substr(2, 9);
+
+            let result;
+            if (aiSettings.alwaysAllowTools) {
+              result = await executeToolInternal(toolName, toolArgs);
+            } else {
+              // Manual permission needed
+              const permissionPromise = new Promise((resolve) => {
+                setPendingTool({ id: callId, name: toolName, args: toolArgs });
+                (window as any).resolveTool = (allowed: boolean) => {
+                  setPendingTool(null);
+                  resolve(allowed);
+                };
+              });
+
+              const allowed = await permissionPromise;
+              if (allowed) {
+                result = await executeToolInternal(toolName, toolArgs);
+              } else {
+                result = t('ai.error.user_denied');
+              }
+            }
+
+            const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+            history.push({
+              role: "tool",
+              content: resultStr,
+              tool_call_id: callId
+            });
+
+            addMessageToSession(activeSessionId, {
+              role: "tool",
+              text: resultStr,
+              tool_id: callId
+            });
+          }
+          // Continue loop to get AI response for the tool results
+        } else {
+          addMessageToSession(activeSessionId, { 
+            role: "ai", 
+            text: message.content,
+            thinking: message.thinking 
+          });
+          loop = false;
+        }
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        // Do nothing, user stopped intentionally
+      } else {
+        // Check for OOM / Connection lost
+        const isLikelyOOM = err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError");
+        addMessageToSession(activeSessionId, {
+          role: "ai",
+          text: isLikelyOOM ? t('ai.error_oom') : (err.message?.includes("Ollama Request Failed") ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: aiSettings.endpoint }))
+        });
+      }
+    } finally {
+      setIsTyping(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!availableUpdate) return;
+    try {
+        setUpdateStatus("...");
+        await availableUpdate.downloadAndInstall((event: any) => {
+            if (event.event === 'Progress') {
+                const p = Math.round((event.data.chunkLength / (event.data.contentLength || 1)) * 100);
+                setUpdateStatus(`${p}%`);
+            } else if (event.event === 'Finished') {
+                relaunch();
+            }
+        });
+    } catch (e) {
+        setUpdateStatus("err");
+    }
+  };
+
+  const toggleDeepMode = () => {
+    updateAISettings({ ...aiSettings, deepMode: !aiSettings.deepMode });
+  };
+
+  const handleCheckUpdate = async () => {
+    try {
+      setUpdateStatus(t('ai.status.checking'));
+      const update = await check();
+      if (update) {
+        setUpdateStatus(t('ai.status.downloading_v', { version: update.version }));
+        let downloaded = 0;
+        let contentLength = 0;
+        await update.downloadAndInstall((event) => {
+          switch (event.event) {
+            case 'Started':
+              contentLength = event.data.contentLength as number;
+              break;
+            case 'Progress':
+              downloaded += event.data.chunkLength;
+              if (contentLength > 0) {
+                const progress = Math.round((downloaded / contentLength) * 100).toString();
+                setUpdateStatus(t('ai.status.downloading', { progress }));
+              }
+              break;
+            case 'Finished':
+              setUpdateStatus(t('ai.status.relaunching'));
+              break;
+          }
+        });
+        await relaunch();
+      } else {
+        setUpdateStatus(t('ai.status.up_to_date'));
+        setTimeout(() => setUpdateStatus(null), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+      setUpdateStatus(t('ai.status.failed'));
+      setTimeout(() => setUpdateStatus(null), 3000);
+    }
+  };
+
+  const openExternal = async (url: string) => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(url);
+    } catch (e) {
+      window.open(url, '_blank');
+    }
+  };
+
+  if (ollamaStatus === 'not_found') {
+    return (
+      <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
+        <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/5">
+          <Brain size={40} className="text-red-400 opacity-80" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">{t('ai.ollama_error.title')}</h2>
+        <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
+          {t('ai.ollama_error.desc')}
+        </p>
+        <button 
+          onClick={() => openExternal('https://ollama.com')}
+          className="flex items-center gap-2 px-6 py-2.5 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-lg"
+        >
+          <Download size={16} />
+          {t('ai.ollama_error.download')}
+        </button>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-4 text-[11px] text-[#444] hover:text-white transition-colors underline underline-offset-4"
+        >
+          {t('ai.status.relaunching')}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-[#0e0e0e] flex flex-col h-full overflow-hidden relative"
+    >
+      {/* Header */}
+      <div className="p-3 border-b border-[#1a1a1a] flex items-center justify-between bg-[#0a0a0a] shrink-0">
+        <div className="flex items-center gap-2 relative" ref={menuRef}>
+          <button
+            onClick={() => setShowModelMenu(!showModelMenu)}
+            className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/5 transition-all group"
+          >
+            <div className="flex flex-col items-start translate-y-[1px]">
+              <span className="text-[11px] font-bold text-white/90 group-hover:text-white transition-colors uppercase tracking-tight leading-none">
+                {selectedModel.split(':')[0] || t('ai.no_models')}
+              </span>
+              {selectedModel && (
+                <span className="text-[8px] text-[#555] font-mono leading-tight mt-0.5">
+                  {models.find(m => m.name === selectedModel)?.details?.parameter_size || '---'}
+                </span>
+              )}
+            </div>
+            <ChevronDown size={12} className={`text-[#444] group-hover:text-white/40 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showModelMenu && (
+            <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+              <div className="p-2 border-b border-white/5 flex items-center justify-between">
+                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
+                <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
+              </div>
+              <div className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {models.map(m => (
+                  <button
+                    key={m.name}
+                    onClick={() => { setSelectedModel(m.name); setShowModelMenu(false); }}
+                    className={`w-full text-left p-2 rounded-lg transition-all flex items-center justify-between group/item ${
+                      selectedModel === m.name ? 'bg-white/10 border-white/10' : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors ${getModelColor(m.details?.family || '')}`}>
+                        {getModelFamilyIcon(m.details?.family || '')}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={`text-[11px] font-semibold transition-colors ${selectedModel === m.name ? 'text-white' : 'text-white/60 group-hover/item:text-white/90'}`}>
+                          {m.name.split(':')[0]}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                           <span className="text-[8px] text-white/30 font-mono tracking-tighter uppercase">{m.details?.parameter_size || '---'}</span>
+                           <span className="text-[8px] text-white/20">•</span>
+                           <span className="text-[8px] text-white/30 font-mono tracking-tighter uppercase">{m.details?.quantization_level || '---'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {selectedModel === m.name && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    )}
+                  </button>
+                ))}
+                {models.length === 0 && (
+                  <div className="p-8 text-center">
+                    <div className="text-[10px] text-white/20 italic">{t('ai.no_models')}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {availableUpdate && (
+              <button 
+                onClick={handleUpdate}
+                title={updateStatus ? t('ai.status.downloading', { progress: updateStatus }) : t('ai.update.available')}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all mr-2 group"
+              >
+                  <Download size={12} className={updateStatus ? "animate-bounce" : "group-hover:translate-y-0.5 transition-transform"} />
+                  <span className="text-[9px] font-bold uppercase">{updateStatus || t('ai.update.button')}</span>
+              </button>
+          )}
+
+          {/* Clear Chat Button */}
+          <button
+            onClick={() => createSession()}
+            className="text-[#555] hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
+            title={t('ai.clear_chat')}
+          >
+            <ListRestart size={16} />
+          </button>
+
+          <button
+            onClick={() => { setShowHistory(!showHistory); }}
+            className={`text-[#555] hover:text-white p-1 rounded hover:bg-white/10 transition-colors ${showHistory ? "text-white bg-white/10" : ""}`}
+            title={t('ai.history_tooltip')}
+          >
+            <History size={16} />
+          </button>
+          <button
+            onClick={() => createSession()}
+            className="text-[#555] hover:text-white p-1 rounded hover:bg-white/10"
+            title={t('ai.new_session_tooltip')}
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            onClick={() => setRightPanelOpen(false)}
+            className="text-[#555] hover:text-white p-1 rounded hover:bg-white/10"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden relative flex flex-col">
+
+
+        {/* History Overlay */}
+        {showHistory && (
+          <div
+            className="absolute inset-0 bg-[#0e0e0e] z-20 border-l border-[#1a1a1a] flex flex-col"
+          >
+            <div className="p-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#555] uppercase tracking-wider">{t('ai.history_title')}</span>
+              <button onClick={() => setShowHistory(false)}><X size={14} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {chatSessions.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => { switchSession(s.id); setShowHistory(false); }}
+                  className={`p-2 rounded-lg flex items-center justify-between group cursor-pointer transition-colors ${activeSessionId === s.id ? "bg-white/10 border border-white/10" : "hover:bg-white/5"}`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <MessageSquare size={14} className={activeSessionId === s.id ? "text-white" : "text-[#555]"} />
+                    <span className={`text-xs truncate ${activeSessionId === s.id ? "text-white" : "text-[#999]"}`}>{s.title}</span>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chat messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-[#0e0e0e]">
+          {activeSession?.messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[95%] p-3 rounded-xl text-[13px] leading-relaxed ${msg.role === "user"
+                  ? "bg-white text-black rounded-br-none"
+                  : msg.role === "tool"
+                    ? "bg-[#0a0a0a] text-[#555] border border-[#1a1a1a] font-mono text-[10px] truncate max-w-[80%]"
+                    : "bg-[#141414] text-[#ccc] border border-[#1e1e1e] rounded-bl-none prose prose-invert prose-xs max-w-full"
+                  }`}
+              >
+                {msg.role === "ai" ? (
+                  <div className="space-y-2">
+                    {msg.thinking && (
+                        <details className="bg-white/5 rounded-lg border border-white/5 overflow-hidden group">
+                           <summary className="px-3 py-2 text-[10px] text-white/40 cursor-pointer hover:bg-white/5 transition-colors font-mono flex items-center gap-2 select-none">
+                              <Brain size={12} />
+                              {t('ai.thinking_trace')}
+                           </summary>
+                           <div className="px-3 pb-3 pt-1 text-[11px] text-white/50 italic whitespace-pre-wrap leading-relaxed border-t border-white/5 bg-black/20">
+                              {msg.thinking}
+                           </div>
+                        </details>
+                    )}
+                    {msg.tool_calls && msg.tool_calls.map((tc, idx) => (
+                      <div key={idx} className="flex items-center gap-2 mb-2 p-1.5 bg-white/5 rounded border border-white/10 text-[10px] text-white/50 animate-pulse">
+                        <Brain size={12} />
+                        <span>{t('ai.tool_running', { tool: tc.function.name })}</span>
+                      </div>
+                    ))}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          return (
+                            <code className={`${className} bg-[#0e0e0e] px-1 py-0.5 rounded text-white/80 font-mono text-[12px]`} {...props}>
+                              {children}
+                            </code>
+                          )
+                        },
+                        pre({ children }) {
+                          return <pre className="bg-[#0a0a0a] p-3 rounded-lg border border-[#1e1e1e] my-2 overflow-x-auto">{children}</pre>
+                        }
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
+                ) : msg.role === "tool" ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-white/40">
+                      <Save size={12} />
+                      <span className="truncate">{t('ai.status.tool_result')} ({msg.tool_id})</span>
+                    </div>
+                    {msg.text.startsWith('Error') && (
+                      <div className="mt-1 text-red-400/70 border-t border-red-900/20 pt-1">
+                        {msg.text}
+                      </div>
+                    )}
+                  </div>
+                ) : msg.role === "warning" ? (
+                  <div className="flex items-center gap-2 text-yellow-500/80 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20">
+                    <Brain size={12} className="animate-pulse" />
+                    <span className="text-[11px] font-semibold italic">{msg.text}</span>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Permission Request */}
+          {pendingTool && (
+            <div className="flex justify-start">
+              <div className="bg-[#1a1a1a] border border-white/20 p-4 rounded-xl max-w-[90%] shadow-2xl animate-in slide-in-from-left-2 transition-all">
+                <div className="flex items-center gap-2 mb-3 text-white font-semibold">
+                  <Sparkles size={16} className="text-white" />
+                  <span className="text-xs uppercase tracking-tighter">{t('ai.tool_permission_title')}</span>
+                </div>
+                <div className="bg-black/40 p-3 rounded-lg border border-white/5 mb-4">
+                  <div className="text-[11px] text-white/90 font-mono mb-1">{pendingTool.name}</div>
+                  <pre className="text-[9px] text-white/40 overflow-x-auto max-h-32 scrollbar-none">
+                    {JSON.stringify(pendingTool.args, null, 2)}
+                  </pre>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => (window as any).resolveTool(true)}
+                    className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
+                  >
+                    {t('ai.tool_allow')}
+                  </button>
+                  <button
+                    onClick={() => (window as any).resolveTool(false)}
+                    className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
+                  >
+                    {t('ai.tool_deny')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-[#141414] p-3 rounded-xl border border-[#1e1e1e] flex gap-1">
+                <div className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce" />
+                <div className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce [animation-delay:0.2s]" />
+                <div className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce [animation-delay:0.4s]" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Context indicator */}
+      {(currentFile || projectTree.length > 0) && (
+        <div className="px-4 py-1 text-[10px] text-[#444] bg-[#0a0a0a] border-t border-[#1a1a1a] flex items-center justify-between shrink-0 font-mono">
+          <div className="flex items-center gap-1.5 ">
+            <Code2 size={12} className="text-white/20" />
+            <span className="text-white/40">{projectTree.length > 0 ? t('ai.context.workspace') : t('ai.context_indicator')}</span>
+          </div>
+          {openFiles.length > 1 && (
+            <span className="text-white/20">{t('ai.context.open_files', { count: (openFiles.length - 1).toString() })}</span>
+          )}
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="p-4 bg-[#0a0a0a] border-t border-[#1a1a1a] shrink-0">
+        <div className="relative group">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            disabled={isTyping}
+            placeholder={isTyping ? t('ai.waiting_ollama') : t('ai.input_placeholder')}
+            className="w-full bg-[#111] text-white text-[13px] rounded-xl p-3 pb-12 border border-[#222] focus:outline-none focus:border-[#444] resize-none min-h-[100px] transition-all hover:border-[#333]"
+          />
+          <div className="absolute bottom-3 left-3 flex gap-2">
+            <button
+              onClick={toggleDeepMode}
+              className={`p-2 rounded-md transition-all ${aiSettings.deepMode ? "text-blue-400 bg-blue-500/10" : "text-[#555] hover:bg-white/10"}`} 
+              title={t('ai.deep_mode_label')}
+            >
+              <Brain size={18} className={aiSettings.deepMode ? "animate-pulse" : ""} />
+            </button>
+          </div>
+          <button
+            onClick={isTyping ? handleStop : handleSend}
+            disabled={!isTyping && !input.trim()}
+            className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all ${isTyping
+              ? "bg-red-500 text-white hover:bg-red-600 animate-pulse"
+              : (input.trim() ? "bg-white text-black hover:bg-white/90" : "bg-[#222] text-[#555] opacity-50 cursor-not-allowed")
+              }`}
+          >
+            {isTyping ? <Square size={18} fill="currentColor" /> : <Send size={18} />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AiChatComponent;
