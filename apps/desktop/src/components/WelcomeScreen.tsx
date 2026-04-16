@@ -10,7 +10,7 @@ const WelcomeScreen: React.FC = () => {
   const { handleOpenFolder, setRightPanelOpen, setActiveSidebarTab, setSidebarOpen, setBottomPanelOpen } = useApp();
   const { t } = useL10n();
   const shortcuts = [
-    { label: t('welcome.shortcut.new_project'), keys: ["Ctrl", "Alt", "N"], icon: Plus, action: () => { } },
+    //{ label: t('welcome.shortcut.new_project'), keys: ["Ctrl", "Alt", "N"], icon: Plus, action: () => { } },
     { label: t('welcome.shortcut.open_folder'), keys: ["Ctrl", "O"], icon: FolderOpen, action: handleOpenFolder },
     { label: t('welcome.shortcut.terminal'), keys: ["Ctrl", "J"], icon: Terminal, action: () => setBottomPanelOpen(true) },
   ];

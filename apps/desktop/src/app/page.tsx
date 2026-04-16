@@ -16,6 +16,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function Home() {
   const {
@@ -36,6 +37,13 @@ export default function Home() {
 
   useEffect(() => {
     PluginManager.bootstrap();
+    
+    // Show window once the frontend is ready
+    const showWindow = async () => {
+      const window = getCurrentWindow();
+      await window.show();
+    };
+    showWindow();
   }, []);
 
   // Global keyboard shortcuts
