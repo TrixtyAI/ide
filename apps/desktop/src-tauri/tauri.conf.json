@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "trixty-ide",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0",
   "identifier": "trixty.ide",
   "build": {
     "frontendDist": "../out",
@@ -33,7 +33,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-         "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json"
+        "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZENjJGRDY0ODk4MjA5MEQKUldRTkNZS0paUDFpL1RTS3hzZm5RWCt0aUR5ckhYSjU4NUZ1VFUvVzBMZXlVMnVNVkxVZHFBc3IK"
     }
