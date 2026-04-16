@@ -63,6 +63,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'v__VERSION__-beta'
           releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false
+          releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}
