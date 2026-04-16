@@ -1,24 +1,35 @@
 import React from "react";
-import { loader } from "@monaco-editor/react";
+import { loader, type Monaco } from "@monaco-editor/react";
+import type { languages } from "monaco-editor";
 
-type CommandCallback = (...args: any[]) => any;
+// Registry of all available commands in the IDE. 
+// Can be extended via Declaration Merging in other modules.
+export interface TrixtyCommands {
+    'ai.suggestChanges': (prompt: string) => Promise<string>;
+    'editor.format': () => void;
+    // Add more command signatures here or in other files using:
+    // declare module "@/api/trixty" { interface TrixtyCommands { 'my.cmd': () => void } }
+}
+
+type CommandCallback = (...args: never[]) => unknown;
 
 class CommandRegistry {
     private commands = new Map<string, CommandCallback>();
 
-    registerCommand(id: string, callback: CommandCallback) {
+    registerCommand<K extends keyof TrixtyCommands>(id: K, callback: TrixtyCommands[K]) {
         if (this.commands.has(id)) {
             console.warn(`Command ${id} is already registered. Overwriting.`);
         }
-        this.commands.set(id, callback);
+        this.commands.set(id, callback as unknown as CommandCallback);
     }
 
-    executeCommand(id: string, ...args: any[]): any {
+    executeCommand<K extends keyof TrixtyCommands>(id: K, ...args: Parameters<TrixtyCommands[K]>): ReturnType<TrixtyCommands[K]> {
         const cmd = this.commands.get(id);
         if (!cmd) {
             throw new Error(`Command ${id} not found.`);
         }
-        return cmd(...args);
+        // Using uncurried cast to solve the never[] spread issue
+        return (cmd as unknown as (...a: Parameters<TrixtyCommands[K]>) => ReturnType<TrixtyCommands[K]>)(...args);
     }
 }
 
@@ -93,7 +104,7 @@ class L10nRegistry {
     t(key: string, params?: Record<string, string>): string {
         const bundle = this.bundles.get(this.currentLocale) || this.bundles.get('en') || {};
         let text = bundle[key] || key;
-        
+
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
                 text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
@@ -113,8 +124,13 @@ class L10nRegistry {
 }
 
 class LanguageRegistry {
-    private monaco: any = null;
-    private buffer: Array<{ type: 'register' | 'tokens' | 'config' | 'indent', data: any }> = [];
+  private monaco: Monaco | null = null;
+  private buffer: Array<
+    | { type: 'register'; data: languages.ILanguageExtensionPoint }
+    | { type: 'tokens'; data: { id: string; rules: languages.IMonarchLanguage } }
+    | { type: 'config'; data: { id: string; config: languages.LanguageConfiguration } }
+    | { type: 'indent'; data: { id: string; options: { tabSize: number; insertSpaces: boolean } } }
+  > = [];
     private indentationSettings = new Map<string, { tabSize: number, insertSpaces: boolean }>();
 
     constructor() {
@@ -128,10 +144,7 @@ class LanguageRegistry {
 
     private flush() {
         if (!this.monaco) return;
-        while (this.buffer.length > 0) {
-            const item = this.buffer.shift();
-            if (!item) continue;
-            
+      for (const item of this.buffer) {
             try {
                 if (item.type === 'register') {
                     this.monaco.languages.register(item.data);
@@ -146,9 +159,10 @@ class LanguageRegistry {
                 console.error("[LanguageRegistry] Error flushing buffered language item:", e);
             }
         }
+      this.buffer = [];
     }
 
-    register(language: { id: string, extensions?: string[], aliases?: string[], mimetypes?: string[] }) {
+  register(language: languages.ILanguageExtensionPoint) {
         if (this.monaco) {
             this.monaco.languages.register(language);
         } else {
@@ -156,7 +170,7 @@ class LanguageRegistry {
         }
     }
 
-    setMonarchTokens(id: string, rules: any) {
+  setMonarchTokens(id: string, rules: languages.IMonarchLanguage) {
         if (this.monaco) {
             this.monaco.languages.setMonarchTokensProvider(id, rules);
         } else {
@@ -164,7 +178,7 @@ class LanguageRegistry {
         }
     }
 
-    setConfiguration(id: string, config: any) {
+  setConfiguration(id: string, config: languages.LanguageConfiguration) {
         if (this.monaco) {
             this.monaco.languages.setLanguageConfiguration(id, config);
         } else {
@@ -198,9 +212,21 @@ export const trixty = {
     languages: new LanguageRegistry()
 };
 
+// Global Window interface extensions for Trixty
+declare global {
+  interface Window {
+    trixty: typeof trixty;
+    React: typeof React;
+    LucideIcons: typeof import("lucide-react");
+    resolveTool?: (allowed: boolean) => void;
+    __TAURI_INTERNALS__?: unknown;
+  }
+}
+
 // Make it globally available on the window object for dynamic parsed addons
 if (typeof window !== "undefined") {
-    (window as any).trixty = trixty;
-    (window as any).React = React;
-    (window as any).LucideIcons = require("lucide-react");
+  window.trixty = trixty;
+  window.React = React;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  window.LucideIcons = require("lucide-react");
 }

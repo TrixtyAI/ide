@@ -50,6 +50,9 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Sync version
+        run: pnpm version:sync
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

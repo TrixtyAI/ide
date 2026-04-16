@@ -26,9 +26,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         onChange={onChange}
         onMount={(editor, monaco) => {
           // Apply custom indentation from Registry if available
-          const { trixty } = (window as any);
-          if (trixty?.languages) {
-            const indent = trixty.languages.getIndentation(language);
+          if (window.trixty?.languages) {
+            const indent = window.trixty.languages.getIndentation(language);
             if (indent) {
               const model = editor.getModel();
               if (model) {

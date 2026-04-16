@@ -16,7 +16,7 @@ interface FileEntry { name: string; path: string; is_dir: boolean; children?: Fi
 interface SearchResult { file_path: string; file_name: string; line_number: number; content: string; }
 interface GitFileChange { status: string; file: string; }
 
-const STATUS_META: Record<string, { icon: any; color: string }> = {
+const STATUS_META: Record<string, { icon: React.ElementType; color: string }> = {
   "M": { icon: FileEdit, color: "text-yellow-400/80" },
   "A": { icon: FilePlus, color: "text-green-400/80" },
   "D": { icon: FileX, color: "text-red-400/80" },
@@ -51,7 +51,7 @@ const GitExplorerComponent: React.FC = () => {
   const loadDirectory = useCallback(async (path: string, parentPath?: string) => {
     setLoading(true);
     try {
-      const data = await invoke<FileEntry[]>("read_directory", { path });
+      const data = await invoke("read_directory", { path });
       const sorted = data.sort((a, b) => (b.is_dir ? 1 : 0) - (a.is_dir ? 1 : 0) || a.name.localeCompare(b.name));
       if (!parentPath) { setEntries(sorted); } else {
         setEntries((prev) => {
@@ -117,7 +117,7 @@ const GitExplorerComponent: React.FC = () => {
     try {
       if (type === "file") {
         await invoke("write_file", { path, content: "" });
-        openFile(path, newEntryName, "", "local");
+        openFile(path, newEntryName, "", "file");
       } else {
         await invoke("create_directory", { path });
       }
@@ -134,10 +134,10 @@ const GitExplorerComponent: React.FC = () => {
   const refreshGit = useCallback(async () => {
     if (!rootPath) return;
     try {
-      const status = await invoke<string>("get_git_status", { path: rootPath });
-      if (status !== undefined) {
+      const status = await invoke("get_git_status", { path: rootPath });
+      if (status) {
         setIsGitRepo(true);
-        const lines = status.split("\n").filter((l) => l.trim());
+        const lines = status.split("\n").filter((l: string) => l.trim());
         // Porcelain v1: XY filename
         // X = staged status, Y = unstaged status
         const staged: GitFileChange[] = [];
@@ -154,7 +154,7 @@ const GitExplorerComponent: React.FC = () => {
         setStagedChanges(staged);
         setGitChanges(unstaged);
       }
-      const bl = await invoke<string[]>("get_git_branches", { path: rootPath });
+      const bl = await invoke("get_git_branches", { path: rootPath });
       setBranches(bl);
       if (bl.length > 0) setCurrentBranch(bl[0]);
     } catch (err) {
@@ -189,9 +189,9 @@ const GitExplorerComponent: React.FC = () => {
     }
   }, [activeSidebarTab, rootPath, refreshGit]);
 
-  const handleGitInit = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke<string>("git_init", { path: rootPath }); setIsGitRepo(true); await refreshGit(); flash(t('git.status.init_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
-  const handleCommit = async () => { if (!rootPath || !commitMessage.trim()) return; setGitLoading(true); try { await invoke<string>("git_commit", { path: rootPath, message: commitMessage }); setCommitMessage(""); await refreshGit(); flash(t('git.status.commit_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
-  const handlePush = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke<string>("git_push", { path: rootPath }); flash(t('git.status.push_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleGitInit = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_init", { path: rootPath }); setIsGitRepo(true); await refreshGit(); flash(t('git.status.init_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleCommit = async () => { if (!rootPath || !commitMessage.trim()) return; setGitLoading(true); try { await invoke("git_commit", { path: rootPath, message: commitMessage }); setCommitMessage(""); await refreshGit(); flash(t('git.status.commit_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handlePush = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_push", { path: rootPath }); flash(t('git.status.push_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
   const handleStage = async (file: string) => { if (!rootPath) return; try { await invoke("git_add", { path: rootPath, files: [file] }); await refreshGit(); } catch (e) { flash(t('git.error', { message: String(e) })); } };
   const handleUnstage = async (file: string) => { if (!rootPath) return; try { await invoke("git_unstage", { path: rootPath, files: [file] }); await refreshGit(); } catch (e) { flash(t('git.error', { message: String(e) })); } };
   const handleStageAll = async () => { if (!rootPath) return; try { await invoke("git_add", { path: rootPath, files: ["."] }); await refreshGit(); flash(t('git.status.all_staged')); } catch (e) { flash(t('git.error', { message: String(e) })); } };
@@ -201,7 +201,7 @@ const GitExplorerComponent: React.FC = () => {
     if (!rootPath) return;
     setAiSuggestLoading(true);
     try {
-      const diff = await invoke<string>("get_git_diff", { path: rootPath });
+      const diff = await invoke("get_git_diff", { path: rootPath });
       if (!diff.trim()) { flash(t('git.status.no_staged_changes')); setAiSuggestLoading(false); return; }
       const saved = localStorage.getItem("trixty-ai-settings");
       const s = saved ? JSON.parse(saved) : {};
@@ -224,7 +224,7 @@ const GitExplorerComponent: React.FC = () => {
     } else {
       const bins = [".png",".jpg",".jpeg",".gif",".exe",".dll",".bin",".zip",".pdf",".ico",".woff",".woff2",".ttf"];
       if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) return;
-      try { const c = await invoke<string>("read_file", { path: entry.path }); openFile(entry.path, entry.name, c); }
+      try { const c = await invoke("read_file", { path: entry.path }); openFile(entry.path, entry.name, c); }
       catch (e) { if (typeof e === "string" && e.includes("UTF-8")) openFile(entry.path, entry.name, t('editor.bin_file')); }
     }
   };
@@ -232,12 +232,12 @@ const GitExplorerComponent: React.FC = () => {
   const handleSearch = async () => {
     if (!searchQuery.trim() || !rootPath) return;
     setIsSearching(true);
-    try { setSearchResults(await invoke<SearchResult[]>("search_in_project", { query: searchQuery, rootPath })); }
+    try { setSearchResults(await invoke("search_in_project", { query: searchQuery, rootPath })); }
     catch (e) { console.error(e); } finally { setIsSearching(false); }
   };
 
   const handleSearchClick = async (r: SearchResult) => {
-    try { const c = await invoke<string>("read_file", { path: r.file_path }); openFile(r.file_path, r.file_name, c); } catch {}
+    try { const c = await invoke("read_file", { path: r.file_path }); openFile(r.file_path, r.file_name, c); } catch {}
   };
 
   const handleDeleteItem = async (entry: FileEntry) => {
@@ -309,7 +309,7 @@ const GitExplorerComponent: React.FC = () => {
           }}
         >
           {!rootPath ? <Empty title={t('explorer.title')} icon={<Folder size={40} strokeWidth={1} />} /> : (
-            (function render(items: FileEntry[], level = 0): any {
+            (function render(items: FileEntry[], level = 0): React.ReactNode {
               const currentItems = [...items];
               
               return (

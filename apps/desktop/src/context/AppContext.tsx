@@ -45,7 +45,7 @@ interface AppContextType {
   createSession: () => void;
   deleteSession: (id: string) => void;
   switchSession: (id: string) => void;
-  addMessageToSession: (sessionId: string, message: { role: "user" | "ai"; text: string }) => void;
+  addMessageToSession: (sessionId: string, message: ChatMessage) => void;
 
   // AI Settings
   aiSettings: AISettings;
@@ -77,7 +77,7 @@ export interface ChatMessage {
   role: "user" | "ai" | "tool" | "warning";
   text: string;
   thinking?: string; // Reasoning trace
-  tool_calls?: any[];
+  tool_calls?: { function: { name: string, arguments: Record<string, string | number | boolean | string[]> }; id: string; type: string }[];
   tool_id?: string;
 }
 
@@ -303,7 +303,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // Enforce 10-tab limit
-      let newOpenFiles = [...prev];
+      const newOpenFiles = [...prev];
       if (newOpenFiles.length >= 10) {
         newOpenFiles.shift(); // Remove the oldest tab
       }

@@ -10,7 +10,7 @@ import MarketplaceView from "./MarketplaceView";
 const EditorArea: React.FC = () => {
   const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();
   const { t } = useL10n();
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -172,11 +172,10 @@ const EditorArea: React.FC = () => {
               acceptSuggestionOnEnter: "on",
               quickSuggestions: true,
               tabCompletion: "on",
-              wordBasedSuggestions: "all",
+              wordBasedSuggestions: "allDocuments",
               parameterHints: { enabled: true },
               suggest: {
-                showIcons: true,
-                maxVisibleSuggestions: 10
+                showIcons: true
               }
             }}
           />

@@ -13,6 +13,7 @@ import {
   Copy,
   Check
 } from "lucide-react";
+import { safeInvoke as invoke } from "@/api/tauri";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import logoWhite from "@/assets/branding/logo-white.png";
@@ -31,15 +32,13 @@ const SettingsView: React.FC = () => {
   const { t } = useL10n();
   const [activeCategory, setActiveCategory] = useState("appearance");
   const [copied, setCopied] = useState(false);
-  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [systemInfo, setSystemInfo] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
     if (isSettingsOpen && activeCategory === "about" && !systemInfo) {
-      import("@/api/tauri").then(({ safeInvoke }) => {
-        safeInvoke("get_trixty_about_info")
-          .then(setSystemInfo)
-          .catch(console.error);
-      });
+      invoke("get_trixty_about_info")
+        .then(setSystemInfo)
+        .catch(console.error);
     }
   }, [isSettingsOpen, activeCategory, systemInfo]);
 

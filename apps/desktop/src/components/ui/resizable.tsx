@@ -11,7 +11,7 @@ const ResizablePanelGroup = ({
   <ResizablePrimitive.Group
     className={cn(
       "flex h-full w-full",
-      props.direction === "vertical" && "flex-col",
+      (props as { direction?: "horizontal" | "vertical" }).direction === "vertical" && "flex-col",
       className
     )}
     {...props}

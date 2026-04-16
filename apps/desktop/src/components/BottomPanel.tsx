@@ -30,9 +30,9 @@ const BottomPanel: React.FC = () => {
 
     const refreshPorts = async () => {
       try {
-        const active = await invoke<number[]>("get_active_ports");
+        const active = await invoke("get_active_ports");
         // Only show ports that aren't in the ignored list
-        setDiscoveredPorts(active.filter(p => !ignoredPorts.includes(p)));
+        setDiscoveredPorts(active.filter((p: number) => !ignoredPorts.includes(p)));
       } catch (e) {
         console.error("Discovery error:", e);
       }
@@ -45,7 +45,7 @@ const BottomPanel: React.FC = () => {
 
   // 2. Listen for tunnel events
   React.useEffect(() => {
-    let unlisten: any;
+    let unlisten: () => void;
     const setup = async () => {
       unlisten = await listen<[number, string]>("tunnel-ready", (event) => {
         const [port, url] = event.payload;
@@ -62,7 +62,7 @@ const BottomPanel: React.FC = () => {
   const handleForwardPort = async (port: number) => {
     setTunnels(prev => ({ ...prev, [port]: { url: "", loading: true } }));
     try {
-      const url = await invoke<string>("start_tunnel", { port });
+      const url = await invoke("start_tunnel", { port });
       setTunnels(prev => ({ ...prev, [port]: { url, loading: false } }));
     } catch (e) {
       console.error("Tunnel error:", e);

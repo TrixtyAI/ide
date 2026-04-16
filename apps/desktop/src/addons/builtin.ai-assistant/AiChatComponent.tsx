@@ -8,8 +8,10 @@ import { useL10n } from "@/hooks/useL10n";
 import remarkGfm from "remark-gfm";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { safeInvoke as invoke } from "@/api/tauri";
+import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
+
+type ToolArgs = Record<string, string | number | boolean | string[]>;
 
 interface OllamaModel {
   name: string;
@@ -24,8 +26,15 @@ interface OllamaModel {
 interface PendingTool {
   id: string;
   name: string;
-  args: any;
+  args: Record<string, string | number | boolean | string[]>;
 }
+
+type OllamaChatMessage = 
+  | { role: 'system'; content: string }
+  | { role: 'user'; content: string; images?: string[] }
+  | { role: 'assistant'; content: string; tool_calls?: { function: { name: string, arguments: ToolArgs }; id?: string; type?: string }[]; thinking?: string }
+  | { role: 'tool'; content: string; tool_call_id: string };
+
 
 const AiChatComponent: React.FC = () => {
   const {
@@ -52,11 +61,11 @@ const AiChatComponent: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const [availableUpdate, setAvailableUpdate] = useState<any>(null);
+  const [availableUpdate, setAvailableUpdate] = useState<{ downloadAndInstall: (cb: (e: { event: string; data?: unknown }) => void) => Promise<void>; version: string; body?: string } | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [projectTree, setProjectTree] = useState<string[]>([]);
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
-  const [toolResults, setToolResults] = useState<Record<string, any>>({});
+  const [toolResults, setToolResults] = useState<Record<string, string | number | boolean | string[]>>({});
   const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -75,11 +84,11 @@ const AiChatComponent: React.FC = () => {
     }
   }, [selectedModel]);
 
-  const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: any) => {
-    const result = await invoke<{ status: number; body: string }>("ollama_proxy", {
+  const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: OllamaRequest) => {
+    const result = await invoke("ollama_proxy", {
       method,
       url,
-      body: body || null
+      body: body || { type: 'version' } // Default to version if no body
     });
     return {
       ok: result.status >= 200 && result.status < 300,
@@ -97,7 +106,7 @@ const AiChatComponent: React.FC = () => {
         return;
       }
       try {
-        const files = await invoke<string[]>("get_recursive_file_list", { rootPath });
+        const files = await invoke("get_recursive_file_list", { rootPath });
         setProjectTree(files);
       } catch (err) {
         console.error("Failed to fetch project tree:", err);
@@ -119,10 +128,10 @@ const AiChatComponent: React.FC = () => {
           setOllamaStatus('connected');
           if (models.length > 0) {
             const savedModel = localStorage.getItem("trixty_ai_last_model");
-            const exists = models.find((m: any) => m.name === savedModel);
-            if (exists) {
+            const exists = models.find((m: { name: string }) => m.name === savedModel);
+            if (savedModel && exists) {
               setSelectedModel(savedModel);
-            } else if (!selectedModel) {
+            } else if (!selectedModel && models.length > 0) {
               setSelectedModel(models[0].name);
             }
           }
@@ -191,7 +200,7 @@ const AiChatComponent: React.FC = () => {
     let warningShown = false;
     const interval = setInterval(async () => {
       try {
-        const stats = await invoke<{ cpu_usage: number; memory_usage: number }>("get_system_health");
+        const stats = await invoke("get_system_health");
 
         // Hard Stop at 97%
         if (stats.cpu_usage > 97 || stats.memory_usage > 97) {
@@ -234,29 +243,29 @@ const AiChatComponent: React.FC = () => {
     return cleanRoot + p;
   };
 
-  const executeToolInternal = async (name: string, args: any) => {
+  const executeToolInternal = async (name: string, args: Record<string, string | number | boolean | string[]>) => {
     try {
       switch (name) {
         case 'list_directory':
-          return await invoke("read_directory", { path: resolvePath(args.path) });
+          return await invoke("read_directory", { path: resolvePath(String(args.path)) });
         case 'read_file':
-          return await invoke("read_file", { path: resolvePath(args.path) });
+          return await invoke("read_file", { path: resolvePath(String(args.path)) });
         case 'write_file':
-          await invoke("write_file", { path: resolvePath(args.path), content: args.content });
+          await invoke("write_file", { path: resolvePath(String(args.path)), content: String(args.content) });
           return "File written successfully.";
         case 'execute_command':
           return await invoke("execute_command", {
-            command: args.command,
-            args: args.args || [],
-            cwd: args.cwd || rootPath
+            command: String(args.command),
+            args: Array.isArray(args.args) ? args.args.map(String) : [],
+            cwd: typeof args.cwd === 'string' ? args.cwd : rootPath
           });
         case 'get_workspace_structure':
           return await invoke("get_recursive_file_list", { rootPath });
         default:
           return `Error: Unknown tool ${name}`;
       }
-    } catch (err: any) {
-      return `Error executing tool ${name}: ${err}`;
+    } catch (err: unknown) {
+      return `Error executing tool ${name}: ${err instanceof Error ? err.message : String(err)}`;
     }
   };
 
@@ -272,6 +281,7 @@ const AiChatComponent: React.FC = () => {
     if (!selectedModel || !aiSettings.endpoint) return;
     try {
       await proxyFetch(`${aiSettings.endpoint}/api/generate`, "POST", {
+        type: 'generate',
         model: selectedModel,
         keep_alive: 0
       });
@@ -296,20 +306,34 @@ const AiChatComponent: React.FC = () => {
       const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
       const currentContext = currentFile ? `Focused File: ${currentFile.path}\n` : "";
 
-      const systemMessage = {
-        role: "system",
-        content: `${aiSettings.systemPrompt}\n\n${workspaceContext}${currentContext}`
-      };
-
-      let history = [
-        systemMessage,
-        ...activeSession.messages.map(m => ({
-          role: m.role === "ai" ? "assistant" : m.role,
-          content: m.text,
-          tool_calls: m.tool_calls,
-          tool_id: m.tool_id
-        })),
-        { role: "user", content: userMessage }
+      const history: OllamaChatMessage[] = [
+        {
+          role: "system" as const,
+          content: `${aiSettings.systemPrompt}\n\n${workspaceContext}${currentContext}`
+        },
+        ...activeSession.messages.map((m): OllamaChatMessage => {
+          if (m.role === "tool") {
+            return { role: "tool" as const, content: m.text, tool_call_id: m.tool_id || "" };
+          }
+          if (m.role === "ai") {
+            return {
+              role: "assistant" as const,
+              content: m.text,
+              tool_calls: m.tool_calls,
+            };
+          }
+          if (m.role === "user") {
+            return {
+              role: "user" as const,
+              content: m.text,
+            };
+          }
+          return {
+            role: "system" as const,
+            content: m.text,
+          };
+        }),
+        { role: "user" as const, content: userMessage }
       ];
 
       let loop = true;
@@ -318,7 +342,8 @@ const AiChatComponent: React.FC = () => {
       while (loop && maxIterations > 0) {
         maxIterations--;
         let response;
-        const body = {
+        const body: OllamaRequest = {
+            type: 'chat',
             model: selectedModel,
             messages: history,
             stream: false,
@@ -332,14 +357,14 @@ const AiChatComponent: React.FC = () => {
 
         try {
             response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", body);
-            
+
             // If failed because model doesn't support 'think', retry without it
             if (!response.ok && aiSettings.deepMode) {
                 const errorData = await response.json();
                 if (response.status === 400 || (errorData.error && errorData.error.includes("think"))) {
                     console.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
-                    delete (body as any).think;
-                    response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", body);
+                  const reqBody = { ...body, think: false };
+                    response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", reqBody);
                 }
             }
         } catch (err) {
@@ -374,9 +399,9 @@ const AiChatComponent: React.FC = () => {
               result = await executeToolInternal(toolName, toolArgs);
             } else {
               // Manual permission needed
-              const permissionPromise = new Promise((resolve) => {
+              const permissionPromise = new Promise<boolean>((resolve) => {
                 setPendingTool({ id: callId, name: toolName, args: toolArgs });
-                (window as any).resolveTool = (allowed: boolean) => {
+                window.resolveTool = (allowed: boolean) => {
                   setPendingTool(null);
                   resolve(allowed);
                 };
@@ -405,23 +430,24 @@ const AiChatComponent: React.FC = () => {
           }
           // Continue loop to get AI response for the tool results
         } else {
-          addMessageToSession(activeSessionId, { 
-            role: "ai", 
+          addMessageToSession(activeSessionId, {
+            role: "ai",
             text: message.content,
-            thinking: message.thinking 
+            thinking: message.thinking
           });
           loop = false;
         }
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         // Do nothing, user stopped intentionally
       } else {
         // Check for OOM / Connection lost
-        const isLikelyOOM = err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError");
+        const isLikelyOOM = err instanceof Error && (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError"));
+        const requestFailed = err instanceof Error && err.message?.includes("Ollama Request Failed");
         addMessageToSession(activeSessionId, {
           role: "ai",
-          text: isLikelyOOM ? t('ai.error_oom') : (err.message?.includes("Ollama Request Failed") ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: aiSettings.endpoint }))
+          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: aiSettings.endpoint }))
         });
       }
     } finally {
@@ -434,9 +460,10 @@ const AiChatComponent: React.FC = () => {
     if (!availableUpdate) return;
     try {
         setUpdateStatus("...");
-        await availableUpdate.downloadAndInstall((event: any) => {
+      await availableUpdate.downloadAndInstall((event: { event: string; data?: unknown }) => {
             if (event.event === 'Progress') {
-                const p = Math.round((event.data.chunkLength / (event.data.contentLength || 1)) * 100);
+              const d = event.data as { chunkLength: number; contentLength?: number };
+              const p = Math.round((d.chunkLength / (d.contentLength || 1)) * 100);
                 setUpdateStatus(`${p}%`);
             } else if (event.event === 'Finished') {
                 relaunch();
@@ -507,14 +534,14 @@ const AiChatComponent: React.FC = () => {
         <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
           {t('ai.ollama_error.desc')}
         </p>
-        <button 
+        <button
           onClick={() => openExternal('https://ollama.com')}
           className="flex items-center gap-2 px-6 py-2.5 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-lg"
         >
           <Download size={16} />
           {t('ai.ollama_error.download')}
         </button>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-4 text-[11px] text-[#444] hover:text-white transition-colors underline underline-offset-4"
         >
@@ -595,7 +622,7 @@ const AiChatComponent: React.FC = () => {
 
         <div className="flex items-center gap-1">
           {availableUpdate && (
-              <button 
+              <button
                 onClick={handleUpdate}
                 title={updateStatus ? t('ai.status.downloading', { progress: updateStatus }) : t('ai.update.available')}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all mr-2 group"
@@ -706,7 +733,7 @@ const AiChatComponent: React.FC = () => {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, inline, className, children, ...props }) {
+                        code({ node, className, children, ...props }) {
                           return (
                             <code className={`${className} bg-[#0e0e0e] px-1 py-0.5 rounded text-white/80 font-mono text-[12px]`} {...props}>
                               {children}
@@ -761,13 +788,13 @@ const AiChatComponent: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => (window as any).resolveTool(true)}
+                    onClick={() => window.resolveTool?.(true)}
                     className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
                   >
                     {t('ai.tool_allow')}
                   </button>
                   <button
-                    onClick={() => (window as any).resolveTool(false)}
+                    onClick={() => window.resolveTool?.(false)}
                     className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
                   >
                     {t('ai.tool_deny')}
@@ -820,7 +847,7 @@ const AiChatComponent: React.FC = () => {
           <div className="absolute bottom-3 left-3 flex gap-2">
             <button
               onClick={toggleDeepMode}
-              className={`p-2 rounded-md transition-all ${aiSettings.deepMode ? "text-blue-400 bg-blue-500/10" : "text-[#555] hover:bg-white/10"}`} 
+              className={`p-2 rounded-md transition-all ${aiSettings.deepMode ? "text-blue-400 bg-blue-500/10" : "text-[#555] hover:bg-white/10"}`}
               title={t('ai.deep_mode_label')}
             >
               <Brain size={18} className={aiSettings.deepMode ? "animate-pulse" : ""} />

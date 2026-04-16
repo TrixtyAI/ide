@@ -3,10 +3,10 @@
 import React, { useEffect, useRef } from "react";
 
 export interface ContextMenuItem {
-  label: string;
+  label?: string;
   icon?: React.ReactNode;
   shortcut?: string;
-  onClick: () => void;
+  onClick?: () => void;
   separator?: boolean;
   disabled?: boolean;
 }
@@ -61,7 +61,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (!item.disabled) {
+                if (!item.disabled && item.onClick) {
                   item.onClick();
                   onClose();
                 }

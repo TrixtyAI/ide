@@ -7,7 +7,8 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "desktop": "pnpm --filter @trixty/desktop tauri"
+    "desktop": "pnpm --filter @trixty/desktop tauri",
+    "version:sync": "node scripts/sync-version.mjs"
   },
   "devDependencies": {
     "turbo": "^2"
