@@ -18,6 +18,7 @@ pub struct RegistryEntry {
     pub path: Option<String>, // Support for subfolders
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExtensionState {
     pub installed: bool,
