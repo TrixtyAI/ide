@@ -41,9 +41,12 @@ export interface TauriInvokeMap {
   "get_recursive_file_list": { args: { rootPath: string | null }; return: string[] };
   "get_system_health": { args: undefined; return: { cpu_usage: number; memory_usage: number } };
   "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
+  "check_update": { args: { url: string }; return: { version: string; body?: string | null } | null };
+  "install_update": { args: { url: string }; return: void };
   "spawn_pty": { args: { cwd?: string }; return: void };
   "write_to_pty": { args: { data: string }; return: void };
   "resize_pty": { args: { rows: number; cols: number }; return: void };
+  "kill_pty": { args: undefined; return: void };
   "stop_tunnel": { args: { port: number }; return: void };
   "start_tunnel": { args: { port: number }; return: string };
   "get_active_ports": { args: undefined; return: number[] };

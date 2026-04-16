@@ -15,6 +15,7 @@ const Terminal: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
   const initialized = useRef(false);
+  const activePtyPath = useRef<string | null | undefined>(undefined); // tracks last spawned path
 
   // 1. Initialize Xterm once on mount
   useEffect(() => {
@@ -90,12 +91,21 @@ const Terminal: React.FC = () => {
   // 2. Handle PTY session and path changes
   useEffect(() => {
     if (!xtermRef.current) return;
-    
+
+    const targetPath = terminalPath || rootPath || undefined;
+
+    // Skip if we're already running a PTY for this exact path
+    if (activePtyPath.current !== undefined && activePtyPath.current === targetPath) return;
+    activePtyPath.current = targetPath ?? null;
+
     let isCanceled = false;
     let unlisten: (() => void) | undefined;
 
     const setupPty = async () => {
       try {
+        // Kill any existing PTY before spawning a new one
+        await invoke("kill_pty").catch(() => { /* ignore if none active */ });
+
         const u = await listen<string>("pty-output", (event) => {
           if (!isCanceled && xtermRef.current) {
             xtermRef.current.write(event.payload);
@@ -108,7 +118,7 @@ const Terminal: React.FC = () => {
         }
         
         unlisten = u;
-        await invoke("spawn_pty", { cwd: terminalPath || rootPath || undefined });
+        await invoke("spawn_pty", { cwd: targetPath });
       } catch (err) {
         if (!isCanceled && xtermRef.current) {
           xtermRef.current.writeln("\x1b[31m" + t('terminal.error_connect') + "\x1b[0m " + err);

@@ -4,6 +4,19 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Runtime};
 
+/// Creates a [`Command`] that will NOT show a console window on Windows.
+#[inline]
+fn silent_command(program: &str) -> Command {
+    let mut cmd = Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 pub struct TunnelInstance {
     pub _port: u16,
     pub url: String,
@@ -21,7 +34,7 @@ pub fn get_active_ports() -> Result<Vec<u16>, String> {
     #[cfg(target_os = "windows")]
     {
         // -a: all connections, -n: numerical addr, -o: owning PID, -p tcp: only TCP
-        let output = Command::new("netstat")
+        let output = silent_command("netstat")
             .args(["-ano", "-p", "tcp"])
             .output()
             .map_err(|e| e.to_string())?;
@@ -56,7 +69,7 @@ pub fn get_active_ports() -> Result<Vec<u16>, String> {
     #[cfg(not(target_os = "windows"))]
     {
         // lsof -iTCP -sTCP:LISTEN -P -n
-        let output = Command::new("lsof")
+        let output = silent_command("lsof")
             .args(["-iTCP", "-sTCP:LISTEN", "-P", "-n"])
             .output()
             .map_err(|e| e.to_string())?;
@@ -101,14 +114,14 @@ pub async fn start_tunnel<R: Runtime>(
     // Use local localtunnel installation
     // The working directory for the command will be the project root
     let mut child = if cfg!(target_os = "windows") {
-        Command::new("cmd")
+        silent_command("cmd")
             .args(["/C", "pnpm", "lt", "--port", &port.to_string()])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| e.to_string())?
     } else {
-        Command::new("pnpm")
+        silent_command("pnpm")
             .args(["lt", "--port", &port.to_string()])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

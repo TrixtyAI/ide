@@ -26,6 +26,8 @@ const SettingsView: React.FC = () => {
     updateEditorSettings,
     locale,
     setLocale,
+    systemSettings,
+    updateSystemSettings,
     isSettingsOpen,
     setSettingsOpen
   } = useApp();
@@ -128,6 +130,34 @@ Node.js: ${systemInfo.node_version}
                     <option value="en">English</option>
                     <option value="es">Español</option>
                   </select>
+                </div>
+                
+                <div className="flex flex-col gap-1.5 mt-2 pt-4 border-t border-[#1a1a1a]">
+                  <h4 className="text-[12px] font-medium text-white mb-1">{t('settings.application.updates')}</h4>
+                  <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.application.update_channel')}</label>
+                  <select
+                    value={systemSettings.updateChannel}
+                    onChange={(e) => updateSystemSettings({ updateChannel: e.target.value as "stable" | "insiders" })}
+                    className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors appearance-none"
+                  >
+                    <option value="stable">{t('settings.application.update_channel_stable')}</option>
+                    <option value="insiders">{t('settings.application.update_channel_insiders')}</option>
+                  </select>
+                  <p className="text-[11px] text-[#666] leading-relaxed mt-1 mb-2">
+                    {systemSettings.updateChannel === 'stable' 
+                      ? t('settings.application.update_channel_stable_desc') 
+                      : t('settings.application.update_channel_insiders_desc')}
+                  </p>
+                  
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(false); // Optionally close settings to show the updater
+                      window.dispatchEvent(new Event("trixty-manual-update-check"));
+                    }}
+                    className="px-4 py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 active:bg-blue-500/30 border border-blue-500/20 rounded-lg text-[12px] font-semibold transition-all w-max shadow-sm"
+                  >
+                    {t('settings.application.check_updates')}
+                  </button>
                 </div>
               </div>
             </section>

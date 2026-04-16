@@ -124,3 +124,14 @@ pub fn resize_pty(
     }
     Ok(())
 }
+
+/// Kills the currently active PTY session (if any).
+/// Dropping the PtyState closes the master PTY handle which signals the shell to exit.
+#[tauri::command]
+pub fn kill_pty(
+    state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
+) -> Result<(), String> {
+    let mut guard = state.lock().map_err(|e| e.to_string())?;
+    *guard = None; // Drops PtyState — closes master PTY and terminates child
+    Ok(())
+}

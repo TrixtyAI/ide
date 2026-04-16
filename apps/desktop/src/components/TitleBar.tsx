@@ -92,15 +92,14 @@ const TitleBar: React.FC = () => {
 
         {/* Title */}
         <span
-          data-tauri-drag-region
           className="text-[11px] text-[#777] font-normal tracking-wide truncate"
         >
           {buildTitle()}
         </span>
       </div>
 
-      {/* Window controls */}
-      <div className="flex items-center h-full">
+      {/* Window controls — explicitly opt-out of drag region so clicks reach React */}
+      <div data-tauri-no-drag className="flex items-center h-full">
         {/* Right Panel Toggle */}
         <button
           onClick={() => setRightPanelOpen(!isRightPanelOpen)}

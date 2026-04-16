@@ -5,18 +5,98 @@ mod about;
 mod extensions;
 use extensions::*;
 
-use pty::{resize_pty, spawn_pty, write_to_pty, PtyState};
+use pty::{resize_pty, spawn_pty, write_to_pty, kill_pty, PtyState};
 use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
 use serde::Serialize;
 use std::fs;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
+use std::process::Command;
+
+/// Creates a [`Command`] that will NOT show a console window on Windows.
+/// On other platforms this is equivalent to `Command::new(program)`.
+#[inline]
+fn silent_command(program: &str) -> Command {
+    let mut cmd = Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 
 #[derive(serde::Serialize)]
 struct SystemStats {
     cpu_usage: f32,
     memory_usage: f64, // percentage
 }
+
+// === Custom Updater Implementation to Support Prereleases ===
+#[derive(serde::Serialize)]
+struct UpdateInfo {
+    version: String,
+    body: Option<String>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct InstallerProgress {
+    chunk_length: usize,
+    content_length: Option<u64>,
+}
+
+#[tauri::command]
+async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<UpdateInfo>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    
+    let builder = app.updater_builder()
+        .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
+        .map_err(|e| e.to_string())?;
+
+    let updater = builder.build().map_err(|e| e.to_string())?;
+    
+    // Gracefully handle check errors (e.g. 404 when no release exists yet)
+    let update = match updater.check().await {
+        Ok(update) => update,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(update.map(|u| UpdateInfo {
+        version: u.version,
+        body: u.body,
+    }))
+}
+
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle, window: tauri::Window, url: String) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+    use tauri::Emitter;
+    
+    let builder = app.updater_builder()
+        .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
+        .map_err(|e| e.to_string())?;
+
+    let updater = builder.build().map_err(|e| e.to_string())?;
+    let update = updater.check().await.map_err(|e| e.to_string())?;
+
+    if let Some(u) = update {
+        u.download_and_install(
+            |chunk_length, content_length| {
+                let _ = window.emit("updater-progress", InstallerProgress {
+                    chunk_length,
+                    content_length,
+                });
+            },
+            || {}
+        ).await.map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("No update found at the provided URL".to_string())
+    }
+}
+// ============================================================
 
 struct SystemState {
     sys: System,
@@ -122,21 +202,19 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
 
 #[tauri::command]
 async fn execute_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
-    use std::process::Command;
-    
     #[cfg(target_os = "windows")]
-    let mut cmd = Command::new("cmd");
-    #[cfg(target_os = "windows")]
-    {
-        cmd.arg("/C").arg(command).args(args);
-    }
+    let mut cmd = {
+        let mut c = silent_command("cmd");
+        c.arg("/C").arg(&command).args(&args);
+        c
+    };
 
     #[cfg(not(target_os = "windows"))]
-    let mut cmd = Command::new(command);
-    #[cfg(not(target_os = "windows"))]
-    {
-        cmd.args(args);
-    }
+    let mut cmd = {
+        let mut c = silent_command(&command);
+        c.args(&args);
+        c
+    };
 
     let output = cmd.current_dir(cwd)
         .output()
@@ -174,8 +252,7 @@ async fn get_system_health(state: tauri::State<'_, Arc<Mutex<SystemState>>>) -> 
 
 #[tauri::command]
 async fn git_init(path: String) -> Result<String, String> {
-    use std::process::Command;
-    let output = Command::new("git")
+    let output = silent_command("git")
         .arg("init")
         .current_dir(&path)
         .output()
@@ -190,8 +267,7 @@ async fn git_init(path: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn get_git_status(path: String) -> Result<String, String> {
-    use std::process::Command;
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["status", "--porcelain"])
         .current_dir(&path)
         .output()
@@ -206,8 +282,7 @@ async fn get_git_status(path: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn get_git_branches(path: String) -> Result<Vec<String>, String> {
-    use std::process::Command;
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["branch", "--format=%(refname:short)"])
         .current_dir(&path)
         .output()
@@ -224,11 +299,10 @@ async fn get_git_branches(path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 async fn git_commit(path: String, message: String) -> Result<String, String> {
-    use std::process::Command;
     // We no longer automatically stage all changes.
     // Users must stage changes explicitly.
 
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["commit", "-m", &message])
         .current_dir(&path)
         .output()
@@ -243,13 +317,12 @@ async fn git_commit(path: String, message: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn git_add(path: String, files: Vec<String>) -> Result<String, String> {
-    use std::process::Command;
     let mut args = vec!["add"];
     args.push("--");
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
     args.extend(file_refs);
 
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(&args)
         .current_dir(&path)
         .output()
@@ -264,13 +337,12 @@ async fn git_add(path: String, files: Vec<String>) -> Result<String, String> {
 
 #[tauri::command]
 async fn git_unstage(path: String, files: Vec<String>) -> Result<String, String> {
-    use std::process::Command;
     let mut args = vec!["restore", "--staged"];
     args.push("--");
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
     args.extend(file_refs);
 
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(&args)
         .current_dir(&path)
         .output()
@@ -285,8 +357,7 @@ async fn git_unstage(path: String, files: Vec<String>) -> Result<String, String>
 
 #[tauri::command]
 async fn git_push(path: String) -> Result<String, String> {
-    use std::process::Command;
-    let output = Command::new("git")
+    let output = silent_command("git")
         .arg("push")
         .current_dir(&path)
         .output()
@@ -301,9 +372,8 @@ async fn git_push(path: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn get_git_diff(path: String) -> Result<String, String> {
-    use std::process::Command;
     // Get diff of staged changes
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["diff", "--staged"])
         .current_dir(&path)
         .output()
@@ -342,8 +412,7 @@ async fn get_recursive_file_list(root_path: String) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 async fn git_add_safe_directory(path: String) -> Result<String, String> {
-    use std::process::Command;
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["config", "--global", "--add", "safe.directory", &path])
         .output()
         .map_err(|e| e.to_string())?;
@@ -394,17 +463,16 @@ fn create_directory(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn reveal_path(path: String) -> Result<(), String> {
-    use std::process::Command;
     #[cfg(target_os = "windows")]
     {
-        Command::new("explorer")
+        silent_command("explorer")
             .arg(format!("/select,{}", path))
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        Command::new("open")
+        silent_command("open")
             .arg("-R")
             .arg(path)
             .spawn()
@@ -413,7 +481,7 @@ fn reveal_path(path: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         let parent = std::path::Path::new(&path).parent().unwrap_or(std::path::Path::new(&path));
-        Command::new("xdg-open")
+        silent_command("xdg-open")
             .arg(parent)
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -446,9 +514,12 @@ pub fn run() {
             read_directory,
             read_file,
             write_file,
+            check_update,
+            install_update,
             spawn_pty,
             write_to_pty,
             resize_pty,
+            kill_pty,
             search_in_project,
             git_init,
             get_git_status,

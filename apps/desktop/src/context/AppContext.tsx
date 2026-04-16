@@ -54,6 +54,14 @@ interface AppContextType {
   // Editor Appearance Settings
   editorSettings: EditorSettings;
   updateEditorSettings: (settings: Partial<EditorSettings>) => void;
+
+  // System Settings
+  systemSettings: SystemSettings;
+  updateSystemSettings: (settings: Partial<SystemSettings>) => void;
+}
+
+export interface SystemSettings {
+  updateChannel: "stable" | "insiders";
 }
 
 export interface AISettings {
@@ -124,6 +132,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lineHeight: 24,
   });
 
+  // System Settings State
+  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
+    updateChannel: "stable",
+  });
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Load chats on mount
@@ -166,6 +179,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setEditorSettings(JSON.parse(savedEditorSettings));
       } catch (e) { console.error("Failed to parse editor settings", e); }
     }
+
+    // Load System Settings
+    const savedSystemSettings = localStorage.getItem("trixty-system-settings");
+    if (savedSystemSettings) {
+      try {
+        setSystemSettings(JSON.parse(savedSystemSettings));
+      } catch (e) { console.error("Failed to parse system settings", e); }
+    }
   }, []);
 
   // Save chats on change
@@ -183,6 +204,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem("trixty-editor-settings", JSON.stringify(editorSettings));
   }, [editorSettings]);
+
+  useEffect(() => {
+    localStorage.setItem("trixty-system-settings", JSON.stringify(systemSettings));
+  }, [systemSettings]);
 
   const setLocale = useCallback((newLocale: string) => {
     import("@/api/trixty").then(({ trixty }) => {
@@ -261,7 +286,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const openTerminal = useCallback((path: string) => {
-    setTerminalPath(path);
+    setTerminalPath(prev => prev === path ? prev : path); // no-op if same path
     setIsBottomPanelOpen(true);
   }, []);
 
@@ -375,6 +400,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+
+
+  const updateSystemSettings = useCallback((newSettings: Partial<SystemSettings>) => {
+    setSystemSettings(prev => ({ ...prev, ...newSettings }));
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -410,6 +441,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateAISettings,
         editorSettings,
         updateEditorSettings,
+        systemSettings,
+        updateSystemSettings,
         locale,
         setLocale,
       }}

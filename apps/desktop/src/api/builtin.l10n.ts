@@ -31,6 +31,13 @@ export function registerBuiltinTranslations() {
         'settings.application.about.rust_title': 'Rust',
         'settings.application.about.copy_button': 'Copy Information',
         'settings.application.about.copy_success': 'Copied!',
+        'settings.application.updates': 'Updates',
+        'settings.application.update_channel': 'Update Channel',
+        'settings.application.update_channel_stable': 'Stable (Recommended)',
+        'settings.application.update_channel_insiders': 'Insiders (Pre-releases)',
+        'settings.application.update_channel_stable_desc': 'Receive only fully tested, stable releases.',
+        'settings.application.update_channel_insiders_desc': 'Receive early access to upcoming features. May contain bugs.',
+        'settings.application.check_updates': 'Check for Updates',
         'marketplace.title': 'Marketplace',
         'marketplace.desc': 'Discover, install, and manage extensions from Git',
         'marketplace.button': 'Open Marketplace',
@@ -213,7 +220,21 @@ export function registerBuiltinTranslations() {
         'common.loading': 'Loading...',
         'common.error': 'Error: {message}',
         'common.save': 'Save',
-        'common.cancel': 'Cancel'
+        'common.cancel': 'Cancel',
+        
+        'updater.installed': 'Update installed!',
+        'updater.available': 'Update available',
+        'updater.title.checking': 'Software Update',
+        'updater.title.uptodate': 'Software Update',
+        'updater.title.error': 'Update Error',
+        'updater.checking': 'Checking for updates on \'{channel}\' channel...',
+        'updater.uptodate': 'Trixty IDE is currently up to date!',
+        'updater.new_version': 'New version',
+        'updater.update_now': 'Update now',
+        'updater.later': 'Later',
+        'updater.downloading': 'Downloading update…',
+        'updater.relaunching': 'Relaunching Trixty IDE…',
+        'updater.error.relaunch': 'Could not relaunch automatically. Please restart the app.'
     });
 
     // SPANISH
@@ -242,6 +263,13 @@ export function registerBuiltinTranslations() {
         'settings.application.about.rust_title': 'Rust',
         'settings.application.about.copy_button': 'Copiar información',
         'settings.application.about.copy_success': '¡Copiado!',
+        'settings.application.updates': 'Actualizaciones',
+        'settings.application.update_channel': 'Canal de actualización',
+        'settings.application.update_channel_stable': 'Estable (Recomendado)',
+        'settings.application.update_channel_insiders': 'Insiders (Pre-lanzamientos)',
+        'settings.application.update_channel_stable_desc': 'Recibe solo versiones estables y probadas.',
+        'settings.application.update_channel_insiders_desc': 'Acceso anticipado a nuevas funciones. Puede contener errores.',
+        'settings.application.check_updates': 'Comprobar actualizaciones',
         'marketplace.title': 'Marketplace',
         'marketplace.desc': 'Descubre, instala y gestiona extensiones desde Git',
         'marketplace.button': 'Abrir Marketplace',
@@ -423,6 +451,20 @@ export function registerBuiltinTranslations() {
         'common.loading': 'Cargando...',
         'common.error': 'Error: {message}',
         'common.save': 'Guardar',
-        'common.cancel': 'Cancelar'
+        'common.cancel': 'Cancelar',
+
+        'updater.installed': '¡Actualización instalada!',
+        'updater.available': 'Actualización disponible',
+        'updater.title.checking': 'Comprobando Actualizaciones',
+        'updater.title.uptodate': 'Sistema Actualizado',
+        'updater.title.error': 'Error de Actualización',
+        'updater.checking': 'Buscando actualizaciones en el canal \'{channel}\'...',
+        'updater.uptodate': '¡Trixty IDE ya está actualizado!',
+        'updater.new_version': 'Nueva versión',
+        'updater.update_now': 'Actualizar ahora',
+        'updater.later': 'Después',
+        'updater.downloading': 'Descargando...',
+        'updater.relaunching': 'Reiniciando Trixty IDE...',
+        'updater.error.relaunch': 'No se pudo reiniciar automáticamente. Por favor cierra y abre la app manualmente.'
     });
 }

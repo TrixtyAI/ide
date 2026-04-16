@@ -9,6 +9,7 @@ import RightPanelSlot from "@/components/slots/RightPanelSlot";
 import BottomPanel from "@/components/BottomPanel";
 import TitleBar from "@/components/TitleBar";
 import SettingsView from "@/components/SettingsView";
+import UpdaterDialog from "@/components/UpdaterDialog";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
 import {
@@ -187,6 +188,9 @@ export default function Home() {
       </div>
 
       <SettingsView />
+
+      {/* Updater notification — checks on mount, shows toast when update is available */}
+      <UpdaterDialog />
     </div>
   );
 }

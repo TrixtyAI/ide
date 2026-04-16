@@ -181,12 +181,18 @@ const GitExplorerComponent: React.FC = () => {
   }, [rootPath]);
 
   useEffect(() => {
-    if (activeSidebarTab === "git" && rootPath) {
-      refreshGit();
-      // Poll every 3 seconds while the git tab is active
-      const interval = setInterval(refreshGit, 3000);
-      return () => clearInterval(interval);
-    }
+    if (activeSidebarTab !== "git" || !rootPath) return;
+
+    refreshGit();
+
+    // Poll every 5 seconds while the git tab is active and the window is visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshGit();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [activeSidebarTab, rootPath, refreshGit]);
 
   const handleGitInit = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_init", { path: rootPath }); setIsGitRepo(true); await refreshGit(); flash(t('git.status.init_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
