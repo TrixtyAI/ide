@@ -1,10 +1,10 @@
 [package]
-name = "app"
+name = "TrixtyIDE"
 version = "1.0.5"
 description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+authors = ["jmaxdev"]
+license = "UPL-1.0"
+repository = "https://github.com/TrixtyAI/ide"
 edition = "2021"
 rust-version = "1.77.2"
 
