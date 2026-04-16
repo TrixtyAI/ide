@@ -10,6 +10,7 @@ import BottomPanel from "@/components/BottomPanel";
 import TitleBar from "@/components/TitleBar";
 import SettingsView from "@/components/SettingsView";
 import UpdaterDialog from "@/components/UpdaterDialog";
+import OnboardingWizard from "@/components/OnboardingWizard";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
 import {
@@ -144,6 +145,16 @@ export default function Home() {
     setSettingsOpen,
     isSettingsOpen,
   ]);
+
+  const { systemSettings, isInitialLoadComplete } = useApp();
+
+  if (!isInitialLoadComplete) {
+    return <div className="bg-[#0a0a0a] w-screen h-screen" />;
+  }
+
+  if (!systemSettings.hasCompletedOnboarding) {
+    return <OnboardingWizard />;
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0a0a] text-[#999] font-sans">

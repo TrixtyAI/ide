@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { trixtyStore } from "@/api/store";
 
 export interface FileState {
   path: string;
@@ -58,10 +59,13 @@ interface AppContextType {
   // System Settings
   systemSettings: SystemSettings;
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
+  isInitialLoadComplete: boolean;
+  resetApp: () => Promise<void>;
 }
 
 export interface SystemSettings {
   updateChannel: "stable" | "insiders";
+  hasCompletedOnboarding: boolean;
 }
 
 export interface AISettings {
@@ -96,6 +100,57 @@ export interface ChatSession {
   lastModified: number;
 }
 
+const DEFAULT_AI_SETTINGS: AISettings = {
+  temperature: 0.7,
+  systemPrompt: "You are Trixty AI, an expert technical programming assistant. Help the user write clean, efficient, and secure code.",
+  endpoint: "http://localhost:11434",
+  maxTokens: 2048,
+  alwaysAllowTools: false,
+  freezeProtection: true,
+  deepMode: false,
+};
+
+const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
+  fontSize: 20,
+  fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
+  theme: "trixty-dark",
+  lineHeight: 24,
+};
+
+const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
+  updateChannel: "stable",
+  hasCompletedOnboarding: false,
+};
+
+const getLanguageFromExtension = (filename: string) => {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    // Web
+    js: "javascript", jsx: "javascript", ts: "typescript", tsx: "typescript",
+    html: "html", htm: "html", css: "css", scss: "scss", less: "less",
+    json: "json", jsonc: "json", webp: "image",
+
+    // Systems & Backend
+    rs: "rust", go: "go", py: "python", pyw: "python",
+    c: "c", cpp: "cpp", h: "cpp", hpp: "cpp", cs: "csharp",
+    java: "java", kt: "kotlin", rb: "ruby", php: "php",
+    swift: "swift",
+
+    // Configuration & Data
+    toml: "toml", yaml: "yaml", yml: "yaml", xml: "xml",
+    sql: "sql", prisma: "prisma", graphql: "graphql", gq: "graphql",
+    env: "properties", ini: "ini",
+
+    // Documentation & Tooling
+    md: "markdown", mdx: "markdown", txt: "plaintext",
+    dockerfile: "dockerfile", dockerignore: "dockerfile",
+    gitignore: "ignore", sh: "shell", bash: "shell", zsh: "shell",
+    ps1: "powershell", psd1: "powershell", psm1: "powershell",
+    bat_cmd: "bat", svg: "html"
+  };
+  return map[ext!] || "plaintext";
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -114,125 +169,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   // AI Settings State
-  const [aiSettings, setAiSettings] = useState<AISettings>({
-    temperature: 0.7,
-    systemPrompt: "Eres Trixty AI, un asistente de programación experto, conciso y técnico. Ayuda al usuario a escribir código limpio y eficiente.",
-    endpoint: "http://localhost:11434",
-    maxTokens: 2048,
-    alwaysAllowTools: false,
-    freezeProtection: true,
-    deepMode: false,
-  });
+  const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
 
   // Editor Settings State
-  const [editorSettings, setEditorSettings] = useState<EditorSettings>({
-    fontSize: 20,
-    fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
-    theme: "trixty-dark",
-    lineHeight: 24,
-  });
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>(DEFAULT_EDITOR_SETTINGS);
 
-  // System Settings State
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    updateChannel: "stable",
-  });
+  const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
 
-  // Load chats on mount
-  useEffect(() => {
-    // Load chats
-    const savedChats = localStorage.getItem("trixty-chats");
-    if (savedChats) {
-      try {
-        const parsed = JSON.parse(savedChats);
-        setChatSessions(parsed);
-        if (parsed.length > 0) setActiveSessionId(parsed[0].id);
-      } catch (e) { console.error("Failed to parse chats", e); }
-    } else {
-      createSession();
-    }
-
-    // Load AI settings
-    const savedSettings = localStorage.getItem("trixty-ai-settings");
-    if (savedSettings) {
-      try {
-        setAiSettings(JSON.parse(savedSettings));
-      } catch (e) { console.error("Failed to parse AI settings", e); }
-    } else {
-      // Localize default if no settings saved
-      import("@/api/trixty").then(({ trixty }) => {
-        setAiSettings(prev => ({ ...prev, systemPrompt: trixty.l10n.t('ai.system_prompt') }));
-      });
-    }
-
-    // Locale is now initialized directly in trixty.ts, but we sync local state here
-    const savedLocale = localStorage.getItem("trixty-locale");
-    if (savedLocale) {
-      setLocaleState(savedLocale);
-    }
-
-    // Load Editor Settings
-    const savedEditorSettings = localStorage.getItem("trixty-editor-settings");
-    if (savedEditorSettings) {
-      try {
-        setEditorSettings(JSON.parse(savedEditorSettings));
-      } catch (e) { console.error("Failed to parse editor settings", e); }
-    }
-
-    // Load System Settings
-    const savedSystemSettings = localStorage.getItem("trixty-system-settings");
-    if (savedSystemSettings) {
-      try {
-        setSystemSettings(JSON.parse(savedSystemSettings));
-      } catch (e) { console.error("Failed to parse system settings", e); }
-    }
+  const getSystemDefaultLocale = useCallback(() => {
+    return 'en';
   }, []);
 
-  // Save chats on change
-  useEffect(() => {
-    if (chatSessions.length > 0) {
-      localStorage.setItem("trixty-chats", JSON.stringify(chatSessions));
-    }
-  }, [chatSessions]);
+  const updateSystemSettings = useCallback((newSettings: Partial<SystemSettings>) => {
+    setSystemSettings(prev => ({ ...prev, ...newSettings }));
+  }, []);
 
-  // Save settings on change
-  useEffect(() => {
-    localStorage.setItem("trixty-ai-settings", JSON.stringify(aiSettings));
-  }, [aiSettings]);
+  const setLocale = useCallback(async (newLocale: string) => {
+    const { trixty } = await import("@/api/trixty");
+    const oldSystemPrompt = trixty.l10n.t('ai.system_prompt');
 
-  useEffect(() => {
-    localStorage.setItem("trixty-editor-settings", JSON.stringify(editorSettings));
-  }, [editorSettings]);
+    setLocaleState(newLocale);
+    await trixtyStore.set("trixty-locale", newLocale);
+    trixty.l10n.setLocale(newLocale);
 
-  useEffect(() => {
-    localStorage.setItem("trixty-system-settings", JSON.stringify(systemSettings));
-  }, [systemSettings]);
-
-  const setLocale = useCallback((newLocale: string) => {
-    import("@/api/trixty").then(({ trixty }) => {
-      const oldSystemPrompt = trixty.l10n.t('ai.system_prompt');
-
-      setLocaleState(newLocale);
-      localStorage.setItem("trixty-locale", newLocale);
-      trixty.l10n.setLocale(newLocale);
-
-      // Update system prompt if it was the default one
-      setAiSettings(prev => {
-        if (prev.systemPrompt === oldSystemPrompt) {
-          return { ...prev, systemPrompt: trixty.l10n.t('ai.system_prompt') };
-        }
-        return prev;
-      });
+    // Update system prompt if it was the default one
+    setAiSettings(prev => {
+      if (prev.systemPrompt === oldSystemPrompt) {
+        return { ...prev, systemPrompt: trixty.l10n.t('ai.system_prompt') };
+      }
+      return prev;
     });
-  }, [aiSettings.systemPrompt]);
-
-  const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
-    setAiSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
-
-  const updateEditorSettings = useCallback((newSettings: Partial<EditorSettings>) => {
-    setEditorSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
 
   const createSession = useCallback(() => {
@@ -248,6 +217,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setChatSessions(prev => [newSession, ...prev]);
       setActiveSessionId(id);
     });
+  }, []);
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadInitialState = async () => {
+      console.log("[AppContext] Starting to load initial state from store...");
+      try {
+        // 1. Load AI Settings
+        const savedSettings = await trixtyStore.get<AISettings | null>("trixty-ai-settings", null);
+        console.log("[AppContext] AI Settings loaded:", !!savedSettings);
+        if (savedSettings) {
+          setAiSettings(savedSettings);
+        } else {
+          // Fallback: translate the default system prompt if no settings found
+          const { trixty } = await import("@/api/trixty");
+          setAiSettings(prev => ({ ...prev, systemPrompt: trixty.l10n.t('ai.system_prompt') }));
+        }
+
+        // 2. Load Chats
+        const savedChats = await trixtyStore.get<ChatSession[] | null>("trixty-chats", null);
+        console.log("[AppContext] Chats loaded:", savedChats?.length || 0);
+        if (savedChats && savedChats.length > 0) {
+          setChatSessions(savedChats);
+          setActiveSessionId(savedChats[0].id);
+        } else {
+          // Ensure at least one session exists
+          createSession();
+        }
+
+        // 3. Load Locale
+        const savedLocale = await trixtyStore.get<string | null>("trixty-locale", null);
+        console.log("[AppContext] Locale loaded:", savedLocale);
+        if (savedLocale) {
+          setLocale(savedLocale);
+        } else {
+          // Detect system language
+          const detectedLocale = getSystemDefaultLocale();
+          console.log("[AppContext] No saved locale found. Detected default:", detectedLocale);
+          setLocale(detectedLocale);
+        }
+         // 4. Load Editor Settings
+        const savedEditorSettings = await trixtyStore.get<EditorSettings | null>("trixty-editor-settings", null);
+        console.log("[AppContext] Editor Settings loaded:", !!savedEditorSettings);
+        if (savedEditorSettings) {
+          setEditorSettings(savedEditorSettings);
+        }
+
+        // 5. Load System Settings
+        const savedSystemSettings = await trixtyStore.get<SystemSettings | null>("trixty-system-settings", null);
+        console.log("[AppContext] System Settings loaded:", !!savedSystemSettings);
+        if (savedSystemSettings) {
+          setSystemSettings(savedSystemSettings);
+        }
+        
+        setIsInitialLoadComplete(true);
+        console.log("[AppContext] Initial load complete.");
+      } catch (err) {
+        console.error("[AppContext] Error loading initial state:", err);
+        // Even on error, we should probably allow saving new changes
+        setIsInitialLoadComplete(true);
+      }
+    };
+
+    loadInitialState();
+  }, [createSession, setLocale]);
+
+  // Persistence effects - ONLY run after initial load to avoid overwriting store with defaults
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    if (chatSessions.length > 0) {
+      trixtyStore.set("trixty-chats", chatSessions);
+    }
+  }, [chatSessions, isInitialLoadComplete]);
+
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    trixtyStore.set("trixty-ai-settings", aiSettings);
+  }, [aiSettings, isInitialLoadComplete]);
+
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    trixtyStore.set("trixty-editor-settings", editorSettings);
+  }, [editorSettings, isInitialLoadComplete]);
+
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    trixtyStore.set("trixty-system-settings", systemSettings);
+  }, [systemSettings, isInitialLoadComplete]);
+
+  const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
+    setAiSettings(prev => ({ ...prev, ...newSettings }));
+  }, []);
+
+  const updateEditorSettings = useCallback((newSettings: Partial<EditorSettings>) => {
+    setEditorSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
 
   const deleteSession = useCallback((id: string) => {
@@ -290,34 +354,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsBottomPanelOpen(true);
   }, []);
 
-  const getLanguageFromExtension = (filename: string) => {
-    const ext = filename.split(".").pop()?.toLowerCase();
-    const map: Record<string, string> = {
-      // Web
-      js: "javascript", jsx: "javascript", ts: "typescript", tsx: "typescript",
-      html: "html", htm: "html", css: "css", scss: "scss", less: "less",
-      json: "json", jsonc: "json", webp: "image",
 
-      // Systems & Backend
-      rs: "rust", go: "go", py: "python", pyw: "python",
-      c: "c", cpp: "cpp", h: "cpp", hpp: "cpp", cs: "csharp",
-      java: "java", kt: "kotlin", rb: "ruby", php: "php",
-      swift: "swift",
-
-      // Configuration & Data
-      toml: "toml", yaml: "yaml", yml: "yaml", xml: "xml",
-      sql: "sql", prisma: "prisma", graphql: "graphql", gq: "graphql",
-      env: "properties", ini: "ini",
-
-      // Documentation & Tooling
-      md: "markdown", mdx: "markdown", txt: "plaintext",
-      dockerfile: "dockerfile", dockerignore: "dockerfile",
-      gitignore: "ignore", sh: "shell", bash: "shell", zsh: "shell",
-      ps1: "powershell", psd1: "powershell", psm1: "powershell",
-      bat_cmd: "bat", svg: "html"
-    };
-    return map[ext!] || "plaintext";
-  };
 
   const openFile = useCallback((path: string, name: string, content: string, type: "file" | "virtual" = "file") => {
     setOpenFiles((prev) => {
@@ -344,7 +381,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentFile(newFile);
       return [...newOpenFiles, newFile];
     });
-  }, [getLanguageFromExtension]);
+  }, []);
 
   const closeFile = useCallback((path: string) => {
     setOpenFiles((prev) => {
@@ -402,9 +439,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
 
-  const updateSystemSettings = useCallback((newSettings: Partial<SystemSettings>) => {
-    setSystemSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
+  const resetApp = useCallback(async () => {
+    // 1. Disable persistence during reset to avoid race conditions
+    setIsInitialLoadComplete(false);
+
+    // 2. Clear store from disk
+    const keys = [
+      "trixty-chats",
+      "trixty-ai-settings",
+      "trixty-locale",
+      "trixty-editor-settings",
+      "trixty-system-settings",
+      "trixty_ai_last_model"
+    ];
+    for (const key of keys) {
+      await trixtyStore.delete(key);
+    }
+
+    // 3. Reset all React state to defaults
+    setOpenFiles([]);
+    setCurrentFile(null);
+    setRootPath(null);
+    setChatSessions([]);
+    setActiveSessionId(null);
+    setAiSettings(DEFAULT_AI_SETTINGS);
+    setEditorSettings(DEFAULT_EDITOR_SETTINGS);
+    setSystemSettings(DEFAULT_SYSTEM_SETTINGS);
+    setIsSettingsOpen(false);
+
+    // 4. Force re-detection of language and update L10n engine
+    const detectedLocale = getSystemDefaultLocale();
+    await setLocale(detectedLocale);
+
+    // 5. Re-enable to trigger onboarding (since hasCompletedOnboarding is now false)
+    // We use a small timeout to ensure states have propagated
+    setTimeout(() => {
+        setIsInitialLoadComplete(true);
+    }, 100);
+  }, [getSystemDefaultLocale, setLocale]);
 
   return (
     <AppContext.Provider
@@ -445,6 +517,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSystemSettings,
         locale,
         setLocale,
+        isInitialLoadComplete,
+        resetApp,
       }}
     >
       {children}

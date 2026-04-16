@@ -82,7 +82,7 @@ class WindowRegistry {
 
 class L10nRegistry {
     private bundles = new Map<string, Record<string, string>>();
-    private currentLocale = (typeof window !== 'undefined' ? localStorage.getItem('trixty-locale') || 'en' : 'en');
+    private currentLocale = 'en';
     private listeners = new Set<() => void>();
 
     registerTranslations(locale: string, bundle: Record<string, string>) {
@@ -92,7 +92,6 @@ class L10nRegistry {
     }
 
     setLocale(locale: string) {
-        if (this.currentLocale === locale) return;
         this.currentLocale = locale;
         this.notify();
     }

@@ -11,9 +11,12 @@ import {
   Settings,
   X,
   Copy,
-  Check
+  Check,
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import logoWhite from "@/assets/branding/logo-white.png";
@@ -29,7 +32,8 @@ const SettingsView: React.FC = () => {
     systemSettings,
     updateSystemSettings,
     isSettingsOpen,
-    setSettingsOpen
+    setSettingsOpen,
+    resetApp
   } = useApp();
   const { t } = useL10n();
   const [activeCategory, setActiveCategory] = useState("appearance");
@@ -160,6 +164,34 @@ Node.js: ${systemInfo.node_version}
                   </button>
                 </div>
               </div>
+            </section>
+
+            <section className="pt-8 mt-8 border-t border-red-500/20">
+              <h3 className="text-[14px] font-semibold text-red-500 mb-2 flex items-center gap-2">
+                <AlertTriangle size={16} />
+                {t('settings.application.danger_zone')}
+              </h3>
+              <p className="text-[12px] text-[#666] mb-4 max-w-md leading-relaxed">
+                {t('settings.application.reset_desc')}
+              </p>
+              
+              <button
+                onClick={async () => {
+                  const confirmed = await ask(t('settings.application.reset_confirm'), {
+                    title: t('settings.application.danger_zone'),
+                    kind: 'warning',
+                  });
+                  
+                  if (confirmed) {
+                    await resetApp();
+                    setSettingsOpen(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/20 rounded-lg text-[12px] font-semibold transition-all shadow-sm group"
+              >
+                <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
+                {t('settings.application.reset_button')}
+              </button>
             </section>
           </div>
         );

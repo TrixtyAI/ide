@@ -25,7 +25,7 @@ const STATUS_META: Record<string, { icon: React.ElementType; color: string }> = 
 };
 
 const GitExplorerComponent: React.FC = () => {
-  const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile } = useApp();
+  const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile, aiSettings } = useApp();
   const { t } = useL10n();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -209,11 +209,14 @@ const GitExplorerComponent: React.FC = () => {
     try {
       const diff = await invoke("get_git_diff", { path: rootPath });
       if (!diff.trim()) { flash(t('git.status.no_staged_changes')); setAiSuggestLoading(false); return; }
-      const saved = localStorage.getItem("trixty-ai-settings");
-      const s = saved ? JSON.parse(saved) : {};
-      const res = await fetch(`${s.endpoint || "http://localhost:11434"}/api/generate`, {
+      
+      const res = await fetch(`${aiSettings.endpoint || "http://localhost:11434"}/api/generate`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: s.model || "llama3", prompt: `Based on this git diff, write a concise commit message in conventional commits format. Output ONLY the message.\n\n${diff.substring(0, 3000)}`, stream: false }),
+        body: JSON.stringify({ 
+          model: "llama3", // Or choose a better default if needed
+          prompt: `Based on this git diff, write a concise commit message in conventional commits format. Output ONLY the message.\n\n${diff.substring(0, 3000)}`, 
+          stream: false 
+        }),
       });
       const data = await res.json();
       if (data.response) setCommitMessage(data.response.trim());

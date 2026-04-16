@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X, Send, Sparkles, Brain, Code2, ChevronDown, ListRestart, History, Plus, Trash2, MessageSquare, Save, Square, Download } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ReactMarkdown from "react-markdown";
+import { trixtyStore } from "@/api/store";
 import { useL10n } from "@/hooks/useL10n";
 import remarkGfm from "remark-gfm";
 import { check } from "@tauri-apps/plugin-updater";
@@ -74,13 +75,16 @@ const AiChatComponent: React.FC = () => {
 
   useEffect(() => {
     // Load last used model from storage
-    const savedModel = localStorage.getItem("trixty_ai_last_model");
-    if (savedModel) setSelectedModel(savedModel);
+    const loadLastModel = async () => {
+      const savedModel = await trixtyStore.get<string | null>("trixty_ai_last_model", null);
+      if (savedModel) setSelectedModel(savedModel);
+    };
+    loadLastModel();
   }, []);
 
   useEffect(() => {
     if (selectedModel) {
-      localStorage.setItem("trixty_ai_last_model", selectedModel);
+      trixtyStore.set("trixty_ai_last_model", selectedModel);
     }
   }, [selectedModel]);
 
@@ -127,13 +131,14 @@ const AiChatComponent: React.FC = () => {
           setModels(models);
           setOllamaStatus('connected');
           if (models.length > 0) {
-            const savedModel = localStorage.getItem("trixty_ai_last_model");
-            const exists = models.find((m: { name: string }) => m.name === savedModel);
-            if (savedModel && exists) {
-              setSelectedModel(savedModel);
-            } else if (!selectedModel && models.length > 0) {
-              setSelectedModel(models[0].name);
-            }
+            trixtyStore.get<string | null>("trixty_ai_last_model", null).then(savedModel => {
+              const exists = models.find((m: { name: string }) => m.name === savedModel);
+              if (savedModel && exists) {
+                setSelectedModel(savedModel);
+              } else if (!selectedModel && models.length > 0) {
+                setSelectedModel(models[0].name);
+              }
+            });
           }
         } else {
            setOllamaStatus('not_found');
