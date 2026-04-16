@@ -1,4 +1,4 @@
-import { load } from "@tauri-apps/plugin-store";
+import { load, Store } from "@tauri-apps/plugin-store";
 
 /**
  * Global Store instance managed by tauri-plugin-store.
@@ -7,7 +7,7 @@ import { load } from "@tauri-apps/plugin-store";
 const STORE_NAME = "settings.json";
 
 class TrixtyStore {
-  private store: any = null;
+  private store: Store | null = null;
   private initPromise: Promise<void> | null = null;
 
   async init() {
@@ -17,7 +17,7 @@ class TrixtyStore {
       console.log(`[Store] Initializing ${STORE_NAME}...`);
       try {
         // Load (or create) the store file
-        this.store = await load(STORE_NAME, { autoSave: true });
+        this.store = await load(STORE_NAME, { autoSave: true, defaults: {} });
         console.log(`[Store] ${STORE_NAME} loaded successfully.`);
         
         // Migration from localStorage
@@ -33,7 +33,7 @@ class TrixtyStore {
   }
 
   private async migrateFromLocalStorage() {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !this.store) return;
 
     const migrationKeys = [
       "trixty-chats",
@@ -66,7 +66,7 @@ class TrixtyStore {
     }
 
     if (migratedSomething) {
-      await this.store.save();
+      await this.store!.save();
       console.log("[Store] Migration complete. You may manually clear localStorage.");
       // Optional: localStorage.clear() - keeping it for now for safety during early adoption
     }
@@ -82,20 +82,20 @@ class TrixtyStore {
 
   async get<T>(key: string, defaultValue: T): Promise<T> {
     await this.init();
-    const val = await this.store.get(key);
+    const val = await this.store!.get(key);
     return (val as T) ?? defaultValue;
   }
 
-  async set(key: string, value: any) {
+  async set(key: string, value: unknown) {
     await this.init();
-    await this.store.set(key, value);
-    await this.store.save();
+    await this.store!.set(key, value);
+    await this.store!.save();
   }
 
   async delete(key: string) {
     await this.init();
-    await this.store.delete(key);
-    await this.store.save();
+    await this.store!.delete(key);
+    await this.store!.save();
   }
 }
 
