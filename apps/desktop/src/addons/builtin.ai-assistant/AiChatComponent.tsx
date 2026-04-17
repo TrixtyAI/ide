@@ -58,7 +58,10 @@ const AiChatComponent: React.FC = () => {
     systemSettings,
     locale
   } = useApp();
-  const { aggregatedPrompt, chatMode, setChatMode, getSystemPrompt, skills, activeSkills } = useAgent();
+  const { 
+    aggregatedPrompt, chatMode, setChatMode, getSystemPrompt, 
+    skills, activeSkills, refreshAgentData 
+  } = useAgent();
   const { t } = useL10n();
 
   const activeSession = chatSessions.find(s => s.id === activeSessionId);
@@ -284,7 +287,7 @@ const AiChatComponent: React.FC = () => {
           });
           // Refresh context so the memory visualizer updates
           try {
-            await (useAgent as any).getState().refreshAgentData();
+            await refreshAgentData();
           } catch(e) {}
           return "Memory updated successfully.";
         default:
@@ -938,6 +941,11 @@ const AiChatComponent: React.FC = () => {
           >
             {isTyping ? <Square size={18} fill="currentColor" /> : <Send size={18} />}
           </button>
+        </div>
+        <div className="mt-3 text-center">
+          <p className="text-[10px] text-white/20 select-none">
+            {t('ai.disclaimer')}
+          </p>
         </div>
       </div>
     </div>

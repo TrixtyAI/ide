@@ -222,6 +222,7 @@ export function registerBuiltinTranslations() {
         'ai.thinking_trace': 'Thinking Process',
         'ai.status.badge.ready': 'Ready',
         'ai.status.badge.busy': 'Busy',
+        'ai.disclaimer': 'Trixty AI can make mistakes. Check important info.',
 
         'terminal.error_connect': 'Error connecting to terminal: ',
         'editor.empty_desc': 'Select a file from the explorer to begin',
@@ -540,6 +541,7 @@ export function registerBuiltinTranslations() {
         'ai.thinking_trace': 'Proceso de Razonamiento',
         'ai.status.badge.ready': 'Listo',
         'ai.status.badge.busy': 'Ocupado',
+        'ai.disclaimer': 'Trixty AI puede cometer errores. Verifica info importante.',
 
         'terminal.error_connect': 'Error al conectar con la terminal: ',
         'editor.empty_desc': 'Selecciona un archivo del explorador para comenzar',

@@ -74,11 +74,11 @@ export const IDE_TOOLS = [
       type: 'function',
       function: {
           name: 'web_search',
-          description: 'Search the internet for real-time information, documentation, or recent events. Results are returned as a summary or full JSON.',
+          description: 'Access the internet to search for information or visit a specific URL. If you provide a URL, I will read its content directly. If you provide a topic, I will search for results.',
           parameters: {
               type: 'object',
               properties: {
-                  query: { type: 'string', description: 'The search query to perform' }
+                  query: { type: 'string', description: 'The search query or URL (e.g., "latest Next.js version" or "https://nextjs.org/docs")' }
               },
               required: ['query']
           }

@@ -37,6 +37,8 @@ dirs = "5"
 reqwest = { version = "0.12", features = ["json"] }
 urlencoding = "2"
 sysinfo = "0.36.1"
+scraper = "0.19"
+html2text = "0.12"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

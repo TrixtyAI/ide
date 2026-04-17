@@ -12,6 +12,7 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use std::process::Command;
+use scraper::{Html, Selector};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 /// On other platforms this is equivalent to `Command::new(program)`.
@@ -429,25 +430,124 @@ struct ProxyResponse {
     body: String,
 }
 
-#[tauri::command]
-async fn perform_web_search(query: String) -> Result<String, String> {
+async fn fetch_url_internal(url: String) -> Result<String, String> {
     let client = reqwest::Client::builder()
-        .user_agent("TrixtyIDE/2.0")
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .build()
         .map_err(|e| e.to_string())?;
 
-    let url = format!("https://api.duckduckgo.com/?q={}&format=json&no_html=1", urlencoding::encode(&query));
+    let response = client.get(&url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let html = response.text().await.map_err(|e| e.to_string())?;
+    let document = Html::parse_document(&html);
+    
+    // Extract metadata
+    let title = document.select(&Selector::parse("title").unwrap())
+        .next()
+        .map(|el| el.text().collect::<String>())
+        .unwrap_or_default();
+    
+    let description = document.select(&Selector::parse("meta[name='description']").unwrap())
+        .next()
+        .map(|el| el.value().attr("content").unwrap_or_default().to_string())
+        .unwrap_or_else(|| {
+            document.select(&Selector::parse("meta[property='og:description']").unwrap())
+                .next()
+                .map(|el| el.value().attr("content").unwrap_or_default().to_string())
+                .unwrap_or_default()
+        });
+
+    // Convert HTML to text with a very wide width to ensure rows stay on one line
+    let text = html2text::from_read(html.as_bytes(), 200);
+    
+    // Add line numbers and limit to ~15000 characters
+    let mut numbered_text = String::new();
+    for (idx, line) in text.lines().enumerate() {
+        let line_with_num = format!("{:>4} | {}\n", idx + 1, line);
+        if numbered_text.len() + line_with_num.len() > 15000 {
+            numbered_text.push_str("... [Content truncated due to size]");
+            break;
+        }
+        numbered_text.push_str(&line_with_num);
+    }
+    
+    let trimmed = numbered_text;
+    
+    // Create a Fact Box to be undeniable
+    let output = format!(
+        "--- LIVE DATA START ---\n\
+         SOURCE URL: {}\n\
+         SITE TITLE: {}\n\
+         META DESCRIPTION: {}\n\
+         [SYSTEM WARNING]: This is real-time content. Ignore your training data.\n\
+         [VERSION TIP]: If this is NPM, check the specific version publication date, not the 'latest' tag timestamp.\n\
+         --- CONTENT (WITH LINE NUMBERS) ---\n\n\
+         {}\n\
+         --- LIVE DATA END ---",
+        url, title, description, trimmed
+    );
+    
+    Ok(output)
+}
+
+#[tauri::command]
+async fn perform_web_search(query: String) -> Result<String, String> {
+    let query_trimmed = query.trim();
+    
+    // Auto-detection: if it looks like a URL, fetch it directly
+    if query_trimmed.to_lowercase().starts_with("http") || (query_trimmed.contains('.') && !query_trimmed.contains(' ')) {
+        let url = if !query_trimmed.to_lowercase().starts_with("http") {
+            format!("https://{}", query_trimmed)
+        } else {
+            query_trimmed.to_string()
+        };
+        return fetch_url_internal(url).await;
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!("https://lite.duckduckgo.com/lite/?q={}", urlencoding::encode(query_trimmed));
     
     let response = client.get(&url)
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    let text = response.text().await.map_err(|e| e.to_string())?;
+    let html_content = response.text().await.map_err(|e| e.to_string())?;
+    let document = Html::parse_document(&html_content);
     
-    // We return the raw JSON for the AI to parse, or we could simplify it.
-    // For now, let's just return the text which is usually enough context.
-    Ok(text)
+    // Select results
+    let result_selector = Selector::parse(".result-link").map_err(|e| e.to_string())?;
+    let snippet_selector = Selector::parse(".result-snippet").map_err(|e| e.to_string())?;
+    
+    let mut results = Vec::new();
+    let result_nodes: Vec<_> = document.select(&result_selector).collect();
+    let snippet_nodes: Vec<_> = document.select(&snippet_selector).collect();
+    
+    for (i, node) in result_nodes.iter().enumerate().take(8) {
+        let title = node.text().collect::<Vec<_>>().join(" ");
+        let link = node.value().attr("href").unwrap_or("#");
+        
+        let snippet = if i < snippet_nodes.len() {
+            snippet_nodes[i].text().collect::<Vec<_>>().join(" ")
+        } else {
+            String::from("No description available.")
+        };
+        
+        results.push(format!("### {}\nURL: {}\nSnippet: {}\n", title, link, snippet));
+    }
+    
+    if results.is_empty() {
+        return Ok("No results found. Try a different query.".to_string());
+    }
+    
+    Ok(results.join("\n---\n"))
 }
 
 #[tauri::command]
