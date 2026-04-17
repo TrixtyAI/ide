@@ -194,6 +194,7 @@ export function registerBuiltinTranslations() {
 
         'ai.context.workspace': 'Workspace Aware',
         'ai.context.open_files': '+ {count} tabs',
+        'ai.context.focused_file': 'Focused File',
         'ai.greeting': 'Hello! I am Trixty. How can I help you today?',
         'ai.system_prompt': 'You are Trixty, an expert female AI, concise and technical programming assistant. Help the user write clean and efficient code. \n\nIMPORTANT TOOL USAGE RULES:\n1. Tools are discrete functions; call them individually.\n2. You CANNOT call a tool from inside another (e.g., do not use execute_command to try and call read_file or get_workspace_structure).\n3. Shell commands run in a standard OS environment with NO access to your internal tool functions.',
         'ai.update.available': 'Update Available',
@@ -507,6 +508,7 @@ export function registerBuiltinTranslations() {
         'ai.ollama_error.download': 'Descargar Ollama',
         'ai.context.workspace': 'Consciencia de proyecto',
         'ai.context.open_files': '+ {count} pestañas',
+        'ai.context.focused_file': 'Archivo enfocado',
         'ai.greeting': '¡Hola! Soy Trixty. ¿En qué puedo ayudarte hoy?',
         'ai.system_prompt': 'Eres Trixty, una IA femenina experta, concisa y técnica. Ayuda al usuario a escribir código limpio y eficiente. \n\nREGLAS IMPORTANTES DE HERRAMIENTAS:\n1. Las herramientas son funciones discretas; llámalas individualmente.\n2. NO puedes llamar a una herramienta desde dentro de otra (ej. no uses execute_command para intentar llamar a read_file o get_workspace_structure).\n3. Los comandos de shell se ejecutan en un entorno estándar del SO y NO tienen acceso a tus funciones de herramientas internas.',
         'ai.update.available': 'Actualización disponible',

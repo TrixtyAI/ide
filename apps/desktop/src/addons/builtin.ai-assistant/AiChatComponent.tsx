@@ -12,6 +12,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
+import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -53,9 +54,11 @@ const AiChatComponent: React.FC = () => {
     addMessageToSession,
     updateAISettings,
     aiSettings,
+    editorSettings,
+    systemSettings,
     locale
   } = useApp();
-  const { aggregatedPrompt, chatMode, setChatMode, getSystemPrompt } = useAgent();
+  const { aggregatedPrompt, chatMode, setChatMode, getSystemPrompt, skills, activeSkills } = useAgent();
   const { t } = useL10n();
 
   const activeSession = chatSessions.find(s => s.id === activeSessionId);
@@ -315,13 +318,32 @@ const AiChatComponent: React.FC = () => {
     try {
       // Build context for the system prompt
       const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
-      const currentContext = currentFile ? `Focused File: ${currentFile.path}\n` : "";
+      const currentContext = currentFile ? `${t('ai.context.focused_file')}: ${currentFile.path}\n` : "";
+      
+      // Fetch dynamic awareness data
+      const systemInfo = await getSystemInfo();
+      const projectStack = await detectProjectStack(rootPath);
+      const awarenessBlock = generateAwarenessBlock({
+        system: systemInfo,
+        stack: projectStack,
+        settings: {
+          ai: aiSettings,
+          editor: editorSettings,
+          system: systemSettings,
+          locale: locale
+        },
+        skills: skills.map(s => ({ id: s.id, name: s.name, active: activeSkills.includes(s.id) })),
+        mode: chatMode,
+        rootPath,
+        projectTreeSummary: projectTree
+      });
+
       const systemPrompt = getSystemPrompt();
 
       const history: OllamaChatMessage[] = [
         {
           role: "system" as const,
-          content: `${systemPrompt}\n\n[USER IDE SETTINGS]\n- Current Language: ${locale}\n\n${workspaceContext}${currentContext}`
+          content: `${systemPrompt}\n\n${awarenessBlock}\n\n${workspaceContext}${currentContext}`
         },
         ...activeSession.messages.map((m): OllamaChatMessage => {
           if (m.role === "tool") {
