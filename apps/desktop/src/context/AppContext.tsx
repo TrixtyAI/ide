@@ -104,7 +104,7 @@ export interface ChatSession {
 const DEFAULT_AI_SETTINGS: AISettings = {
   temperature: 0.7,
   systemPrompt: "You are Trixty AI, an expert technical programming assistant. Help the user write clean, efficient, and secure code.",
-  endpoint: "http://localhost:11434",
+  endpoint: "http://127.0.0.1:11434",
   maxTokens: 2048,
   alwaysAllowTools: false,
   freezeProtection: true,
@@ -138,7 +138,7 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
 
 const getLanguageFromExtension = (filename: string) => {
   const ext = filename.split(".").pop()?.toLowerCase();
-  
+
   // Use dynamic LanguageRegistry if available
   if (typeof window !== 'undefined' && window.trixty?.languages) {
     const dynamicLang = window.trixty.languages.getLanguageByExtension(ext || "");
@@ -272,7 +272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (savedSystemSettings) {
           setSystemSettings(prev => ({ ...prev, ...savedSystemSettings }));
         }
-        
+
         setIsInitialLoadComplete(true);
         console.log("[AppContext] Initial load complete.");
       } catch (err) {

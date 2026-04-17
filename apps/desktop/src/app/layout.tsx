@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { AppProvider } from "@/context/AppContext";
 import { ExtensionProvider } from "@/context/ExtensionContext";
+import { AgentProvider } from "@/context/AgentContext";
 
 export default function RootLayout({
   children,
@@ -29,9 +30,11 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-[#1e1e1e] text-white">
         <AppProvider>
-          <ExtensionProvider>
-            {children}
-          </ExtensionProvider>
+          <AgentProvider>
+            <ExtensionProvider>
+              {children}
+            </ExtensionProvider>
+          </AgentProvider>
         </AppProvider>
       </body>
     </html>

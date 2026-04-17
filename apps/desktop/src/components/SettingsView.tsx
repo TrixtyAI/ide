@@ -16,13 +16,15 @@ import {
   AlertTriangle,
   Trash2,
   Plus,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Bot
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import logoWhite from "@/assets/branding/logo-white.png";
+import AgentSettings from "@/addons/builtin.agent-support/AgentSettings";
 
 const SettingsView: React.FC = () => {
   const {
@@ -40,6 +42,7 @@ const SettingsView: React.FC = () => {
   } = useApp();
   const { t } = useL10n();
   const [activeCategory, setActiveCategory] = useState("general");
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [newPattern, setNewPattern] = useState("");
   const [copied, setCopied] = useState(false);
   const [systemInfo, setSystemInfo] = useState<Record<string, string> | null>(null);
@@ -71,11 +74,48 @@ Node.js: ${systemInfo.node_version}
 
   const categories = [
     { id: "general", label: t('settings.general'), icon: Settings2 },
+    { 
+      id: "agent", 
+      label: t('agent.title'), 
+      icon: Bot,
+      children: [
+        { id: "agent:profile", label: t('agent.tab.profile') },
+        { id: "agent:manual", label: t('agent.tab.manual') },
+        { id: "agent:user", label: t('agent.tab.user') },
+        { id: "agent:design", label: t('agent.tab.design') },
+        { id: "agent:skills", label: t('agent.tab.skills') },
+      ]
+    },
     { id: "application", label: t('settings.application'), icon: Globe },
     { id: "about", label: t('settings.about'), icon: Info },
   ];
 
+  const toggleCategory = (id: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
   const renderContent = () => {
+    const [mainCat, subCat] = activeCategory.split(":");
+
+    if (mainCat === "agent") {
+      const currentSub = subCat || 'profile';
+      return (
+        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+           <div className="mb-8">
+             <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
+               {t(`agent.${currentSub}.title`)}
+             </h3>
+             <p className="text-[12px] text-[#666] mt-1.5 leading-relaxed max-w-xl">
+               {t(`agent.${currentSub}.desc`)}
+             </p>
+           </div>
+           <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design')} />
+        </div>
+      );
+    }
+
     switch (activeCategory) {
       case "general":
         return (
@@ -358,22 +398,59 @@ Node.js: ${systemInfo.node_version}
             </h2>
           </div>
           <nav className="flex-1 space-y-1 px-3">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all group ${activeCategory === cat.id
-                  ? "bg-blue-500/10 text-blue-400 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)]"
-                  : "text-[#888] hover:text-white hover:bg-white/5"
-                  }`}
-              >
-                <cat.icon size={16} className={`${activeCategory === cat.id ? "text-blue-400" : "text-[#555] group-hover:text-[#888]"}`} />
-                {cat.label}
-                {activeCategory === cat.id && (
-                  <ChevronRight size={14} className="ml-auto opacity-50" />
-                )}
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const [activeMain] = activeCategory.split(":");
+              const isActive = activeMain === cat.id;
+              const isExpanded = expandedCategories.includes(cat.id);
+              const hasChildren = cat.children && cat.children.length > 0;
+
+              return (
+                <div key={cat.id} className="space-y-1">
+                  <button
+                    onClick={() => {
+                      if (hasChildren) {
+                        toggleCategory(cat.id);
+                        if (!isActive) setActiveCategory(cat.children![0].id);
+                      } else {
+                        setActiveCategory(cat.id);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all group ${
+                      isActive && !hasChildren
+                        ? "bg-blue-500/10 text-blue-400 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)]"
+                        : "text-[#888] hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <cat.icon size={16} className={`${isActive ? "text-blue-400" : "text-[#555] group-hover:text-[#888]"}`} />
+                    {cat.label}
+                    {hasChildren && (
+                      <ChevronRight 
+                        size={14} 
+                        className={`ml-auto transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-400" : "opacity-50"}`} 
+                      />
+                    )}
+                  </button>
+
+                  {hasChildren && isExpanded && (
+                    <div className="space-y-1 ml-4 border-l border-[#1a1a1a] pl-2 animate-in slide-in-from-top-1 duration-200">
+                      {cat.children!.map((child) => (
+                        <button
+                          key={child.id}
+                          onClick={() => setActiveCategory(child.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+                            activeCategory === child.id
+                              ? "text-blue-400 bg-blue-500/5"
+                              : "text-[#666] hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
         </div>
 

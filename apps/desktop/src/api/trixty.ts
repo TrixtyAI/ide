@@ -222,12 +222,41 @@ class WorkspaceRegistry {
    };
 }
 
+class AgentRegistry {
+    private activeSkills = new Set<string>();
+    private listeners = new Set<() => void>();
+
+    private notify() {
+        for (const listener of this.listeners) listener();
+    }
+
+    registerSkill(id: string) {
+        this.activeSkills.add(id);
+        this.notify();
+    }
+
+    unregisterSkill(id: string) {
+        this.activeSkills.delete(id);
+        this.notify();
+    }
+
+    getActiveSkills(): string[] {
+        return Array.from(this.activeSkills);
+    }
+
+    subscribe(listener: () => void): () => void {
+        this.listeners.add(listener);
+        return () => { this.listeners.delete(listener); };
+    }
+}
+
 export const trixty = {
     commands: new CommandRegistry(),
     window: new WindowRegistry(),
     workspace: new WorkspaceRegistry(),
     l10n: new L10nRegistry(),
-    languages: new LanguageRegistry()
+    languages: new LanguageRegistry(),
+    agent: new AgentRegistry()
 };
 
 // Global Window interface extensions for Trixty

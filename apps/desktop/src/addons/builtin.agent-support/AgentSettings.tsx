@@ -1,0 +1,229 @@
+"use client";
+
+import React, { useState } from "react";
+import { useAgent } from "@/context/AgentContext";
+import { useApp } from "@/context/AppContext";
+import { useL10n } from "@/hooks/useL10n";
+import { 
+  Bot, ShieldCheck, User as UserIcon, Brain, Wrench, 
+  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, Palette
+} from "lucide-react";
+
+interface AgentSettingsProps {
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design';
+}
+
+const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
+  const { rootPath } = useApp();
+  const { 
+    identity, soul, agents, userContext, tools, memory, design,
+    skills, activeSkills, toggleSkill, saveAgentFile, isLoading, refreshAgentData 
+  } = useAgent();
+  const { t } = useL10n();
+  const [localContent, setLocalContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSave = async (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md') => {
+    setIsSaving(true);
+    try {
+      await saveAgentFile(fileName, localContent);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const renderTabContent = () => {
+    const projectRequiredTabs = ['manual', 'design', 'skills'];
+    if (!rootPath && projectRequiredTabs.includes(activeTab)) {
+      const errorMsg = activeTab === 'manual' ? t('agent.manual.no_project') : 
+                     (activeTab === 'design' ? t('agent.design.no_project') : t('agent.skills.no_project'));
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-10 text-center animate-in fade-in duration-500">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+            <AlertCircle size={32} className="text-amber-500/50" />
+          </div>
+          <h4 className="text-white font-bold text-lg mb-2">{t('git.no_repo')}</h4>
+          <p className="text-[13px] text-[#666] max-w-sm leading-relaxed">
+            {errorMsg}
+          </p>
+        </div>
+      );
+    }
+
+    switch (activeTab) {
+      // ... (rest of the switch stays the same)
+      case 'profile':
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex gap-4">
+              <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
+                <Bot size={32} className="text-blue-400" />
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-lg leading-tight">Trixty AI Agent</h4>
+                <p className="text-[11px] text-blue-400/80 font-mono mt-1 flex items-center gap-1">
+                  <Lock size={10} /> {t('agent.profile.protected')}
+                </p>
+                <p className="text-[12px] text-[#777] mt-2 leading-relaxed">
+                  {t('agent.profile.protected_desc')}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+               <div className="space-y-2">
+                 <label className="text-[10px] text-[#555] font-bold uppercase tracking-widest">{t('agent.profile.identity_label')}</label>
+                 <div className="p-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl text-[12px] text-[#999] font-mono whitespace-pre-wrap overflow-y-auto scrollbar-thin">
+                   {identity}
+                 </div>
+               </div>
+               <div className="space-y-2">
+                 <label className="text-[10px] text-[#555] font-bold uppercase tracking-widest">{t('agent.profile.soul_label')}</label>
+                 <div className="p-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl text-[12px] text-[#999] font-mono whitespace-pre-wrap h-64 overflow-y-auto scrollbar-thin">
+                   {soul}
+                 </div>
+               </div>
+            </div>
+          </div>
+        );
+      case 'manual':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="text-sm font-semibold text-white">AGENTS.md</h4>
+                <p className="text-[11px] text-[#555]">{t('agent.manual.desc')}</p>
+              </div>
+              <button 
+                onClick={() => handleSave('AGENTS.md')}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
+              >
+                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
+              </button>
+            </div>
+            <textarea 
+              defaultValue={agents || t('agent.manual.placeholder')}
+              onChange={(e) => setLocalContent(e.target.value)}
+              className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
+              placeholder={t('agent.manual.placeholder')}
+            />
+          </div>
+        );
+      case 'design':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="text-sm font-semibold text-white">DESIGN.md</h4>
+                <p className="text-[11px] text-[#555]">{t('agent.design.desc')}</p>
+              </div>
+              <button 
+                onClick={() => handleSave('DESIGN.md')}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
+              >
+                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
+              </button>
+            </div>
+            <textarea 
+              defaultValue={design || t('agent.design.placeholder')}
+              onChange={(e) => setLocalContent(e.target.value)}
+              className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
+              placeholder={t('agent.design.placeholder')}
+            />
+          </div>
+        );
+      case 'user':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="text-sm font-semibold text-white">USER.md</h4>
+                <p className="text-[11px] text-[#555]">{t('agent.user.desc')}</p>
+              </div>
+              <button 
+                onClick={() => handleSave('USER.md')}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
+              >
+                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
+              </button>
+            </div>
+            <textarea 
+              defaultValue={userContext || t('agent.user.placeholder')}
+              onChange={(e) => setLocalContent(e.target.value)}
+              className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
+              placeholder={t('agent.user.placeholder')}
+            />
+          </div>
+        );
+      case 'skills':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <h4 className="text-sm font-semibold text-white mb-2">{t('agent.skills.title')}</h4>
+            <div className="grid grid-cols-1 gap-2">
+              {skills.length === 0 ? (
+                <div className="p-10 border border-dashed border-[#222] rounded-2xl flex flex-col items-center justify-center text-center">
+                  <Sparkles size={32} className="text-[#222] mb-3" />
+                  <p className="text-[11px] text-[#444]">{t('agent.skills.none')}</p>
+                </div>
+              ) : (
+                skills.map(skill => (
+                  <div 
+                    key={skill.id}
+                    onClick={() => toggleSkill(skill.id)}
+                    className={`p-4 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                      activeSkills.includes(skill.id) 
+                        ? "bg-blue-500/10 border-blue-500/30" 
+                        : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${
+                        activeSkills.includes(skill.id) ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-[#111] border-white/5 text-[#444]"
+                      }`}>
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <h5 className={`text-[13px] font-bold ${activeSkills.includes(skill.id) ? "text-white" : "text-[#777]"}`}>{skill.name}</h5>
+                        <p className="text-[11px] text-[#555]">{skill.description}</p>
+                      </div>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full relative transition-colors ${
+                      activeSkills.includes(skill.id) ? "bg-blue-500" : "bg-[#222]"
+                    }`}>
+                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${
+                        activeSkills.includes(skill.id) ? "left-6" : "left-1"
+                      }`} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-[500px]">
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-20">
+          <RefreshCw size={24} className="animate-spin text-blue-500/50" />
+          <p className="text-[10px] text-[#444] font-bold uppercase tracking-widest">{t('common.loading')}</p>
+        </div>
+      ) : renderTabContent()}
+    </div>
+  );
+};
+
+export default AgentSettings;

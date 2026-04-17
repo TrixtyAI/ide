@@ -81,14 +81,17 @@ export const isTauri = (): boolean => {
  */
 export async function safeInvoke<K extends keyof TauriInvokeMap>(
   cmd: K, 
-  ...args: TauriInvokeMap[K]["args"] extends undefined ? [undefined?] : [TauriInvokeMap[K]["args"]]
+  args?: TauriInvokeMap[K]["args"],
+  options: { silent?: boolean } = {}
 ): Promise<TauriInvokeMap[K]["return"]> {
-  const payload = args[0] as Record<string, unknown> | undefined;
+  const payload = args as Record<string, unknown> | undefined;
   if (isTauri()) {
     try {
       return await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
     } catch (error) {
-      console.error(`[Tauri Invoke Error] ${cmd}:`, error);
+      if (!options.silent) {
+        console.error(`[Tauri Invoke Error] ${cmd}:`, error);
+      }
       throw error;
     }
   }

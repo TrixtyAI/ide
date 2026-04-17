@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, Brain, Code2, ChevronDown, ListRestart, History, Plus, Trash2, MessageSquare, Save, Square, Download } from "lucide-react";
+import { X, Send, Sparkles, Brain, Code2, ChevronDown, ListRestart, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useAgent } from "@/context/AgentContext";
 import ReactMarkdown from "react-markdown";
 import { trixtyStore } from "@/api/store";
 import { useL10n } from "@/hooks/useL10n";
@@ -50,9 +51,11 @@ const AiChatComponent: React.FC = () => {
     deleteSession,
     switchSession,
     addMessageToSession,
+    updateAISettings,
     aiSettings,
-    updateAISettings
+    locale
   } = useApp();
+  const { aggregatedPrompt, chatMode, setChatMode, getSystemPrompt } = useAgent();
   const { t } = useL10n();
 
   const activeSession = chatSessions.find(s => s.id === activeSessionId);
@@ -89,9 +92,12 @@ const AiChatComponent: React.FC = () => {
   }, [selectedModel]);
 
   const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: OllamaRequest) => {
+    // Sanitize the URL to avoid double slashes if endpoint has trailing slash
+    const sanitizedUrl = url.replace(/([^:]\/)\/+/g, "$1");
+    
     const result = await invoke("ollama_proxy", {
       method,
-      url,
+      url: sanitizedUrl,
       body: body || { type: 'version' } // Default to version if no body
     });
     return {
@@ -310,11 +316,12 @@ const AiChatComponent: React.FC = () => {
       // Build context for the system prompt
       const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
       const currentContext = currentFile ? `Focused File: ${currentFile.path}\n` : "";
+      const systemPrompt = getSystemPrompt();
 
       const history: OllamaChatMessage[] = [
         {
           role: "system" as const,
-          content: `${aiSettings.systemPrompt}\n\n${workspaceContext}${currentContext}`
+          content: `${systemPrompt}\n\n[USER IDE SETTINGS]\n- Current Language: ${locale}\n\n${workspaceContext}${currentContext}`
         },
         ...activeSession.messages.map((m): OllamaChatMessage => {
           if (m.role === "tool") {
@@ -352,7 +359,7 @@ const AiChatComponent: React.FC = () => {
             model: selectedModel,
             messages: history,
             stream: false,
-            tools: rootPath ? IDE_TOOLS : undefined, // Tools only available if project is open
+            tools: (rootPath && chatMode === 'agent') ? IDE_TOOLS : undefined, // Tools only available if project is open AND in agent mode
             think: aiSettings.deepMode,
             options: {
               temperature: aiSettings.temperature,
@@ -637,14 +644,6 @@ const AiChatComponent: React.FC = () => {
               </button>
           )}
 
-          {/* Clear Chat Button */}
-          <button
-            onClick={() => createSession()}
-            className="text-[#555] hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
-            title={t('ai.clear_chat')}
-          >
-            <ListRestart size={16} />
-          </button>
 
           <button
             onClick={() => { setShowHistory(!showHistory); }}
@@ -832,6 +831,35 @@ const AiChatComponent: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Mode Switcher */}
+      <div className="px-4 py-2 flex gap-1 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+        {[
+          { id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true },
+          { id: 'planer', icon: Sparkles, label: t('ai.mode.planer'), requiresFolder: true },
+          { id: 'ask', icon: MessageSquare, label: t('ai.mode.ask'), requiresFolder: false }
+        ].map((mode) => {
+          const isLocked = mode.requiresFolder && !rootPath;
+          return (
+            <button
+              key={mode.id}
+              onClick={() => !isLocked && setChatMode(mode.id as 'agent' | 'planer' | 'ask')}
+              disabled={isLocked}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg transition-all duration-300 ${
+                chatMode === mode.id 
+                  ? "bg-white/10 text-white shadow-sm border border-white/5" 
+                  : isLocked
+                    ? "text-[#222] cursor-not-allowed opacity-50"
+                    : "text-[#444] hover:text-[#777] hover:bg-white/[0.02]"
+              }`}
+              title={isLocked ? t('agent.skills.no_project') : t(`ai.mode.${mode.id}.desc`)}
+            >
+              {isLocked ? <Lock size={10} className="text-[#333]" /> : <mode.icon size={12} className={chatMode === mode.id ? "text-blue-400" : ""} />}
+              <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Input Area */}
       <div className="p-4 bg-[#0a0a0a] border-t border-[#1a1a1a] shrink-0">
