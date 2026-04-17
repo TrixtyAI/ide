@@ -16,7 +16,8 @@ import {
   X,
   Copy,
   Check,
-  Loader2
+  Loader2,
+  Settings2
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,7 +29,7 @@ const steps = [
   { id: "welcome", title: "onboarding.welcome", icon: Sparkles, color: "text-blue-400" },
   { id: "language", title: "onboarding.language", icon: Languages, color: "text-yellow-400" },
   { id: "ai", title: "onboarding.ai", icon: Brain, color: "text-purple-400" },
-  { id: "appearance", title: "onboarding.appearance", icon: Palette, color: "text-pink-400" },
+  { id: "general", title: "onboarding.appearance", icon: Settings2, color: "text-pink-400" },
   { id: "finish", title: "onboarding.finish", icon: Rocket, color: "text-orange-400" }
 ];
 

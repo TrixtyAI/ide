@@ -66,6 +66,7 @@ interface AppContextType {
 export interface SystemSettings {
   updateChannel: "stable" | "insiders";
   hasCompletedOnboarding: boolean;
+  filesExclude: string[];
 }
 
 export interface AISettings {
@@ -120,6 +121,19 @@ const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
 const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   updateChannel: "stable",
   hasCompletedOnboarding: false,
+  filesExclude: [
+    '**/.git',
+    '**/.svn',
+    '**/.hg',
+    '**/.DS_Store',
+    '**/Thumbs.db',
+    '**/.classpath',
+    '**/.factorypath',
+    '**/.project',
+    '**/.settings',
+    '**/node_modules',
+    '**/yarn.lock'
+  ],
 };
 
 const getLanguageFromExtension = (filename: string) => {
@@ -268,7 +282,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedSystemSettings = await trixtyStore.get<SystemSettings | null>("trixty-system-settings", null);
         console.log("[AppContext] System Settings loaded:", !!savedSystemSettings);
         if (savedSystemSettings) {
-          setSystemSettings(savedSystemSettings);
+          setSystemSettings(prev => ({ ...prev, ...savedSystemSettings }));
         }
         
         setIsInitialLoadComplete(true);

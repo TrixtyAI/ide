@@ -9,11 +9,14 @@ import {
   Info,
   ChevronRight,
   Settings,
+  Settings2,
   X,
   Copy,
   Check,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Plus,
+  Search as SearchIcon
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -36,7 +39,8 @@ const SettingsView: React.FC = () => {
     resetApp
   } = useApp();
   const { t } = useL10n();
-  const [activeCategory, setActiveCategory] = useState("appearance");
+  const [activeCategory, setActiveCategory] = useState("general");
+  const [newPattern, setNewPattern] = useState("");
   const [copied, setCopied] = useState(false);
   const [systemInfo, setSystemInfo] = useState<Record<string, string> | null>(null);
 
@@ -66,16 +70,17 @@ Node.js: ${systemInfo.node_version}
   if (!isSettingsOpen) return null;
 
   const categories = [
-    { id: "appearance", label: t('settings.appearance'), icon: Palette },
+    { id: "general", label: t('settings.general'), icon: Settings2 },
     { id: "application", label: t('settings.application'), icon: Globe },
     { id: "about", label: t('settings.about'), icon: Info },
   ];
 
   const renderContent = () => {
     switch (activeCategory) {
-      case "appearance":
+      case "general":
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-12 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* Editor Font Section */}
             <section>
               <h3 className="text-[14px] font-semibold text-white mb-4 flex items-center gap-2">
                 <Type size={16} className="text-blue-400" />
@@ -109,6 +114,76 @@ Node.js: ${systemInfo.node_version}
                       onChange={(e) => updateEditorSettings({ lineHeight: parseInt(e.target.value) })}
                       className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                     />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Files: Exclude Section */}
+            <section>
+              <div className="mb-4">
+                <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
+                  Files: <span className="font-bold">Exclude</span>
+                </h3>
+                <p className="text-[12px] text-[#666] mt-1.5 leading-relaxed max-w-xl">
+                  {t('settings.general.exclude_desc')}
+                </p>
+              </div>
+
+              <div className="space-y-2 max-w-2xl">
+                {/* Pattern List */}
+                <div className="space-y-1">
+                  {(systemSettings.filesExclude || []).map((pattern, idx) => (
+                    <div 
+                      key={`${pattern}-${idx}`}
+                      className="group flex items-center justify-between px-3 py-1.5 bg-[#0a0a0a] border border-[#1a1a1a] rounded hover:border-[#333] transition-colors"
+                    >
+                      <span className="text-[13px] text-[#bbb] font-mono">{pattern}</span>
+                      <button 
+                        onClick={() => {
+                          const newList = systemSettings.filesExclude.filter((_, i) => i !== idx);
+                          updateSystemSettings({ filesExclude: newList });
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-[#555] hover:text-red-400 transition-all"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Pattern Input */}
+                <div className="pt-4 flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input 
+                        type="text" 
+                        value={newPattern}
+                        onChange={(e) => setNewPattern(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newPattern.trim()) {
+                            if (!systemSettings.filesExclude.includes(newPattern.trim())) {
+                              updateSystemSettings({ filesExclude: [...systemSettings.filesExclude, newPattern.trim()] });
+                              setNewPattern("");
+                            }
+                          }
+                        }}
+                        placeholder={t('settings.general.exclude_placeholder')}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (newPattern.trim() && !systemSettings.filesExclude.includes(newPattern.trim())) {
+                          updateSystemSettings({ filesExclude: [...systemSettings.filesExclude, newPattern.trim()] });
+                          setNewPattern("");
+                        }
+                      }}
+                      className="px-4 py-2 bg-[#007acc] hover:bg-[#0062a3] text-white text-[12px] font-semibold rounded transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={14} />
+                      {t('settings.general.exclude_add_pattern')}
+                    </button>
                   </div>
                 </div>
               </div>

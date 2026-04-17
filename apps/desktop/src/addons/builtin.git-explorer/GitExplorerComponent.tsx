@@ -11,6 +11,7 @@ import { open, ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu, { ContextMenuItem } from "@/components/ui/ContextMenu";
+import pm from "picomatch";
 
 interface FileEntry { name: string; path: string; is_dir: boolean; children?: FileEntry[]; }
 interface SearchResult { file_path: string; file_name: string; line_number: number; content: string; }
@@ -25,7 +26,7 @@ const STATUS_META: Record<string, { icon: React.ElementType; color: string }> = 
 };
 
 const GitExplorerComponent: React.FC = () => {
-  const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile, aiSettings } = useApp();
+  const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile, aiSettings, systemSettings } = useApp();
   const { t } = useL10n();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +53,26 @@ const GitExplorerComponent: React.FC = () => {
     setLoading(true);
     try {
       const data = await invoke("read_directory", { path });
-      const sorted = data.sort((a, b) => (b.is_dir ? 1 : 0) - (a.is_dir ? 1 : 0) || a.name.localeCompare(b.name));
+      
+      // Filtering logic
+      const patterns = systemSettings.filesExclude || [];
+      const isMatch = pm(patterns, { dot: true });
+      
+      const filtered = data.filter((entry: FileEntry) => {
+        if (!rootPath) return true;
+        
+        // Match against name
+        if (isMatch(entry.name)) return false;
+        
+        // Match against relative path from root
+        const relPath = entry.path.replace(rootPath, "").replace(/^[\\\/]/, "").replace(/\\/g, "/");
+        if (relPath && isMatch(relPath)) return false;
+        
+        return true;
+      });
+
+      const sorted = filtered.sort((a, b) => (b.is_dir ? 1 : 0) - (a.is_dir ? 1 : 0) || a.name.localeCompare(b.name));
+      
       if (!parentPath) { setEntries(sorted); } else {
         setEntries((prev) => {
           const update = (items: FileEntry[]): FileEntry[] => items.map((i) => {
@@ -64,7 +84,7 @@ const GitExplorerComponent: React.FC = () => {
         });
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, []);
+  }, [rootPath, systemSettings.filesExclude]);
 
   const handleOpenFolder = async () => {
     try {
