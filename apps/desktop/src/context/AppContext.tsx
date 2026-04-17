@@ -285,6 +285,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadInitialState();
   }, [createSession, setLocale]);
 
+  // Global: Remove default context menu
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => document.removeEventListener("contextmenu", handleContextMenu);
+  }, []);
+
   // Persistence effects - ONLY run after initial load to avoid overwriting store with defaults
   useEffect(() => {
     if (!isInitialLoadComplete) return;
