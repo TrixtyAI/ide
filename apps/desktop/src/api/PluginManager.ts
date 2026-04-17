@@ -1,5 +1,8 @@
 import * as builtinAiAssistant from "@/addons/builtin.ai-assistant/index";
 import * as builtinGitExplorer from "@/addons/builtin.git-explorer/index";
+import * as builtinLanguageTypescript from "@/addons/builtin.language.typescript/index";
+import * as builtinLanguagePython from "@/addons/builtin.language.python/index";
+import * as builtinLanguageRust from "@/addons/builtin.language.rust/index";
 import { registerBuiltinTranslations } from "./builtin.l10n";
 
 export interface PluginExports {
@@ -16,7 +19,7 @@ export interface PluginModule {
 export class PluginManager {
     static async bootstrap() {
         console.log("[PluginManager] Bootstrapping built-in extensions and localizations...");
-        
+
         // Load translations first
         registerBuiltinTranslations();
 
@@ -34,6 +37,17 @@ export class PluginManager {
             console.error("Failed to activate Git Explorer", e);
         }
 
+      // Language Addons
+      try {
+        builtinLanguageTypescript.activate();
+        builtinLanguagePython.activate();
+        builtinLanguageRust.activate();
+
+        console.log("[PluginManager] Built-in language addons activated.");
+      } catch (e) {
+        console.error("Failed to activate language addons", e);
+      }
+
         // Dynamically load external scripts from Tauri File System
         try {
             await this.loadExternalAddons();
@@ -44,26 +58,26 @@ export class PluginManager {
 
     private static async loadExternalAddons() {
         const { safeInvoke: invoke } = await import('@/api/tauri');
-        
+
         console.log("[PluginManager] Scanning for installed third-party extensions...");
         const installed = await invoke("get_installed_extensions");
-        
+
         for (const ext_id of installed) {
             const isActive = await invoke("is_extension_active", { id: ext_id });
             if (isActive) {
                 console.log(`[PluginManager] Loading external addon: ${ext_id}`);
                 try {
                     const scriptStr = await invoke("read_extension_script", { id: ext_id });
-                    
+
                     // Emulate a CommonJS Module Sandbox
                     const moduleContext: PluginModule = { exports: {} };
                     // We supply React and trixty as arguments to the Function enclosure safely
                     type PluginRunner = (module: PluginModule, exports: PluginExports, React: typeof import("react"), trixty: typeof import("@/api/trixty").trixty) => void;
                     const runner = new Function('module', 'exports', 'React', 'trixty', scriptStr) as PluginRunner;
-                    
+
                     // Evaluate in the Webview JS Engine context
                     runner(moduleContext, moduleContext.exports, window.React, window.trixty);
-                    
+
                     const activate = moduleContext.exports.activate;
                     if (typeof activate === 'function') {
                         activate(window.trixty);

@@ -138,29 +138,17 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
 
 const getLanguageFromExtension = (filename: string) => {
   const ext = filename.split(".").pop()?.toLowerCase();
+  
+  // Use dynamic LanguageRegistry if available
+  if (typeof window !== 'undefined' && window.trixty?.languages) {
+    const dynamicLang = window.trixty.languages.getLanguageByExtension(ext || "");
+    if (dynamicLang) return dynamicLang;
+  }
+
+  // Fallback map for essential file types if Registry hasn't initialized or for defaults
   const map: Record<string, string> = {
-    // Web
     js: "javascript", jsx: "javascript", ts: "typescript", tsx: "typescript",
-    html: "html", htm: "html", css: "css", scss: "scss", less: "less",
-    json: "json", jsonc: "json", webp: "image",
-
-    // Systems & Backend
-    rs: "rust", go: "go", py: "python", pyw: "python",
-    c: "c", cpp: "cpp", h: "cpp", hpp: "cpp", cs: "csharp",
-    java: "java", kt: "kotlin", rb: "ruby", php: "php",
-    swift: "swift",
-
-    // Configuration & Data
-    toml: "toml", yaml: "yaml", yml: "yaml", xml: "xml",
-    sql: "sql", prisma: "prisma", graphql: "graphql", gq: "graphql",
-    env: "properties", ini: "ini",
-
-    // Documentation & Tooling
-    md: "markdown", mdx: "markdown", txt: "plaintext",
-    dockerfile: "dockerfile", dockerignore: "dockerfile",
-    gitignore: "ignore", sh: "shell", bash: "shell", zsh: "shell",
-    ps1: "powershell", psd1: "powershell", psm1: "powershell",
-    bat_cmd: "bat", svg: "html"
+    json: "json", md: "markdown", txt: "plaintext"
   };
   return map[ext!] || "plaintext";
 };

@@ -131,6 +131,7 @@ class LanguageRegistry {
     | { type: 'indent'; data: { id: string; options: { tabSize: number; insertSpaces: boolean } } }
   > = [];
     private indentationSettings = new Map<string, { tabSize: number, insertSpaces: boolean }>();
+    private extensionMap = new Map<string, string>(); // ext -> languageId
 
     constructor() {
         if (typeof window !== 'undefined') {
@@ -161,7 +162,15 @@ class LanguageRegistry {
       this.buffer = [];
     }
 
-  register(language: languages.ILanguageExtensionPoint) {
+    register(language: languages.ILanguageExtensionPoint) {
+        if (language.extensions) {
+            language.extensions.forEach(ext => {
+                // Normalize extension (remove leading dot if present)
+                const normalized = ext.startsWith('.') ? ext.substring(1) : ext;
+                this.extensionMap.set(normalized, language.id);
+            });
+        }
+
         if (this.monaco) {
             this.monaco.languages.register(language);
         } else {
@@ -194,6 +203,11 @@ class LanguageRegistry {
 
     getIndentation(id: string) {
         return this.indentationSettings.get(id);
+    }
+
+    getLanguageByExtension(ext: string): string | undefined {
+        const normalized = ext.startsWith('.') ? ext.substring(1) : ext;
+        return this.extensionMap.get(normalized);
     }
 }
 
