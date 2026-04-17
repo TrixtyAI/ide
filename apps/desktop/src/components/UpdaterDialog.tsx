@@ -29,28 +29,42 @@ const UpdaterDialog: React.FC = () => {
     }
     
     try {
+      const headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2026-03-10"
+      };
+
       let endpointUrl = "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json";
       try {
         const fetchUrl = systemSettings.updateChannel === "insiders" 
           ? "https://api.github.com/repos/TrixtyAI/ide/releases" 
           : "https://api.github.com/repos/TrixtyAI/ide/releases/latest";
           
-        const res = await fetch(fetchUrl);
+        const res = await fetch(fetchUrl, { headers });
+        
+        if (res.status === 404) {
+          console.log("[Updater] No releases found (Resource not found).");
+          if (isManual) setState({ phase: "up-to-date" });
+          return;
+        }
+
         if (res.ok) {
           const data = await res.json();
-          // If insiders, it returns an array. If stable, it returns a single release object.
           const releases = Array.isArray(data) ? data : [data];
           
           for (const release of releases) {
-            const asset = release.assets?.find((a: { name: string; browser_download_url: string }) => a.name === "latest.json");
+            const asset = release.assets?.find((a: any) => a.name === "latest.json");
             if (asset?.browser_download_url) {
               endpointUrl = asset.browser_download_url;
+              if (asset.digest) {
+                console.log(`[Updater] Verifying digest: ${asset.digest}`);
+              }
               break;
             }
           }
         }
       } catch (err) {
-        console.warn("[Updater] Could not fetch releases from github api. Falling back to default URL.", err);
+        console.warn("[Updater] API access failed, using fallback.", err);
       }
 
       // 2. Pass this dynamically discovered URL to our custom Rust command

@@ -3,6 +3,8 @@ import * as builtinGitExplorer from "@/addons/builtin.git-explorer/index";
 import * as builtinLanguageTypescript from "@/addons/builtin.language.typescript/index";
 import * as builtinLanguagePython from "@/addons/builtin.language.python/index";
 import * as builtinLanguageRust from "@/addons/builtin.language.rust/index";
+import * as builtinLanguageHtml from "@/addons/builtin.language.html/index";
+import * as builtinLanguageMarkdown from "@/addons/builtin.language.markdown/index";
 import { registerBuiltinTranslations } from "./builtin.l10n";
 
 export interface PluginExports {
@@ -39,9 +41,11 @@ export class PluginManager {
 
       // Language Addons
       try {
-        builtinLanguageTypescript.activate();
-        builtinLanguagePython.activate();
-        builtinLanguageRust.activate();
+        builtinLanguageTypescript.activate(window.trixty);
+        builtinLanguagePython.activate(window.trixty);
+        builtinLanguageRust.activate(window.trixty);
+        builtinLanguageHtml.activate(window.trixty);
+        builtinLanguageMarkdown.activate(window.trixty);
 
         console.log("[PluginManager] Built-in language addons activated.");
       } catch (e) {

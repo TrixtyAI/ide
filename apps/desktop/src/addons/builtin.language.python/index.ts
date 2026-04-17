@@ -1,6 +1,6 @@
 import { trixty } from "@/api/trixty";
 
-export const activate = () => {
+export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
   console.log("[builtin.language.python] Activating...");
 
   trixty.languages.register({
