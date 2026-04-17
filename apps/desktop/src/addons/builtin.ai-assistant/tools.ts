@@ -69,5 +69,33 @@ export const IDE_TOOLS = [
               required: []
           }
       }
+  },
+  {
+      type: 'function',
+      function: {
+          name: 'web_search',
+          description: 'Search the internet for real-time information, documentation, or recent events. Results are returned as a summary or full JSON.',
+          parameters: {
+              type: 'object',
+              properties: {
+                  query: { type: 'string', description: 'The search query to perform' }
+              },
+              required: ['query']
+          }
+      }
+  },
+  {
+      type: 'function',
+      function: {
+          name: 'remember',
+          description: 'Store or update information in your long-term persistent memory (.agents/MEMORY.md). Use this to remember user preferences, architectural decisions, or facts that should persist across chat sessions.',
+          parameters: {
+              type: 'object',
+              properties: {
+                  content: { type: 'string', description: 'The updated content for your entire memory file. You should append or update existing points rather than overwriting completely unless intended.' }
+              },
+              required: ['content']
+          }
+      }
   }
 ];

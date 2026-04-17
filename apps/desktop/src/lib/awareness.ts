@@ -104,8 +104,9 @@ export function generateAwarenessBlock(params: {
   mode: string;
   rootPath: string | null;
   projectTreeSummary: string[];
+  internetAccess?: string;
 }) {
-  const { system, stack, settings, skills, mode, rootPath, projectTreeSummary } = params;
+  const { system, stack, settings, skills, mode, rootPath, projectTreeSummary, internetAccess } = params;
 
   const activeSkills = skills.filter(s => s.active).map(s => s.name).join(", ") || "None";
   const disabledSkills = skills.filter(s => !s.active).map(s => s.name).join(", ") || "None";
@@ -121,6 +122,7 @@ export function generateAwarenessBlock(params: {
 - **Active Skills**: ${activeSkills}
 - **Disabled Skills**: ${disabledSkills}
 - **Current Mode**: ${mode.toUpperCase()}
+- **Internet Access**: ${internetAccess || "Disabled"}
 - **Available Tools**: ${rootPath && mode === 'agent' ? "All IDE tools enabled" : "Restricted (No direct execution)"}
 
 ### PROJECT_STACK

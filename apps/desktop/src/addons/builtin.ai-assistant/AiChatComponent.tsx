@@ -275,6 +275,18 @@ const AiChatComponent: React.FC = () => {
           });
         case 'get_workspace_structure':
           return await invoke("get_recursive_file_list", { rootPath });
+        case 'web_search':
+          return await invoke("perform_web_search", { query: String(args.query) });
+        case 'remember':
+          await invoke("write_file", { 
+            path: resolvePath(".agents/MEMORY.md"), 
+            content: String(args.content) 
+          });
+          // Refresh context so the memory visualizer updates
+          try {
+            await (useAgent as any).getState().refreshAgentData();
+          } catch(e) {}
+          return "Memory updated successfully.";
         default:
           return `Error: Unknown tool ${name}`;
       }
@@ -335,6 +347,7 @@ const AiChatComponent: React.FC = () => {
         skills: skills.map(s => ({ id: s.id, name: s.name, active: activeSkills.includes(s.id) })),
         mode: chatMode,
         rootPath,
+        internetAccess: "Enabled (via web_search tool)",
         projectTreeSummary: projectTree
       });
 
@@ -381,7 +394,14 @@ const AiChatComponent: React.FC = () => {
             model: selectedModel,
             messages: history,
             stream: false,
-            tools: (rootPath && chatMode === 'agent') ? IDE_TOOLS : undefined, // Tools only available if project is open AND in agent mode
+            tools: (() => {
+              const searchToolOnly = IDE_TOOLS.filter(t => t.function.name === 'web_search');
+              if (chatMode === 'agent' && rootPath) {
+                return IDE_TOOLS;
+              }
+              // In Ask or Planner mode, or if no project is open, only allow web search
+              return searchToolOnly;
+            })(),
             think: aiSettings.deepMode,
             options: {
               temperature: aiSettings.temperature,

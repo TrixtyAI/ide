@@ -84,6 +84,7 @@ Node.js: ${systemInfo.node_version}
         { id: "agent:user", label: t('agent.tab.user') },
         { id: "agent:design", label: t('agent.tab.design') },
         { id: "agent:skills", label: t('agent.tab.skills') },
+        { id: "agent:memory", label: t('agent.tab.memory') },
       ]
     },
     { id: "application", label: t('settings.application'), icon: Globe },
@@ -111,7 +112,7 @@ Node.js: ${systemInfo.node_version}
                {t(`agent.${currentSub}.desc`)}
              </p>
            </div>
-           <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design')} />
+           <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory')} />
         </div>
       );
     }

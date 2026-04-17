@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design';
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
@@ -38,7 +38,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   };
 
   const renderTabContent = () => {
-    const projectRequiredTabs = ['manual', 'design', 'skills'];
+    const projectRequiredTabs = ['manual', 'design', 'skills', 'memory'];
     if (!rootPath && projectRequiredTabs.includes(activeTab)) {
       const errorMsg = activeTab === 'manual' ? t('agent.manual.no_project') : 
                      (activeTab === 'design' ? t('agent.design.no_project') : t('agent.skills.no_project'));
@@ -209,6 +209,23 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 ))
               )}
             </div>
+          </div>
+        );
+      case 'memory':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="text-sm font-semibold text-white">MEMORY.md</h4>
+                <p className="text-[11px] text-[#555]">{t('agent.memory.desc')}</p>
+              </div>
+            </div>
+            <textarea 
+              value={memory || ""}
+              readOnly
+              className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#555] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none cursor-default"
+              placeholder={t('agent.memory.none', { defaultValue: "No data in long-term memory yet." })}
+            />
           </div>
         );
     }

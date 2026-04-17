@@ -430,6 +430,27 @@ struct ProxyResponse {
 }
 
 #[tauri::command]
+async fn perform_web_search(query: String) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("TrixtyIDE/2.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!("https://api.duckduckgo.com/?q={}&format=json&no_html=1", urlencoding::encode(&query));
+    
+    let response = client.get(&url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let text = response.text().await.map_err(|e| e.to_string())?;
+    
+    // We return the raw JSON for the AI to parse, or we could simplify it.
+    // For now, let's just return the text which is usually enough context.
+    Ok(text)
+}
+
+#[tauri::command]
 async fn ollama_proxy(
     method: String,
     url: String,
@@ -553,6 +574,7 @@ pub fn run() {
             get_active_ports,
             start_tunnel,
             stop_tunnel,
+            perform_web_search,
             about::get_trixty_about_info
         ])
         .setup(|_app| {
