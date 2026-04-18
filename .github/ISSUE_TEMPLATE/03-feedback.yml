@@ -1,0 +1,18 @@
+name: Feedback
+description: 'Share your feedback about the project'
+title: '[Feedback]: '
+labels: ['Feedback']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > Your feedback is valuable to us. Please share your thoughts about the project.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the feedback
+      description: A clear and concise description of what you want to add.
+    validations:
+      required: true
