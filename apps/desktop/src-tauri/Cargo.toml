@@ -1,6 +1,6 @@
 [package]
 name = "TrixtyIDE"
-version = "1.0.7"
+version = "1.0.8"
 description = "A Tauri App"
 authors = ["jmaxdev"]
 license = "UPL-1.0"

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TrixtyIDE",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "identifier": "trixty.ide",
   "build": {
     "frontendDist": "../out",
