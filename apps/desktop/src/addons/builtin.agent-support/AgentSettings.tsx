@@ -6,11 +6,11 @@ import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import { 
   Bot, ShieldCheck, User as UserIcon, Brain, Wrench, 
-  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, Palette
+  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, Palette, AlertTriangle
 } from "lucide-react";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory';
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory' | 'configuration';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
@@ -19,6 +19,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
     identity, soul, agents, userContext, tools, memory, design,
     skills, activeSkills, toggleSkill, saveAgentFile, isLoading, refreshAgentData 
   } = useAgent();
+  const { aiSettings, updateAISettings } = useApp();
   const { t } = useL10n();
   const [localContent, setLocalContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -209,6 +210,78 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 ))
               )}
             </div>
+          </div>
+        );
+      case 'configuration':
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <section className="space-y-6 max-w-lg">
+              {/* Keep Alive Setting */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-[#888] uppercase tracking-wider">{t('agent.configuration.keepalive_label')}</label>
+                  <span className="text-[11px] font-mono text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    {aiSettings.keepAlive || 5} {t('agent.configuration.keepalive_unit')}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="1440"
+                  step="5"
+                  value={aiSettings.keepAlive || 5}
+                  onChange={(e) => updateAISettings({ keepAlive: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-[#1a1a1a] rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+                <div className="flex justify-between text-[10px] text-[#444] font-mono">
+                  <span>5m</span>
+                  <span>12h</span>
+                  <span>24h</span>
+                </div>
+                <p className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
+                
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex gap-3">
+                   <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                   <p className="text-[11px] text-amber-500/80 leading-relaxed italic">
+                     {t('agent.configuration.keepalive_warning')}
+                   </p>
+                </div>
+              </div>
+
+              <div className="h-px bg-white/5" />
+
+              {/* Startup Pre-load Setting */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between group">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[12px] font-bold text-white tracking-tight">{t('agent.configuration.loadonstartup_label')}</label>
+                    <p className="text-[11px] text-[#555] max-w-sm">{t('agent.configuration.loadonstartup_desc')}</p>
+                  </div>
+                  <button
+                    onClick={() => updateAISettings({ loadOnStartup: !aiSettings.loadOnStartup })}
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
+                      aiSettings.loadOnStartup ? "bg-blue-600 shadow-lg shadow-blue-900/40" : "bg-[#1a1a1a] border border-white/5"
+                    }`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
+                      aiSettings.loadOnStartup ? "left-7" : "left-1"
+                    }`} />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-amber-500/[0.03] border border-amber-500/10 rounded-2xl flex gap-4 backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/10 shrink-0 relative z-10 shadow-inner">
+                    <AlertTriangle size={18} className="text-amber-500/70" />
+                  </div>
+                  <div className="relative z-10 flex items-center">
+                    <h5 className="text-[12px] font-bold text-amber-500/90 tracking-tight leading-tight">
+                      {t('agent.configuration.loadonstartup_warning')}
+                    </h5>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         );
       case 'memory':

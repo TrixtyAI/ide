@@ -322,7 +322,18 @@ export function registerBuiltinTranslations() {
         'ai.handoff.to_agent': 'I have finished the plan. Please switch to Agent mode if you are ready to proceed with the automated execution.',
         'ai.handoff.to_planer': 'This task is complex. I suggest switching to Planner mode to design the strategy before I start modifying files.',
         'agent.common.saving': 'Saving...',
-        'agent.common.saved': 'Saved!'
+        'agent.common.saved': 'Saved!',
+        'agent.tab.configuration': 'Configuration',
+        'agent.configuration.title': 'Model Management',
+        'agent.configuration.desc': 'Configure how Ollama handles model persistence and initialization.',
+        'agent.configuration.keepalive_label': 'Keep Alive Duration',
+        'agent.configuration.keepalive_desc': 'Time the model stays loaded in VRAM/RAM after the last request.',
+        'agent.configuration.keepalive_warning': 'Warning: Higher values will consume system resources (RAM/VRAM) for longer periods.',
+        'agent.configuration.loadonstartup_label': 'Pre-load on Startup',
+        'agent.configuration.loadonstartup_desc': 'Automatically load the selected model when Trixty starts.',
+        'agent.configuration.loadonstartup_warning': 'Warning: This may cause system slowdown and increase Trixty\'s initial loading time while the model is being loaded into memory.',
+        'agent.configuration.loadonstartup_ping_desc': 'Trixty will trigger a background ping to load models upon application initialization.',
+        'agent.configuration.keepalive_unit': 'minutes'
     });
 
     // SPANISH
@@ -641,6 +652,17 @@ export function registerBuiltinTranslations() {
         'ai.handoff.to_agent': 'He terminado el plan. Por favor, cambia al modo Agente si estás listo para proceder con la ejecución automática.',
         'ai.handoff.to_planer': 'Esta tarea es compleja. Te sugiero pasar al modo Planer para diseñar la estrategia antes de que yo comience a modificar archivos.',
         'agent.common.saving': 'Guardando...',
-        'agent.common.saved': '¡Guardado!'
+        'agent.common.saved': '¡Guardado!',
+        'agent.tab.configuration': 'Configuración',
+        'agent.configuration.title': 'Gestión del Modelo',
+        'agent.configuration.desc': 'Configura cómo Ollama maneja la persistencia e inicialización del modelo.',
+        'agent.configuration.keepalive_label': 'Tiempo de persistencia',
+        'agent.configuration.keepalive_desc': 'Tiempo que el modelo permanece cargado en VRAM/RAM después de la última petición.',
+        'agent.configuration.keepalive_warning': 'Aviso: Valores altos consumirán recursos del sistema (RAM/VRAM) por periodos más largos.',
+        'agent.configuration.loadonstartup_label': 'Pre-carga al iniciar',
+        'agent.configuration.loadonstartup_desc': 'Carga automáticamente el modelo seleccionado al abrir Trixty.',
+        'agent.configuration.loadonstartup_warning': 'Aviso: Esto puede provocar ralentización del sistema y hacer que Trixty tarde más en cargar mientras el modelo se sube a la memoria.',
+        'agent.configuration.loadonstartup_ping_desc': 'Trixty enviará una señal en segundo plano para cargar los modelos al iniciar la aplicación.',
+        'agent.configuration.keepalive_unit': 'minutos'
     });
 }

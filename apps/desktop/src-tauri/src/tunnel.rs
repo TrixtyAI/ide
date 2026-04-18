@@ -1,7 +1,7 @@
-use std::process::{Command, Stdio};
-use std::io::{BufRead, BufReader};
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
@@ -51,11 +51,11 @@ pub fn get_active_ports() -> Result<Vec<u16>, String> {
                         if let Ok(port) = port_str.parse::<u16>() {
                             // Noise Reduction: Exclude well-known system ports (< 1024)
                             // and ensure it's bound locally (0.0.0.0, 127.0.0.1, [::], [::1])
-                            let is_local = addr.starts_with("0.0.0.0") || 
-                                           addr.starts_with("127.0.0.1") || 
-                                           addr.starts_with("[::]") || 
-                                           addr.starts_with("localhost");
-                                           
+                            let is_local = addr.starts_with("0.0.0.0")
+                                || addr.starts_with("127.0.0.1")
+                                || addr.starts_with("[::]")
+                                || addr.starts_with("localhost");
+
                             if port >= 1024 && is_local && !ports.contains(&port) {
                                 ports.push(port);
                             }
@@ -75,7 +75,8 @@ pub fn get_active_ports() -> Result<Vec<u16>, String> {
             .map_err(|e| e.to_string())?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        for line in stdout.lines().skip(1) { // Skip header
+        for line in stdout.lines().skip(1) {
+            // Skip header
             let parts: Vec<&str> = line.split_whitespace().collect();
             // Typically last part or second to last is the address
             for part in parts {
@@ -160,7 +161,7 @@ pub async fn start_tunnel<R: Runtime>(
     });
 
     state.instances.lock().unwrap().insert(port, inst);
-    
+
     // Emit event with the new URL
     let _ = app.emit("tunnel-ready", (port, url.clone()));
 
@@ -173,7 +174,7 @@ pub fn stop_tunnel(state: tauri::State<'_, TunnelState>, port: u16) -> Result<()
     if let Some(mut inst) = instances.remove(&port) {
         // We need to take ownership to kill the child
         if let Some(inst_mut) = Arc::get_mut(&mut inst) {
-             let _ = inst_mut.child.kill();
+            let _ = inst_mut.child.kill();
         }
     }
     Ok(())

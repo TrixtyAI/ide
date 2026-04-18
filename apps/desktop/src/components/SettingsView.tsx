@@ -74,9 +74,9 @@ Node.js: ${systemInfo.node_version}
 
   const categories = [
     { id: "general", label: t('settings.general'), icon: Settings2 },
-    { 
-      id: "agent", 
-      label: t('agent.title'), 
+    {
+      id: "agent",
+      label: t('agent.title'),
       icon: Bot,
       children: [
         { id: "agent:profile", label: t('agent.tab.profile') },
@@ -85,6 +85,7 @@ Node.js: ${systemInfo.node_version}
         { id: "agent:design", label: t('agent.tab.design') },
         { id: "agent:skills", label: t('agent.tab.skills') },
         { id: "agent:memory", label: t('agent.tab.memory') },
+        { id: "agent:configuration", label: t('agent.tab.configuration') },
       ]
     },
     { id: "application", label: t('settings.application'), icon: Globe },
@@ -92,7 +93,7 @@ Node.js: ${systemInfo.node_version}
   ];
 
   const toggleCategory = (id: string) => {
-    setExpandedCategories(prev => 
+    setExpandedCategories(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -112,7 +113,7 @@ Node.js: ${systemInfo.node_version}
                {t(`agent.${currentSub}.desc`)}
              </p>
            </div>
-           <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory')} />
+          <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory' | 'configuration')} />
         </div>
       );
     }
@@ -175,12 +176,12 @@ Node.js: ${systemInfo.node_version}
                 {/* Pattern List */}
                 <div className="space-y-1">
                   {(systemSettings.filesExclude || []).map((pattern, idx) => (
-                    <div 
+                    <div
                       key={`${pattern}-${idx}`}
                       className="group flex items-center justify-between px-3 py-1.5 bg-[#0a0a0a] border border-[#1a1a1a] rounded hover:border-[#333] transition-colors"
                     >
                       <span className="text-[13px] text-[#bbb] font-mono">{pattern}</span>
-                      <button 
+                      <button
                         onClick={() => {
                           const newList = systemSettings.filesExclude.filter((_, i) => i !== idx);
                           updateSystemSettings({ filesExclude: newList });
@@ -197,8 +198,8 @@ Node.js: ${systemInfo.node_version}
                 <div className="pt-4 flex flex-col gap-3">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newPattern}
                         onChange={(e) => setNewPattern(e.target.value)}
                         onKeyDown={(e) => {
@@ -213,7 +214,7 @@ Node.js: ${systemInfo.node_version}
                         className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         if (newPattern.trim() && !systemSettings.filesExclude.includes(newPattern.trim())) {
                           updateSystemSettings({ filesExclude: [...systemSettings.filesExclude, newPattern.trim()] });
@@ -251,7 +252,7 @@ Node.js: ${systemInfo.node_version}
                     <option value="es">Español</option>
                   </select>
                 </div>
-                
+
                 <div className="flex flex-col gap-1.5 mt-2 pt-4 border-t border-[#1a1a1a]">
                   <h4 className="text-[12px] font-medium text-white mb-1">{t('settings.application.updates')}</h4>
                   <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.application.update_channel')}</label>
@@ -264,11 +265,11 @@ Node.js: ${systemInfo.node_version}
                     <option value="insiders">{t('settings.application.update_channel_insiders')}</option>
                   </select>
                   <p className="text-[11px] text-[#666] leading-relaxed mt-1 mb-2">
-                    {systemSettings.updateChannel === 'stable' 
-                      ? t('settings.application.update_channel_stable_desc') 
+                    {systemSettings.updateChannel === 'stable'
+                      ? t('settings.application.update_channel_stable_desc')
                       : t('settings.application.update_channel_insiders_desc')}
                   </p>
-                  
+
                   <button
                     onClick={() => {
                       setSettingsOpen(false); // Optionally close settings to show the updater
@@ -290,14 +291,14 @@ Node.js: ${systemInfo.node_version}
               <p className="text-[12px] text-[#666] mb-4 max-w-md leading-relaxed">
                 {t('settings.application.reset_desc')}
               </p>
-              
+
               <button
                 onClick={async () => {
                   const confirmed = await ask(t('settings.application.reset_confirm'), {
                     title: t('settings.application.danger_zone'),
                     kind: 'warning',
                   });
-                  
+
                   if (confirmed) {
                     await resetApp();
                     setSettingsOpen(false);
@@ -425,9 +426,9 @@ Node.js: ${systemInfo.node_version}
                     <cat.icon size={16} className={`${isActive ? "text-blue-400" : "text-[#555] group-hover:text-[#888]"}`} />
                     {cat.label}
                     {hasChildren && (
-                      <ChevronRight 
-                        size={14} 
-                        className={`ml-auto transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-400" : "opacity-50"}`} 
+                      <ChevronRight
+                        size={14}
+                        className={`ml-auto transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-400" : "opacity-50"}`}
                       />
                     )}
                   </button>

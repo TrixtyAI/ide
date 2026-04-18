@@ -32,7 +32,7 @@ interface PendingTool {
   args: Record<string, string | number | boolean | string[]>;
 }
 
-type OllamaChatMessage = 
+type OllamaChatMessage =
   | { role: 'system'; content: string }
   | { role: 'user'; content: string; images?: string[] }
   | { role: 'assistant'; content: string; tool_calls?: { function: { name: string, arguments: ToolArgs }; id?: string; type?: string }[]; thinking?: string }
@@ -58,9 +58,9 @@ const AiChatComponent: React.FC = () => {
     systemSettings,
     locale
   } = useApp();
-  const { 
-    aggregatedPrompt, chatMode, setChatMode, getSystemPrompt, 
-    skills, activeSkills, refreshAgentData 
+  const {
+    aggregatedPrompt, chatMode, setChatMode, getSystemPrompt,
+    skills, activeSkills, refreshAgentData
   } = useAgent();
   const { t } = useL10n();
 
@@ -100,7 +100,7 @@ const AiChatComponent: React.FC = () => {
   const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: OllamaRequest) => {
     // Sanitize the URL to avoid double slashes if endpoint has trailing slash
     const sanitizedUrl = url.replace(/([^:]\/)\/+/g, "$1");
-    
+
     const result = await invoke("ollama_proxy", {
       method,
       url: sanitizedUrl,
@@ -162,7 +162,7 @@ const AiChatComponent: React.FC = () => {
     };
     fetchModels();
   }, [aiSettings.endpoint, selectedModel, proxyFetch]);
-
+  
   // Check for updates on mount
   useEffect(() => {
     const checkUpdate = async () => {
@@ -281,9 +281,9 @@ const AiChatComponent: React.FC = () => {
         case 'web_search':
           return await invoke("perform_web_search", { query: String(args.query) });
         case 'remember':
-          await invoke("write_file", { 
-            path: resolvePath(".agents/MEMORY.md"), 
-            content: String(args.content) 
+          await invoke("write_file", {
+            path: resolvePath(".agents/MEMORY.md"),
+            content: String(args.content)
           });
           // Refresh context so the memory visualizer updates
           try {
@@ -334,7 +334,7 @@ const AiChatComponent: React.FC = () => {
       // Build context for the system prompt
       const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
       const currentContext = currentFile ? `${t('ai.context.focused_file')}: ${currentFile.path}\n` : "";
-      
+
       // Fetch dynamic awareness data
       const systemInfo = await getSystemInfo();
       const projectStack = await detectProjectStack(rootPath);
@@ -350,7 +350,7 @@ const AiChatComponent: React.FC = () => {
         skills: skills.map(s => ({ id: s.id, name: s.name, active: activeSkills.includes(s.id) })),
         mode: chatMode,
         rootPath,
-        internetAccess: "Enabled (via web_search tool)",
+        internetAccess: chatMode === 'agent' ? "Enabled (via web_search tool)" : "Disabled",
         projectTreeSummary: projectTree
       });
 
@@ -394,22 +394,21 @@ const AiChatComponent: React.FC = () => {
         let response;
         const body: OllamaRequest = {
             type: 'chat',
+
             model: selectedModel,
             messages: history,
             stream: false,
             tools: (() => {
-              const searchToolOnly = IDE_TOOLS.filter(t => t.function.name === 'web_search');
-              if (chatMode === 'agent' && rootPath) {
-                return IDE_TOOLS;
-              }
-              // In Ask or Planner mode, or if no project is open, only allow web search
-              return searchToolOnly;
+              if (chatMode !== 'agent') return undefined;
+              if (!rootPath) return undefined;
+              return IDE_TOOLS;
             })(),
             think: aiSettings.deepMode,
             options: {
               temperature: aiSettings.temperature,
               num_predict: aiSettings.maxTokens,
-            }
+            },
+            keep_alive: `${aiSettings.keepAlive || 5}m`,
         };
 
         try {
@@ -891,8 +890,8 @@ const AiChatComponent: React.FC = () => {
               onClick={() => !isLocked && setChatMode(mode.id as 'agent' | 'planer' | 'ask')}
               disabled={isLocked}
               className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg transition-all duration-300 ${
-                chatMode === mode.id 
-                  ? "bg-white/10 text-white shadow-sm border border-white/5" 
+                chatMode === mode.id
+                  ? "bg-white/10 text-white shadow-sm border border-white/5"
                   : isLocked
                     ? "text-[#222] cursor-not-allowed opacity-50"
                     : "text-[#444] hover:text-[#777] hover:bg-white/[0.02]"

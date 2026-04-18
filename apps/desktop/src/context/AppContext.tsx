@@ -77,6 +77,8 @@ export interface AISettings {
   alwaysAllowTools: boolean;
   freezeProtection: boolean;
   deepMode: boolean;
+  keepAlive: number;
+  loadOnStartup: boolean;
 }
 
 export interface EditorSettings {
@@ -109,6 +111,8 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   alwaysAllowTools: false,
   freezeProtection: true,
   deepMode: false,
+  keepAlive: 5,
+  loadOnStartup: false,
 };
 
 const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -230,7 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedSettings = await trixtyStore.get<AISettings | null>("trixty-ai-settings", null);
         console.log("[AppContext] AI Settings loaded:", !!savedSettings);
         if (savedSettings) {
-          setAiSettings(savedSettings);
+          setAiSettings(prev => ({ ...prev, ...savedSettings }));
         } else {
           // Fallback: translate the default system prompt if no settings found
           const { trixty } = await import("@/api/trixty");

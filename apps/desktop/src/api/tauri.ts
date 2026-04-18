@@ -16,8 +16,8 @@ export interface DirEntry {
 }
 
 export type OllamaRequest =
-  | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean }
-  | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: number }
+  | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean; keep_alive?: string | number }
+  | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: string | number }
   | { type: 'tags' }
   | { type: 'version' };
 

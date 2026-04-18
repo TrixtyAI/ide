@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Trixty IDE",
         "width": 1280,
         "height": 800,
@@ -22,7 +23,21 @@
         "decorations": false,
         "maximized": false,
         "visible": false,
+        "center": true,
         "backgroundColor": "#1e1e1e"
+      },
+      {
+        "label": "splashscreen",
+        "title": "Trixty IDE",
+        "width": 550,
+        "height": 350,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "center": true,
+        "url": "splashscreen.html"
       }
     ],
     "withGlobalTauri": true,

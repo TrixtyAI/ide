@@ -39,13 +39,6 @@ export default function Home() {
 
   useEffect(() => {
     PluginManager.bootstrap();
-    
-    // Show window once the frontend is ready
-    const showWindow = async () => {
-      const window = getCurrentWindow();
-      await window.show();
-    };
-    showWindow();
   }, []);
 
   // Global keyboard shortcuts

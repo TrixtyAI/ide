@@ -1,18 +1,20 @@
+mod about;
 mod pty;
 mod tunnel;
-mod about;
 
 mod extensions;
 use extensions::*;
 
-use pty::{resize_pty, spawn_pty, write_to_pty, kill_pty, PtyState};
-use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
-use serde::Serialize;
+use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
+use scraper::{Html, Selector};
+use serde::{Serialize, Deserialize};
+use tauri_plugin_store::StoreExt;
 use std::fs;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
-use std::process::Command;
-use scraper::{Html, Selector};
+use tauri::Manager;
+use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 /// On other platforms this is equivalent to `Command::new(program)`.
@@ -28,11 +30,19 @@ fn silent_command(program: &str) -> Command {
     cmd
 }
 
-
 #[derive(serde::Serialize)]
 struct SystemStats {
     cpu_usage: f32,
     memory_usage: f64, // percentage
+}
+
+#[derive(Deserialize, Debug)]
+struct AISettings {
+    endpoint: String,
+    #[serde(rename = "keepAlive")]
+    keep_alive: i64,
+    #[serde(rename = "loadOnStartup")]
+    load_on_startup: bool,
 }
 
 // === Custom Updater Implementation to Support Prereleases ===
@@ -51,13 +61,14 @@ struct InstallerProgress {
 #[tauri::command]
 async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<UpdateInfo>, String> {
     use tauri_plugin_updater::UpdaterExt;
-    
-    let builder = app.updater_builder()
+
+    let builder = app
+        .updater_builder()
         .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
         .map_err(|e| e.to_string())?;
 
     let updater = builder.build().map_err(|e| e.to_string())?;
-    
+
     // Gracefully handle check errors (e.g. 404 when no release exists yet)
     let update = match updater.check().await {
         Ok(update) => update,
@@ -71,11 +82,16 @@ async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<Updat
 }
 
 #[tauri::command]
-async fn install_update(app: tauri::AppHandle, window: tauri::Window, url: String) -> Result<(), String> {
-    use tauri_plugin_updater::UpdaterExt;
+async fn install_update(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    url: String,
+) -> Result<(), String> {
     use tauri::Emitter;
-    
-    let builder = app.updater_builder()
+    use tauri_plugin_updater::UpdaterExt;
+
+    let builder = app
+        .updater_builder()
         .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
         .map_err(|e| e.to_string())?;
 
@@ -85,13 +101,18 @@ async fn install_update(app: tauri::AppHandle, window: tauri::Window, url: Strin
     if let Some(u) = update {
         u.download_and_install(
             |chunk_length, content_length| {
-                let _ = window.emit("updater-progress", InstallerProgress {
-                    chunk_length,
-                    content_length,
-                });
+                let _ = window.emit(
+                    "updater-progress",
+                    InstallerProgress {
+                        chunk_length,
+                        content_length,
+                    },
+                );
             },
-            || {}
-        ).await.map_err(|e| e.to_string())?;
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
         Ok(())
     } else {
         Err("No update found at the provided URL".to_string())
@@ -202,7 +223,11 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
 }
 
 #[tauri::command]
-async fn execute_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
+async fn execute_command(
+    command: String,
+    args: Vec<String>,
+    cwd: String,
+) -> Result<String, String> {
     #[cfg(target_os = "windows")]
     let mut cmd = {
         let mut c = silent_command("cmd");
@@ -217,9 +242,7 @@ async fn execute_command(command: String, args: Vec<String>, cwd: String) -> Res
         c
     };
 
-    let output = cmd.current_dir(cwd)
-        .output()
-        .map_err(|e| e.to_string())?;
+    let output = cmd.current_dir(cwd).output().map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -232,15 +255,17 @@ async fn execute_command(command: String, args: Vec<String>, cwd: String) -> Res
 }
 
 #[tauri::command]
-async fn get_system_health(state: tauri::State<'_, Arc<Mutex<SystemState>>>) -> Result<SystemStats, String> {
+async fn get_system_health(
+    state: tauri::State<'_, Arc<Mutex<SystemState>>>,
+) -> Result<SystemStats, String> {
     let mut state = state.lock().map_err(|e| e.to_string())?;
-    
+
     // Refresh only what we need for performance
     state.sys.refresh_cpu_all();
     state.sys.refresh_memory();
 
-    let cpu_usage = state.sys.global_cpu_usage(); 
-    
+    let cpu_usage = state.sys.global_cpu_usage();
+
     let total_mem = state.sys.total_memory() as f64;
     let used_mem = state.sys.used_memory() as f64;
     let memory_usage = (used_mem / total_mem) * 100.0;
@@ -436,25 +461,25 @@ async fn fetch_url_internal(url: String) -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let response = client.get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
 
     let html = response.text().await.map_err(|e| e.to_string())?;
     let document = Html::parse_document(&html);
-    
+
     // Extract metadata
-    let title = document.select(&Selector::parse("title").unwrap())
+    let title = document
+        .select(&Selector::parse("title").unwrap())
         .next()
         .map(|el| el.text().collect::<String>())
         .unwrap_or_default();
-    
-    let description = document.select(&Selector::parse("meta[name='description']").unwrap())
+
+    let description = document
+        .select(&Selector::parse("meta[name='description']").unwrap())
         .next()
         .map(|el| el.value().attr("content").unwrap_or_default().to_string())
         .unwrap_or_else(|| {
-            document.select(&Selector::parse("meta[property='og:description']").unwrap())
+            document
+                .select(&Selector::parse("meta[property='og:description']").unwrap())
                 .next()
                 .map(|el| el.value().attr("content").unwrap_or_default().to_string())
                 .unwrap_or_default()
@@ -462,7 +487,7 @@ async fn fetch_url_internal(url: String) -> Result<String, String> {
 
     // Convert HTML to text with a very wide width to ensure rows stay on one line
     let text = html2text::from_read(html.as_bytes(), 200);
-    
+
     // Add line numbers and limit to ~15000 characters
     let mut numbered_text = String::new();
     for (idx, line) in text.lines().enumerate() {
@@ -473,9 +498,9 @@ async fn fetch_url_internal(url: String) -> Result<String, String> {
         }
         numbered_text.push_str(&line_with_num);
     }
-    
+
     let trimmed = numbered_text;
-    
+
     // Create a Fact Box to be undeniable
     let output = format!(
         "--- LIVE DATA START ---\n\
@@ -489,16 +514,18 @@ async fn fetch_url_internal(url: String) -> Result<String, String> {
          --- LIVE DATA END ---",
         url, title, description, trimmed
     );
-    
+
     Ok(output)
 }
 
 #[tauri::command]
 async fn perform_web_search(query: String) -> Result<String, String> {
     let query_trimmed = query.trim();
-    
+
     // Auto-detection: if it looks like a URL, fetch it directly
-    if query_trimmed.to_lowercase().starts_with("http") || (query_trimmed.contains('.') && !query_trimmed.contains(' ')) {
+    if query_trimmed.to_lowercase().starts_with("http")
+        || (query_trimmed.contains('.') && !query_trimmed.contains(' '))
+    {
         let url = if !query_trimmed.to_lowercase().starts_with("http") {
             format!("https://{}", query_trimmed)
         } else {
@@ -512,41 +539,44 @@ async fn perform_web_search(query: String) -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let url = format!("https://lite.duckduckgo.com/lite/?q={}", urlencoding::encode(query_trimmed));
-    
-    let response = client.get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let url = format!(
+        "https://lite.duckduckgo.com/lite/?q={}",
+        urlencoding::encode(query_trimmed)
+    );
+
+    let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
 
     let html_content = response.text().await.map_err(|e| e.to_string())?;
     let document = Html::parse_document(&html_content);
-    
+
     // Select results
     let result_selector = Selector::parse(".result-link").map_err(|e| e.to_string())?;
     let snippet_selector = Selector::parse(".result-snippet").map_err(|e| e.to_string())?;
-    
+
     let mut results = Vec::new();
     let result_nodes: Vec<_> = document.select(&result_selector).collect();
     let snippet_nodes: Vec<_> = document.select(&snippet_selector).collect();
-    
+
     for (i, node) in result_nodes.iter().enumerate().take(8) {
         let title = node.text().collect::<Vec<_>>().join(" ");
         let link = node.value().attr("href").unwrap_or("#");
-        
+
         let snippet = if i < snippet_nodes.len() {
             snippet_nodes[i].text().collect::<Vec<_>>().join(" ")
         } else {
             String::from("No description available.")
         };
-        
-        results.push(format!("### {}\nURL: {}\nSnippet: {}\n", title, link, snippet));
+
+        results.push(format!(
+            "### {}\nURL: {}\nSnippet: {}\n",
+            title, link, snippet
+        ));
     }
-    
+
     if results.is_empty() {
         return Ok("No results found. Try a different query.".to_string());
     }
-    
+
     Ok(results.join("\n---\n"))
 }
 
@@ -601,7 +631,9 @@ fn reveal_path(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "linux")]
     {
-        let parent = std::path::Path::new(&path).parent().unwrap_or(std::path::Path::new(&path));
+        let parent = std::path::Path::new(&path)
+            .parent()
+            .unwrap_or(std::path::Path::new(&path));
         silent_command("xdg-open")
             .arg(parent)
             .spawn()
@@ -623,6 +655,7 @@ fn delete_path(path: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
@@ -630,10 +663,21 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_positioner::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all() 
+                    & !tauri_plugin_window_state::StateFlags::VISIBLE
+                )
+                .build()
+        )
         .manage(Arc::new(Mutex::new(None::<PtyState>)))
-        .manage(Arc::new(Mutex::new(SystemState { sys: System::new_all() })))
-        .manage(TunnelState { instances: Mutex::new(std::collections::HashMap::new()) })
+        .manage(Arc::new(Mutex::new(SystemState {
+            sys: System::new_all(),
+        })))
+        .manage(TunnelState {
+            instances: Mutex::new(std::collections::HashMap::new()),
+        })
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -677,10 +721,74 @@ pub fn run() {
             perform_web_search,
             about::get_trixty_about_info
         ])
-        .setup(|_app| {
-            if cfg!(debug_assertions) {
-                // Logging or other setup
-            }
+        .setup(|app| {
+            // Get window instances
+            let main_window = app.get_webview_window("main").unwrap();
+            let splash_window = app.get_webview_window("splashscreen").unwrap();
+            let _ = splash_window.center();
+
+            let app_handle = app.handle().clone();
+            // Spawn a background task for Ollama pre-loading and window management
+            tauri::async_runtime::spawn(async move {
+                // 1. Check if Ollama is installed
+                let is_installed = silent_command("ollama")
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false);
+
+                let mut should_wait = false;
+
+                if is_installed {
+                    if let Ok(store) = app_handle.store("settings.json") {
+                        let settings_val = store.get("trixty-ai-settings");
+                        let last_model_val = store.get("trixty_ai_last_model");
+
+                        if let (Some(s_val), Some(m_val)) = (settings_val, last_model_val) {
+                            if let (Ok(settings), Ok(model)) = (
+                                serde_json::from_value::<AISettings>(s_val),
+                                serde_json::from_value::<String>(m_val)
+                            ) {
+                                if settings.load_on_startup && !model.is_empty() {
+                                    should_wait = true;
+                                    let _ = splash_window.show();
+                                    let _ = splash_window.center();
+
+                                    log::info!("[Startup] Awaiting Ollama model: {}", model);
+                                    let client = reqwest::Client::builder()
+                                        .timeout(std::time::Duration::from_secs(180))
+                                        .build()
+                                        .unwrap_or_default();
+                                        
+                                    let url = format!("{}/api/generate", settings.endpoint.trim_end_matches('/'));
+                                    let body = serde_json::json!({
+                                        "model": model,
+                                        "keep_alive": format!("{}m", settings.keep_alive)
+                                    });
+
+                                    // Wait for Ollama response
+                                    let _ = client.post(&url).json(&body).send().await;
+                                    log::info!("[Startup] Ollama responded. Transitioning to IDE.");
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    log::info!("[Startup] Ollama not found. Skipping pre-load.");
+                }
+
+                // If we didn't have to wait for a heavy model load, a tiny delay 
+                // ensures the transition doesn't happen before the main window is ready to render.
+                if !should_wait {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+
+                // 3. Close splash and show main window
+                let _ = splash_window.close();
+                let _ = main_window.show();
+                let _ = main_window.set_focus();
+            });
+
             Ok(())
         })
         .build(tauri::generate_context!())

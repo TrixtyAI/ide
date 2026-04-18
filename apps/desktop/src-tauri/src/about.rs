@@ -1,6 +1,6 @@
 use serde::Serialize;
-use sysinfo::System;
 use std::env;
+use sysinfo::System;
 
 #[derive(Serialize)]
 pub struct AboutInfo {
@@ -17,7 +17,7 @@ pub struct AboutInfo {
 #[tauri::command]
 pub async fn get_trixty_about_info(app: tauri::AppHandle) -> Result<AboutInfo, String> {
     let package_info = app.package_info();
-    
+
     Ok(AboutInfo {
         app_version: package_info.version.to_string(),
         tauri_version: "2.10.3".to_string(),
