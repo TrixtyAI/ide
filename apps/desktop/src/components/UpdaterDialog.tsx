@@ -16,6 +16,18 @@ type UpdaterState =
   | { phase: "error"; message: string }
   | { phase: "up-to-date" };
 
+interface GitHubAsset {
+  name: string;
+  browser_download_url: string;
+  digest?: string;
+}
+
+interface GitHubRelease {
+  assets: GitHubAsset[];
+  prerelease: boolean;
+  name: string;
+}
+
 const UpdaterDialog: React.FC = () => {
   const { systemSettings } = useApp();
   const { t } = useL10n();
@@ -52,10 +64,14 @@ const UpdaterDialog: React.FC = () => {
           const data = await res.json();
           const releases = Array.isArray(data) ? data : [data];
           
-          for (const release of releases) {
-            const asset = release.assets?.find((a: any) => a.name === "latest.json");
+          for (const release of (releases as GitHubRelease[])) {
+            // If we are on stable channel, skip pre-releases (though /latest should already handle this)
+            if (systemSettings.updateChannel === "stable" && release.prerelease) continue;
+
+            const asset = release.assets?.find((a) => a.name === "latest.json");
             if (asset?.browser_download_url) {
               endpointUrl = asset.browser_download_url;
+              console.log(`[Updater] Found matching release: ${release.name}${release.prerelease ? ' (Pre-release)' : ''}`);
               if (asset.digest) {
                 console.log(`[Updater] Verifying digest: ${asset.digest}`);
               }

@@ -125,7 +125,7 @@ Node.js: ${systemInfo.node_version}
             {/* Editor Font Section */}
             <section>
               <h3 className="text-[14px] font-semibold text-white mb-4 flex items-center gap-2">
-                <Type size={16} className="text-blue-400" />
+                <Type size={16} strokeWidth={1.5} className="text-blue-400" />
                 {t('settings.editor.title')}
               </h3>
               <div className="space-y-4 max-w-md">
@@ -188,7 +188,7 @@ Node.js: ${systemInfo.node_version}
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 text-[#555] hover:text-red-400 transition-all"
                       >
-                        <X size={14} />
+                        <X size={14} strokeWidth={1.5} />
                       </button>
                     </div>
                   ))}
@@ -223,7 +223,7 @@ Node.js: ${systemInfo.node_version}
                       }}
                       className="px-4 py-2 bg-[#007acc] hover:bg-[#0062a3] text-white text-[12px] font-semibold rounded transition-colors flex items-center gap-2"
                     >
-                      <Plus size={14} />
+                      <Plus size={14} strokeWidth={1.5} />
                       {t('settings.general.exclude_add_pattern')}
                     </button>
                   </div>
@@ -306,7 +306,7 @@ Node.js: ${systemInfo.node_version}
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/20 rounded-lg text-[12px] font-semibold transition-all shadow-sm group"
               >
-                <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
+                <Trash2 size={14} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {t('settings.application.reset_button')}
               </button>
             </section>
@@ -332,7 +332,7 @@ Node.js: ${systemInfo.node_version}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-all ${copied ? "bg-green-500/10 text-green-400" : "bg-white/5 text-[#888] hover:bg-white/10 hover:text-white border border-white/5"
                     } disabled:opacity-30`}
                 >
-                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  {copied ? <Check size={12} strokeWidth={1.5} /> : <Copy size={12} strokeWidth={1.5} />}
                   {copied ? t('settings.application.about.copy_success') : t('settings.application.about.copy_button')}
                 </button>
               </div>
@@ -423,11 +423,12 @@ Node.js: ${systemInfo.node_version}
                         : "text-[#888] hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    <cat.icon size={16} className={`${isActive ? "text-blue-400" : "text-[#555] group-hover:text-[#888]"}`} />
+                    <cat.icon size={14} strokeWidth={1.5} className={`${isActive ? "text-blue-400" : "text-[#555] group-hover:text-[#888]"}`} />
                     {cat.label}
                     {hasChildren && (
                       <ChevronRight
-                        size={14}
+                        size={12}
+                        strokeWidth={1.5}
                         className={`ml-auto transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-400" : "opacity-50"}`}
                       />
                     )}

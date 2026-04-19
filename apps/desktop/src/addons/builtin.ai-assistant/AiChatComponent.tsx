@@ -183,9 +183,9 @@ const AiChatComponent: React.FC = () => {
 
   const getModelFamilyIcon = (family: string) => {
     const f = family.toLowerCase();
-    if (f.includes('llama')) return <Sparkles size={14} className="text-blue-400" />;
-    if (f.includes('deepseek')) return <Brain size={14} className="text-yellow-500" />;
-    if (f.includes('mistral') || f.includes('mixtral')) return <Code2 size={14} className="text-orange-500" />;
+    if (f.includes('llama')) return <Sparkles size={14} className="text-white/40" />;
+    if (f.includes('deepseek')) return <Brain size={14} className="text-white/40" />;
+    if (f.includes('mistral') || f.includes('mixtral')) return <Code2 size={14} className="text-white/40" />;
     return <MessageSquare size={14} className="text-white/40" />;
   };
 
@@ -612,7 +612,7 @@ const AiChatComponent: React.FC = () => {
                       </div>
                     </div>
                     {selectedModel === m.name && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm" />
                     )}
                   </button>
                 ))}

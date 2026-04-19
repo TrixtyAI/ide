@@ -13,11 +13,11 @@ const StatusBar: React.FC = () => {
     <div className="h-[22px] bg-blue-600 text-white flex items-center justify-between px-3 text-[11px] select-none z-50">
       <div className="flex items-center gap-3 h-full">
         <div className="flex items-center gap-1 hover:bg-blue-500 px-1.5 h-full cursor-pointer transition-colors">
-          <GitBranch size={12} />
+          <GitBranch size={12} strokeWidth={1.5} />
           <span>main*</span>
         </div>
         <div className="flex items-center gap-2 hover:bg-blue-500 px-1.5 h-full cursor-pointer transition-colors">
-          <RefreshCw size={12} />
+          <RefreshCw size={12} strokeWidth={1.5} />
         </div>
       </div>
 
@@ -36,14 +36,14 @@ const StatusBar: React.FC = () => {
           </>
         )}
         <div className="flex items-center gap-1 hover:bg-blue-500 px-1.5 h-full cursor-pointer transition-colors">
-          <Cloud size={12} />
+          <Cloud size={12} strokeWidth={1.5} />
           <span>{t('status.powered_by', { engine: 'Rust' })}</span>
         </div>
         <div className="flex items-center gap-1 hover:bg-blue-500 px-1.5 h-full cursor-pointer transition-colors">
-          <Wifi size={12} />
+          <Wifi size={12} strokeWidth={1.5} />
         </div>
         <div className="flex items-center gap-1 hover:bg-blue-500 px-1.5 h-full cursor-pointer transition-colors">
-          <Bell size={12} />
+          <Bell size={12} strokeWidth={1.5} />
         </div>
       </div>
     </div>

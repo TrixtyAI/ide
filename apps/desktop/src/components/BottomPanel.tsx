@@ -134,7 +134,7 @@ const BottomPanel: React.FC = () => {
                 : "border-transparent text-[#555] hover:text-white/70"
                 }`}
             >
-              <tab.icon size={12} />
+              <tab.icon size={14} strokeWidth={1.5} />
               {tab.label}
             </button>
           ))}
@@ -145,7 +145,7 @@ const BottomPanel: React.FC = () => {
             onClick={() => setBottomPanelOpen(false)}
             className="hover:text-white p-1 rounded hover:bg-white/5 transition-colors"
           >
-            <X size={14} />
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>

@@ -116,10 +116,10 @@ const DEFAULT_AI_SETTINGS: AISettings = {
 };
 
 const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
-  fontSize: 20,
+  fontSize: 14,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
   theme: "trixty-dark",
-  lineHeight: 24,
+  lineHeight: 21,
 };
 
 const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {

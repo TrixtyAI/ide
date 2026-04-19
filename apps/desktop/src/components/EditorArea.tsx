@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef } from "react";
-import MonacoEditor, { OnMount } from "@monaco-editor/react";
+import MonacoEditor, { OnMount, Monaco } from "@monaco-editor/react";
+import { editor } from "monaco-editor";
 import { useApp } from "@/context/AppContext";
 import TabBar from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
@@ -10,10 +11,13 @@ import MarketplaceView from "./MarketplaceView";
 const EditorArea: React.FC = () => {
   const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();
   const { t } = useL10n();
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     monaco.editor.defineTheme('trixty-dark', {
       base: 'vs-dark',
@@ -90,6 +94,50 @@ const EditorArea: React.FC = () => {
     });
   };
 
+  // Performance: Efficient Layout handling
+  React.useEffect(() => {
+    if (!containerRef.current || !editorRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      editorRef.current?.layout();
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, [openFiles.length]);
+
+  // Memory: Clean up Monaco models when files are closed
+  React.useEffect(() => {
+    if (!monacoRef.current) return;
+
+    const monaco = monacoRef.current;
+    const openPaths = new Set(openFiles.map(f => f.path));
+    
+    // Get all current models in Monaco
+    const models = monaco.editor.getModels();
+    
+    models.forEach((model: editor.ITextModel) => {
+      const modelPath = model.uri.toString();
+      // If the model path (uri) is not in our openFiles list, dispose it
+      // Note: Monaco URIs usually look like file:///path/to/file or inmemory://path
+      // We need to match it against our path.
+      
+      const isInternal = modelPath.startsWith("inmemory://");
+      if (isInternal) return; // Don't dispose internal models
+
+      // Check if this model corresponds to any open file
+      const isStillOpen = openFiles.some(f => {
+         // Handle both absolute paths and URI formats
+         return f.path === model.uri.fsPath || f.path === model.uri.path || modelPath.endsWith(f.path);
+      });
+
+      if (!isStillOpen) {
+        console.log(`[EditorArea] Disposing unused model: ${modelPath}`);
+        model.dispose();
+      }
+    });
+  }, [openFiles, currentFile]);
+
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleEditorChange = (value: string | undefined) => {
@@ -130,7 +178,7 @@ const EditorArea: React.FC = () => {
     <div className="flex-1 w-full h-full overflow-hidden flex flex-col bg-[#0e0e0e]">
       <TabBar />
 
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden relative" ref={containerRef}>
         {isVirtualTab ? (
           renderVirtualView()
         ) : currentFile ? (
@@ -160,7 +208,7 @@ const EditorArea: React.FC = () => {
               roundedSelection: true,
               scrollBeyondLastLine: false,
               readOnly: false,
-              automaticLayout: true,
+              automaticLayout: false, // Performance: Handled by ResizeObserver
               padding: { top: 15 },
               overviewRulerBorder: false,
               hideCursorInOverviewRuler: true,
@@ -172,10 +220,15 @@ const EditorArea: React.FC = () => {
               acceptSuggestionOnEnter: "on",
               quickSuggestions: true,
               tabCompletion: "on",
-              wordBasedSuggestions: "allDocuments",
+              wordBasedSuggestions: "currentDocument", // Performance
               parameterHints: { enabled: true },
               suggest: {
                 showIcons: true
+              },
+              links: false, // Performance: Disable link scanning
+              unicodeHighlight: {
+                ambiguousCharacters: false,
+                invisibleCharacters: false,
               }
             }}
           />
