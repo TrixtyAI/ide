@@ -322,21 +322,77 @@ async fn get_git_status(path: String) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+#[derive(serde::Serialize)]
+struct GitBranches {
+    branches: Vec<String>,
+    current: String,
+}
+
 #[tauri::command]
-async fn get_git_branches(path: String) -> Result<Vec<String>, String> {
+async fn get_git_branches(path: String) -> Result<GitBranches, String> {
     let output = silent_command("git")
         .args(["branch", "--format=%(refname:short)"])
         .current_dir(&path)
         .output()
         .map_err(|e| e.to_string())?;
 
-    let branches = String::from_utf8_lossy(&output.stdout)
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    let branches: Vec<String> = String::from_utf8_lossy(&output.stdout)
         .lines()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
 
-    Ok(branches)
+    // `symbolic-ref` returns the checked-out branch. Fails on detached HEAD,
+    // in which case we fall back to an empty string so the UI stays usable.
+    let current = silent_command("git")
+        .args(["symbolic-ref", "--short", "HEAD"])
+        .current_dir(&path)
+        .output()
+        .ok()
+        .and_then(|out| {
+            if out.status.success() {
+                Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    Ok(GitBranches { branches, current })
+}
+
+#[tauri::command]
+async fn git_checkout_branch(path: String, branch: String) -> Result<String, String> {
+    let output = silent_command("git")
+        .args(["checkout", &branch])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_create_branch(path: String, branch: String) -> Result<String, String> {
+    let output = silent_command("git")
+        .args(["checkout", "-b", &branch])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
 }
 
 #[tauri::command]
@@ -708,6 +764,8 @@ pub fn run() {
             git_init,
             get_git_status,
             get_git_branches,
+            git_checkout_branch,
+            git_create_branch,
             git_commit,
             git_add,
             git_unstage,
