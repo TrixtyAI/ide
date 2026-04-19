@@ -173,9 +173,9 @@ const GitExplorerComponent: React.FC = () => {
       }
       setStagedChanges(staged);
       setGitChanges(unstaged);
-      const bl = await invoke("get_git_branches", { path: rootPath });
+      const { branches: bl, current } = await invoke("get_git_branches", { path: rootPath });
       setBranches(bl);
-      if (bl.length > 0) setCurrentBranch(bl[0]);
+      setCurrentBranch(current);
     } catch (err) {
       const errStr = String(err).toLowerCase();
       const isNotGitRepoError =
@@ -222,6 +222,36 @@ const GitExplorerComponent: React.FC = () => {
   }, [activeSidebarTab, rootPath, refreshGit]);
 
   const handleGitInit = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_init", { path: rootPath }); setIsGitRepo(true); await refreshGit(); flash(t('git.status.init_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleCheckoutBranch = async (branch: string) => {
+    if (!rootPath || branch === currentBranch) { setShowBranchMenu(false); return; }
+    setGitLoading(true);
+    try {
+      await invoke("git_checkout_branch", { path: rootPath, branch });
+      setShowBranchMenu(false);
+      await refreshGit();
+      flash(t('git.status.checkout_success', { branch }));
+    } catch (e) {
+      flash(t('git.error', { message: String(e) }));
+    } finally {
+      setGitLoading(false);
+    }
+  };
+  const handleCreateBranch = async () => {
+    const name = newBranchName.trim();
+    if (!rootPath || !name) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_create_branch", { path: rootPath, branch: name });
+      setNewBranchName("");
+      setShowBranchMenu(false);
+      await refreshGit();
+      flash(t('git.status.checkout_success', { branch: name }));
+    } catch (e) {
+      flash(t('git.error', { message: String(e) }));
+    } finally {
+      setGitLoading(false);
+    }
+  };
   const handleCommit = async () => { if (!rootPath || !commitMessage.trim()) return; setGitLoading(true); try { await invoke("git_commit", { path: rootPath, message: commitMessage }); setCommitMessage(""); await refreshGit(); flash(t('git.status.commit_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
   const handlePush = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_push", { path: rootPath }); flash(t('git.status.push_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
   const handleStage = async (file: string) => { if (!rootPath) return; try { await invoke("git_add", { path: rootPath, files: [file] }); await refreshGit(); } catch (e) { flash(t('git.error', { message: String(e) })); } };
@@ -532,16 +562,43 @@ const GitExplorerComponent: React.FC = () => {
             <div className="px-3 py-2 border-b border-[#1a1a1a]">
               <button onClick={() => setShowBranchMenu(!showBranchMenu)} className="flex items-center gap-2 w-full text-[12px] text-white hover:bg-white/[0.04] rounded-lg p-1.5 transition-colors">
                 <GitBranch size={13} className="text-[#666]" />
-                <span className="font-medium truncate">{currentBranch || "main"}</span>
+                <span className={`font-medium truncate ${!currentBranch ? 'text-[#888] italic' : ''}`}>
+                  {currentBranch || t('git.branch.detached')}
+                </span>
                 {showBranchMenu ? <ChevronUp size={11} className="ml-auto text-[#555]" /> : <ChevronDown size={11} className="ml-auto text-[#555]" />}
               </button>
               {showBranchMenu && (
                 <div className="mt-1 bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
-                  {branches.map((b) => <button key={b} className="w-full text-left px-3 py-1.5 text-[11px] text-[#999] hover:bg-white/[0.04] transition-colors">{b}</button>)}
+                  {branches.map((b) => {
+                    const isCurrent = b === currentBranch;
+                    return (
+                      <button
+                        key={b}
+                        onClick={() => handleCheckoutBranch(b)}
+                        disabled={gitLoading}
+                        aria-current={isCurrent ? "true" : undefined}
+                        className={`w-full text-left px-3 py-1.5 text-[11px] hover:bg-white/[0.04] transition-colors disabled:opacity-50 ${isCurrent ? 'text-white font-medium' : 'text-[#999]'}`}
+                      >
+                        {isCurrent ? `● ${b}` : b}
+                      </button>
+                    );
+                  })}
                   <div className="border-t border-[#222] p-2 flex gap-1">
-                    <input value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} placeholder={t('git.new_branch')}
-                      className="flex-1 bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
-                    <button className="p-1 bg-white text-black rounded-md hover:bg-white/90 transition-colors"><Plus size={13} /></button>
+                    <input
+                      value={newBranchName}
+                      onChange={(e) => setNewBranchName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleCreateBranch(); }}
+                      placeholder={t('git.new_branch')}
+                      className="flex-1 bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]"
+                    />
+                    <button
+                      onClick={handleCreateBranch}
+                      disabled={gitLoading || !newBranchName.trim()}
+                      aria-label={t('git.new_branch')}
+                      className="p-1 bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-40"
+                    >
+                      <Plus size={13} />
+                    </button>
                   </div>
                 </div>
               )}
