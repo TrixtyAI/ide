@@ -152,6 +152,7 @@ const EditorArea: React.FC = () => {
 
   // Check if current tab is a virtual tab
   const isVirtualTab = currentFile?.type === "virtual";
+  const isBinaryTab = currentFile?.type === "binary";
 
   // Render virtual views
   const renderVirtualView = () => {
@@ -173,6 +174,12 @@ const EditorArea: React.FC = () => {
       <div className="flex-1 overflow-hidden relative" ref={containerRef}>
         {isVirtualTab ? (
           renderVirtualView()
+        ) : isBinaryTab ? (
+          <div className="flex-1 h-full flex items-center justify-center p-8">
+            <p className="text-[13px] text-[#888] max-w-md text-center leading-relaxed">
+              {t('editor.bin_file')}
+            </p>
+          </div>
         ) : currentFile ? (
           <MonacoEditor
             height="100%"

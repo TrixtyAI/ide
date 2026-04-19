@@ -260,7 +260,7 @@ const GitExplorerComponent: React.FC = () => {
       const bins = [".png",".jpg",".jpeg",".gif",".exe",".dll",".bin",".zip",".pdf",".ico",".woff",".woff2",".ttf"];
       if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) return;
       try { const c = await invoke("read_file", { path: entry.path }); openFile(entry.path, entry.name, c); }
-      catch (e) { if (typeof e === "string" && e.includes("UTF-8")) openFile(entry.path, entry.name, t('editor.bin_file')); }
+      catch (e) { if (typeof e === "string" && e.includes("UTF-8")) openFile(entry.path, entry.name, "", "binary"); }
     }
   };
 
