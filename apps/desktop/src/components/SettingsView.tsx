@@ -84,6 +84,7 @@ Node.js: ${systemInfo.node_version}
         { id: "agent:user", label: t('agent.tab.user') },
         { id: "agent:design", label: t('agent.tab.design') },
         { id: "agent:skills", label: t('agent.tab.skills') },
+        { id: "agent:documentations", label: t('agent.tab.documentations') },
         { id: "agent:memory", label: t('agent.tab.memory') },
         { id: "agent:configuration", label: t('agent.tab.configuration') },
       ]
@@ -113,7 +114,7 @@ Node.js: ${systemInfo.node_version}
                {t(`agent.${currentSub}.desc`)}
              </p>
            </div>
-          <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory' | 'configuration')} />
+          <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration')} />
         </div>
       );
     }

@@ -10,14 +10,15 @@ import {
 } from "lucide-react";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'design' | 'memory' | 'configuration';
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   const { rootPath } = useApp();
   const { 
     identity, soul, agents, userContext, tools, memory, design,
-    skills, activeSkills, toggleSkill, saveAgentFile, isLoading, refreshAgentData 
+    skills, activeSkills, toggleSkill, docs, activeDocs, toggleDoc,
+    saveAgentFile, isLoading, refreshAgentData 
   } = useAgent();
   const { aiSettings, updateAISettings } = useApp();
   const { t } = useL10n();
@@ -39,10 +40,11 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   };
 
   const renderTabContent = () => {
-    const projectRequiredTabs = ['manual', 'design', 'skills', 'memory'];
+    const projectRequiredTabs = ['manual', 'design', 'skills', 'documentations', 'memory'];
     if (!rootPath && projectRequiredTabs.includes(activeTab)) {
       const errorMsg = activeTab === 'manual' ? t('agent.manual.no_project') : 
-                     (activeTab === 'design' ? t('agent.design.no_project') : t('agent.skills.no_project'));
+                     (activeTab === 'design' ? t('agent.design.no_project') : 
+                     (activeTab === 'skills' ? t('agent.skills.no_project') : t('agent.documentations.no_project')));
       return (
         <div className="flex flex-col items-center justify-center py-20 px-10 text-center animate-in fade-in duration-500">
           <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
@@ -204,6 +206,51 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                     }`}>
                       <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${
                         activeSkills.includes(skill.id) ? "left-6" : "left-1"
+                      }`} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      case 'documentations':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <h4 className="text-sm font-semibold text-white mb-2">{t('agent.documentations.title')}</h4>
+            <div className="grid grid-cols-1 gap-2">
+              {docs.length === 0 ? (
+                <div className="p-10 border border-dashed border-[#222] rounded-2xl flex flex-col items-center justify-center text-center">
+                  <BookOpen size={32} strokeWidth={1.5} className="text-[#222] mb-3" />
+                  <p className="text-[11px] text-[#444]">{t('agent.documentations.none')}</p>
+                </div>
+              ) : (
+                docs.map(doc => (
+                  <div 
+                    key={doc.id}
+                    onClick={() => toggleDoc(doc.id)}
+                    className={`p-4 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                      activeDocs.includes(doc.id) 
+                        ? "bg-blue-500/10 border-blue-500/30" 
+                        : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${
+                        activeDocs.includes(doc.id) ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-[#111] border-white/5 text-[#444]"
+                      }`}>
+                        <BookOpen size={18} strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <h5 className={`text-[13px] font-bold ${activeDocs.includes(doc.id) ? "text-white" : "text-[#777]"}`}>{doc.name}</h5>
+                        <p className="text-[11px] text-[#555]">{doc.description}</p>
+                      </div>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full relative transition-colors ${
+                      activeDocs.includes(doc.id) ? "bg-blue-500" : "bg-[#222]"
+                    }`}>
+                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${
+                        activeDocs.includes(doc.id) ? "left-6" : "left-1"
                       }`} />
                     </div>
                   </div>

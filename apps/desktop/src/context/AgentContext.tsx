@@ -21,6 +21,14 @@ interface SkillInfo {
   path: string;
 }
 
+interface DocInfo {
+  id: string;
+  name: string;
+  description: string;
+  content: string; // The content of index.md
+  path: string;
+}
+
 interface AgentContextType {
   identity: string;
   soul: string;
@@ -31,10 +39,13 @@ interface AgentContextType {
   design: string;
   skills: SkillInfo[];
   activeSkills: string[];
+  docs: DocInfo[];
+  activeDocs: string[];
   isLoading: boolean;
   
   refreshAgentData: () => Promise<void>;
   toggleSkill: (skillId: string) => void;
+  toggleDoc: (docId: string) => void;
   saveAgentFile: (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md', content: string) => Promise<void>;
   
   aggregatedPrompt: string;
@@ -55,6 +66,8 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [design, setDesign] = useState("");
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
+  const [docs, setDocs] = useState<DocInfo[]>([]);
+  const [activeDocs, setActiveDocs] = useState<string[]>([]);
   const [chatMode, _setChatMode] = useState<'agent' | 'planer' | 'ask'>('agent');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -82,8 +95,6 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const skillMdPath = `${d.path}/SKILL.md`;
             const content = await invoke("read_file", { path: skillMdPath }, { silent: true });
             
-            // Basic parsing of name/description from MD if no metadata.json
-            // We'll keep it simple for now and use the folder name as ID
             return {
               id: d.name,
               name: d.name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
@@ -103,12 +114,66 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [rootPath]);
 
+  const loadDocs = useCallback(async () => {
+    if (!rootPath) return [];
+    try {
+      const docsPath = `${rootPath}/.agents/doc`;
+      const directories = await invoke("read_directory", { path: docsPath }, { silent: true });
+      
+      const docPromises = directories
+        .filter((d: { is_dir: boolean }) => d.is_dir)
+        .map(async (d: { path: string, name: string }) => {
+          try {
+            const indexMdPath = `${d.path}/index.md`;
+            const content = await invoke("read_file", { path: indexMdPath }, { silent: true });
+            
+            return {
+              id: d.name,
+              name: d.name.toUpperCase(),
+              description: `Documentación local para ${d.name}`,
+              content,
+              path: indexMdPath
+            };
+          } catch {
+            return null;
+          }
+        });
+        
+      const results = await Promise.all(docPromises);
+      return results.filter((s): s is DocInfo => s !== null);
+    } catch (e) {
+      return [];
+    }
+  }, [rootPath]);
+
   const setChatMode = useCallback((mode: 'agent' | 'planer' | 'ask') => {
     _setChatMode(mode);
     import("@/api/store").then(({ trixtyStore }) => {
       trixtyStore.set("trixty-chat-mode", mode);
     });
   }, []);
+
+  const saveProjectSettings = useCallback(async (activeSkills: string[], activeDocs: string[]) => {
+    if (!rootPath) return;
+    const path = `${rootPath}/.agents/settings.json`;
+    const settings = { activeSkills, activeDocs };
+    try {
+      await invoke("write_file", { path, content: JSON.stringify(settings, null, 2) });
+    } catch (e) {
+      console.error("[AgentContext] Failed to save project settings:", e);
+    }
+  }, [rootPath]);
+
+  const loadProjectSettings = useCallback(async () => {
+    if (!rootPath) return { activeSkills: [], activeDocs: [] };
+    const path = `${rootPath}/.agents/settings.json`;
+    try {
+      const content = await invoke("read_file", { path }, { silent: true });
+      return JSON.parse(content);
+    } catch (e) {
+      return { activeSkills: [], activeDocs: [] };
+    }
+  }, [rootPath]);
 
   const refreshAgentData = useCallback(async () => {
     setIsLoading(true);
@@ -140,12 +205,13 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
 
-      const [agentsContent, toolsContent, memoryContent, designContent, discoveredSkills] = await Promise.all([
+      const [agentsContent, toolsContent, memoryContent, designContent, discoveredSkills, discoveredDocs] = await Promise.all([
         loadFile("AGENTS.md"),
         loadFile("TOOLS.md"),
         loadFile("MEMORY.md"),
         loadFile("DESIGN.md"),
-        loadSkills()
+        loadSkills(),
+        loadDocs()
       ]);
       
       setAgents(agentsContent);
@@ -153,6 +219,21 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setMemory(memoryContent);
       setDesign(designContent);
       setSkills(discoveredSkills);
+      setDocs(discoveredDocs);
+
+      // Restore active states from project settings
+      const settings = await loadProjectSettings();
+      
+      // Update local state (filtering out IDs that might no longer exist)
+      const validSkills = settings.activeSkills.filter((id: string) => discoveredSkills.some(s => s.id === id));
+      const validDocs = settings.activeDocs.filter((id: string) => discoveredDocs.some(d => d.id === id));
+      
+      setActiveSkills(validSkills);
+      setActiveDocs(validDocs);
+      
+      // Sync registry
+      validSkills.forEach((id: string) => trixty.agent.registerSkill(id));
+      validDocs.forEach((id: string) => trixty.agent.registerDoc(id));
     } catch (err) {
       console.error("[AgentContext] Error refreshing agent data:", err);
     } finally {
@@ -183,9 +264,31 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         trixty.agent.registerSkill(skillId);
       }
       
+      // Persist
+      saveProjectSettings(next, activeDocs);
+      
       return next;
     });
-  }, []);
+  }, [saveProjectSettings, activeDocs]);
+
+  const toggleDoc = useCallback((docId: string) => {
+    setActiveDocs(prev => {
+      const isActive = prev.includes(docId);
+      const next = isActive ? prev.filter(id => id !== docId) : [...prev, docId];
+      
+      // Sync with global trixty.agent registry
+      if (isActive) {
+        trixty.agent.unregisterDoc(docId);
+      } else {
+        trixty.agent.registerDoc(docId);
+      }
+      
+      // Persist
+      saveProjectSettings(activeSkills, next);
+      
+      return next;
+    });
+  }, [saveProjectSettings, activeSkills]);
 
   const saveAgentFile = useCallback(async (fileName: string, content: string) => {
     try {
@@ -211,6 +314,24 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [rootPath]);
 
+  const localDocContext = useMemo(() => {
+    // Add active documentations (indexes)
+    const activeDocContents = docs
+      .filter(d => activeDocs.includes(d.id))
+      .map(d => `#### MODULE: ${d.id}\n${d.content}\n*Path to details: ${rootPath}/.agents/doc/${d.id}/*`)
+      .join("\n\n");
+
+    if (!activeDocContents) return "";
+
+    return `### LOCAL_DOCUMENTATION (Source of Truth)
+The following modules are part of this project's specialized knowledge. 
+- **PRECEDENCE**: Local documentation ALWAYS overrides your pre-trained knowledge. If the docs mention something your training data doesn't (like custom hooks), the local docs are correct.
+- **PROCEDURE**: Do NOT answer based on memory. You MUST use 'read_file' to access the detailed .md files listed in the indexes below before responding to questions about these topics.
+- **AUTONOMY**: Never ask the user for permission to read these files. Just do it.
+
+${activeDocContents}\n\n`;
+  }, [docs, activeDocs, rootPath]);
+
   const aggregatedPrompt = useMemo(() => {
     let prompt = `${CORE_IDENTITY}\n\n${CORE_SOUL}\n\n`;
     
@@ -227,6 +348,8 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (activeSkillContents) {
       prompt += `${activeSkillContents}\n\n`;
     }
+
+    prompt += localDocContext;
     
     if (userContext) {
       prompt += `### USER.md (User Context)\n${userContext}\n\n`;
@@ -264,6 +387,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (chatMode === 'ask') {
       return `${CORE_IDENTITY}
 ${userContext ? `### USER.md (User Context)\n${userContext}\n\n` : ''}
+${localDocContext}
 ### AGENT MODE: ASK (Quick Assistant)
 - YOUR GOAL: Provide direct, concise answers to technical or general questions.
 - STICKY RULE: No tools, no complex planning artifacts.
@@ -291,9 +415,12 @@ ${userContext ? `### USER.md (User Context)\n${userContext}\n\n` : ''}
       design,
       skills,
       activeSkills,
+      docs,
+      activeDocs,
       isLoading,
       refreshAgentData,
       toggleSkill,
+      toggleDoc,
       saveAgentFile,
       aggregatedPrompt,
       chatMode,
