@@ -8,14 +8,14 @@ import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
 import { useL10n } from "@/hooks/useL10n";
 
 function resolveIconUrl(entry: MarketplaceEntry): string | null {
-  const icon = entry.manifest?.icon;
+  const icon = entry.manifest?.icon?.trim();
   if (!icon) return null;
   if (/^https?:\/\//i.test(icon)) return icon;
-  if (!entry.repository) return null;
 
-  const base = entry.repository
-    .replace(/\.git$/, "")
-    .replace(/^https:\/\/github\.com\//, "https://raw.githubusercontent.com/");
+  const repo = entry.repository?.replace(/\.git$/, "");
+  if (!repo?.startsWith("https://github.com/")) return null;
+
+  const base = repo.replace("https://github.com/", "https://raw.githubusercontent.com/");
   const branch = entry.branch || "main";
   const subpath = entry.path ? `/${entry.path.replace(/^\/+|\/+$/g, "")}` : "";
   const cleanIcon = icon.replace(/^\/+/, "");
@@ -39,6 +39,9 @@ const AddonIcon: React.FC<{
       onError={() => setFailed(true)}
       className="w-full h-full object-contain"
       alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
     />
   );
 };
