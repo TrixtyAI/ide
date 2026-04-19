@@ -6,6 +6,7 @@
   [![Version](https://img.shields.io/badge/version-1.0.0--beta.1-blue?style=flat-square)](https://github.com/TrixtyAI/ide)
   [![License](https://img.shields.io/badge/license-UPL--1.0-green?style=flat-square)](LICENSE)
   [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](#)
+  [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-orange.svg?style=flat-square)](CONTRIBUTING.md)
 </div>
 
 ---
@@ -76,6 +77,30 @@ Addons can contribute:
 
 ---
 
+## 🤝 Contributing
+
+We love contributions! Whether you're fixing a bug, improving documentation, or adding a new feature, your help is welcome.
+
+Before you start, please read our [Contributing Guide](CONTRIBUTING.md) to learn about our development process, coding standards, and legal requirements.
+
+### 💖 Community
+
+Join our growing community to stay updated and get support:
+- [GitHub Discussions](https://github.com/TrixtyAI/ide/discussions) — Ask questions and share ideas.
+- [Issue Tracker](https://github.com/TrixtyAI/ide/issues) — Report bugs or request features.
+
+---
+
+## 👥 Contributors
+
+A huge thank you to everyone who has contributed to Trixty IDE!
+
+<a href="https://github.com/TrixtyAI/ide/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=TrixtyAI/ide" />
+</a>
+
+---
+
 ## ⚖️ License
 
 This project is licensed under the **UnSetSoft Public License (UPL) 1.0**. See the [LICENSE](LICENSE) file for details.
@@ -83,5 +108,5 @@ This project is licensed under the **UnSetSoft Public License (UPL) 1.0**. See t
 ---
 
 <div align="center">
-  Made with ❤️ by <b>jmaxdev</b>
+  Made with ❤️ by <b>jmaxdev</b> and the Trixty Community
 </div>
