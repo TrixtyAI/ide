@@ -1,4 +1,5 @@
 import { load, Store } from "@tauri-apps/plugin-store";
+import { isTauri } from "@/api/tauri";
 
 /**
  * Global Store instance managed by tauri-plugin-store.
@@ -9,10 +10,19 @@ const STORE_NAME = "settings.json";
 class TrixtyStore {
   private store: Store | null = null;
   private initPromise: Promise<void> | null = null;
+  private hasLoggedBrowserFallback = false;
 
   async init() {
     if (this.initPromise) return this.initPromise;
-    
+
+    if (!isTauri()) {
+      if (!this.hasLoggedBrowserFallback) {
+        console.warn("[Store] Tauri runtime not detected. Falling back to localStorage.");
+        this.hasLoggedBrowserFallback = true;
+      }
+      return;
+    }
+
     this.initPromise = (async () => {
       console.log(`[Store] Initializing ${STORE_NAME}...`);
       try {
@@ -80,22 +90,57 @@ class TrixtyStore {
     }
   }
 
+  private getFromLocalStorage<T>(key: string, defaultValue: T): T {
+    if (typeof window === "undefined") return defaultValue;
+
+    const raw = localStorage.getItem(key);
+    if (raw === null) return defaultValue;
+    return this.safeParse(raw) as T;
+  }
+
+  private setToLocalStorage(key: string, value: unknown) {
+    if (typeof window === "undefined") return;
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, serialized);
+  }
+
+  private deleteFromLocalStorage(key: string) {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(key);
+  }
+
   async get<T>(key: string, defaultValue: T): Promise<T> {
+    if (!isTauri()) return this.getFromLocalStorage(key, defaultValue);
+
     await this.init();
-    const val = await this.store!.get(key);
+    const val = await this.store?.get(key);
     return (val as T) ?? defaultValue;
   }
 
   async set(key: string, value: unknown) {
+    if (!isTauri()) {
+      this.setToLocalStorage(key, value);
+      return;
+    }
+
     await this.init();
-    await this.store!.set(key, value);
-    await this.store!.save();
+    await this.store?.set(key, value);
+    await this.store?.save();
   }
 
   async delete(key: string) {
+    if (!isTauri()) {
+      this.deleteFromLocalStorage(key);
+      return;
+    }
+
     await this.init();
-    await this.store!.delete(key);
-    await this.store!.save();
+    await this.store?.delete(key);
+    await this.store?.save();
   }
 }
 
