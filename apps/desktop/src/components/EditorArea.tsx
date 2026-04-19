@@ -106,37 +106,21 @@ const EditorArea: React.FC = () => {
     return () => resizeObserver.disconnect();
   }, [openFiles.length]);
 
-  // Memory: Clean up Monaco models when files are closed
+  // Memory: Clean up Monaco models when files are closed.
+  // Paths are normalized so Windows backslash paths match Monaco's forward-slash URIs.
   React.useEffect(() => {
     if (!monacoRef.current) return;
 
-    const monaco = monacoRef.current;
-    const openPaths = new Set(openFiles.map(f => f.path));
-    
-    // Get all current models in Monaco
-    const models = monaco.editor.getModels();
-    
-    models.forEach((model: editor.ITextModel) => {
-      const modelPath = model.uri.toString();
-      // If the model path (uri) is not in our openFiles list, dispose it
-      // Note: Monaco URIs usually look like file:///path/to/file or inmemory://path
-      // We need to match it against our path.
-      
-      const isInternal = modelPath.startsWith("inmemory://");
-      if (isInternal) return; // Don't dispose internal models
+    const normalize = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+    const openPaths = new Set(openFiles.map(f => normalize(f.path)));
 
-      // Check if this model corresponds to any open file
-      const isStillOpen = openFiles.some(f => {
-         // Handle both absolute paths and URI formats
-         return f.path === model.uri.fsPath || f.path === model.uri.path || modelPath.endsWith(f.path);
-      });
-
-      if (!isStillOpen) {
-        console.log(`[EditorArea] Disposing unused model: ${modelPath}`);
+    monacoRef.current.editor.getModels().forEach((model: editor.ITextModel) => {
+      if (model.uri.scheme === "inmemory") return;
+      if (!openPaths.has(normalize(model.uri.fsPath))) {
         model.dispose();
       }
     });
-  }, [openFiles, currentFile]);
+  }, [openFiles]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
