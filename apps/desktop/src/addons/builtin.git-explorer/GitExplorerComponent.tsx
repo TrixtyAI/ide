@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, Search,
   GitBranch, GitCommit, Upload, Plus, Sparkles, ChevronUp,
   FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, Settings, History, ClipboardPaste, FileCode, Trash2,
-  Minus
+  Minus, ArrowDown, Download, GitMerge, Archive, RotateCcw, Undo2, Check, AlertTriangle
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
+import type { GitLogEntry, GitStashEntry } from "@/api/tauri";
 import { open, ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
@@ -25,6 +26,16 @@ const STATUS_META: Record<string, { icon: React.ElementType; color: string }> = 
   "??": { icon: FilePlus, color: "text-green-500/80" },
   "R": { icon: FileEdit, color: "text-blue-400/80" },
 };
+
+function relativeParts(unixSeconds: number): { unit: "s" | "m" | "h" | "d" | "mo" | "y"; n: number } {
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - unixSeconds);
+  if (diff < 60) return { unit: "s", n: diff };
+  if (diff < 3600) return { unit: "m", n: Math.floor(diff / 60) };
+  if (diff < 86400) return { unit: "h", n: Math.floor(diff / 3600) };
+  if (diff < 2592000) return { unit: "d", n: Math.floor(diff / 86400) };
+  if (diff < 31536000) return { unit: "mo", n: Math.floor(diff / 2592000) };
+  return { unit: "y", n: Math.floor(diff / 31536000) };
+}
 
 const GitExplorerComponent: React.FC = () => {
   const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile, aiSettings, systemSettings } = useApp();
@@ -49,6 +60,29 @@ const GitExplorerComponent: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: FileEntry } | null>(null);
   const [newEntry, setNewEntry] = useState<{ parentPath: string; type: "file" | "folder" } | null>(null);
   const [newEntryName, setNewEntryName] = useState("");
+  const [gitLog, setGitLog] = useState<GitLogEntry[]>([]);
+  const [stashes, setStashes] = useState<GitStashEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showStash, setShowStash] = useState(false);
+  const [stashMessage, setStashMessage] = useState("");
+  const [hasConflicts, setHasConflicts] = useState(false);
+  const [amendMode, setAmendMode] = useState(false);
+  const [branchFilter, setBranchFilter] = useState("");
+  const [logLimit, setLogLimit] = useState(30);
+  const [diffModal, setDiffModal] = useState<{ file: string; staged: boolean; content: string } | null>(null);
+  const [commitMenuOpen, setCommitMenuOpen] = useState(false);
+  const gitLoadingRef = useRef(false);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!commitMenuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (commitMenuRef.current && !commitMenuRef.current.contains(e.target as Node)) setCommitMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onClickOutside);
+    return () => window.removeEventListener("mousedown", onClickOutside);
+  }, [commitMenuOpen]);
 
   const loadDirectory = useCallback(async (path: string, parentPath?: string) => {
     setLoading(true);
@@ -162,20 +196,36 @@ const GitExplorerComponent: React.FC = () => {
       // X = staged status, Y = unstaged status
       const staged: GitFileChange[] = [];
       const unstaged: GitFileChange[] = [];
+      let conflicts = false;
       for (const l of lines) {
         const x = l[0]; // staged
         const y = l[1]; // unstaged
         const file = l.substring(3).trim();
+        // Unmerged/conflict codes per porcelain v1: DD AU UD UA DU AA UU.
+        if ((x === "U" || y === "U") || (x === "A" && y === "A") || (x === "D" && y === "D")) {
+          conflicts = true;
+        }
         if (x !== " " && x !== "?") staged.push({ status: x, file });
         if (y !== " " && y !== "?") unstaged.push({ status: y, file });
         // Untracked files (??) go to unstaged
         if (x === "?" && y === "?") unstaged.push({ status: "??", file });
       }
+      setHasConflicts(conflicts);
       setStagedChanges(staged);
       setGitChanges(unstaged);
-      const { branches: bl, current } = await invoke("get_git_branches", { path: rootPath });
-      setBranches(bl);
-      setCurrentBranch(current);
+      const payload = await invoke("get_git_branches", { path: rootPath });
+      const branchList = Array.isArray(payload?.branches) ? payload.branches : [];
+      setBranches(branchList);
+      setCurrentBranch(payload?.current ?? "");
+
+      try {
+        const log = await invoke("git_log", { path: rootPath, limit: logLimit }, { silent: true });
+        setGitLog(Array.isArray(log) ? log : []);
+      } catch { setGitLog([]); }
+      try {
+        const sl = await invoke("git_stash_list", { path: rootPath }, { silent: true });
+        setStashes(Array.isArray(sl) ? sl : []);
+      } catch { setStashes([]); }
     } catch (err) {
       const errStr = String(err).toLowerCase();
       const isNotGitRepoError =
@@ -203,8 +253,17 @@ const GitExplorerComponent: React.FC = () => {
       setGitChanges([]);
       setBranches([]);
       setCurrentBranch("");
+      setGitLog([]);
+      setStashes([]);
+      setHasConflicts(false);
     }
-  }, [rootPath]);
+  }, [rootPath, logLimit]);
+
+  useEffect(() => { gitLoadingRef.current = gitLoading; }, [gitLoading]);
+
+  useEffect(() => () => {
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+  }, []);
 
   useEffect(() => {
     if (activeSidebarTab !== "git" || !rootPath) return;
@@ -213,7 +272,7 @@ const GitExplorerComponent: React.FC = () => {
 
     // Poll every 5 seconds while the git tab is active and the window is visible
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "visible" && !gitLoadingRef.current) {
         refreshGit();
       }
     }, 5000);
@@ -245,19 +304,116 @@ const GitExplorerComponent: React.FC = () => {
       setNewBranchName("");
       setShowBranchMenu(false);
       await refreshGit();
-      flash(t('git.status.checkout_success', { branch: name }));
+      flash(t('git.status.branch_created'));
     } catch (e) {
       flash(t('git.error', { message: String(e) }));
     } finally {
       setGitLoading(false);
     }
   };
-  const handleCommit = async () => { if (!rootPath || !commitMessage.trim()) return; setGitLoading(true); try { await invoke("git_commit", { path: rootPath, message: commitMessage }); setCommitMessage(""); await refreshGit(); flash(t('git.status.commit_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleCommit = async () => { if (!rootPath || !commitMessage.trim()) return; setGitLoading(true); try { await invoke("git_commit", { path: rootPath, message: commitMessage, amend: amendMode }); setCommitMessage(""); setAmendMode(false); await refreshGit(); flash(t('git.status.commit_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
   const handlePush = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_push", { path: rootPath }); flash(t('git.status.push_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handlePull = async (rebase = false) => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_pull", { path: rootPath, rebase }); await refreshGit(); flash(t('git.status.pull_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleDiscard = async (file: string) => {
+    if (!rootPath) return;
+    if (!(await ask(t('git.discard.confirm', { file }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    try {
+      await invoke("git_restore", { path: rootPath, files: [file] });
+      await refreshGit();
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+  };
+  const handleViewDiff = async (file: string, staged: boolean) => {
+    if (!rootPath) return;
+    try {
+      const content = await invoke("get_git_file_diff", { path: rootPath, file, staged });
+      setDiffModal({ file, staged, content });
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+  };
+  const handleFetch = async () => { if (!rootPath) return; setGitLoading(true); try { await invoke("git_fetch", { path: rootPath }); await refreshGit(); flash(t('git.status.fetch_success')); } catch (e) { flash(t('git.error', { message: String(e) })); } finally { setGitLoading(false); } };
+  const handleMerge = async (branch: string) => {
+    if (!rootPath) return;
+    if (!(await ask(t('git.merge.confirm', { branch }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_merge", { path: rootPath, branch });
+      setShowBranchMenu(false);
+      await refreshGit();
+      flash(t('git.status.merge_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleStash = async () => {
+    if (!rootPath) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_stash", { path: rootPath, message: stashMessage.trim() || undefined });
+      setStashMessage("");
+      await refreshGit();
+      flash(t('git.status.stash_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleStashPop = async (index: number) => {
+    if (!rootPath) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_stash_pop", { path: rootPath, index });
+      await refreshGit();
+      flash(t('git.status.stash_pop_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleStashApply = async (index: number) => {
+    if (!rootPath) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_stash_apply", { path: rootPath, index });
+      await refreshGit();
+      flash(t('git.status.stash_pop_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleStashDrop = async (entry: GitStashEntry) => {
+    if (!rootPath) return;
+    if (!(await ask(t('git.stash.drop_confirm', { ref: entry.ref_name }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_stash_drop", { path: rootPath, index: entry.index });
+      await refreshGit();
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleReset = async (mode: "soft" | "mixed" | "hard", target: string) => {
+    if (!rootPath) return;
+    if (mode === "hard" && !(await ask(t('git.reset.confirm_hard', { target }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    if (mode === "mixed" && !(await ask(t('git.reset.confirm_mixed', { target }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_reset", { path: rootPath, mode, target });
+      await refreshGit();
+      flash(t('git.status.reset_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
+  const handleRevert = async (commit: string, shortHash: string) => {
+    if (!rootPath) return;
+    if (!(await ask(t('git.revert.confirm', { hash: shortHash }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    setGitLoading(true);
+    try {
+      await invoke("git_revert", { path: rootPath, commit });
+      await refreshGit();
+      flash(t('git.status.revert_success'));
+    } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
+  };
   const handleStage = async (file: string) => { if (!rootPath) return; try { await invoke("git_add", { path: rootPath, files: [file] }); await refreshGit(); } catch (e) { flash(t('git.error', { message: String(e) })); } };
   const handleUnstage = async (file: string) => { if (!rootPath) return; try { await invoke("git_unstage", { path: rootPath, files: [file] }); await refreshGit(); } catch (e) { flash(t('git.error', { message: String(e) })); } };
   const handleStageAll = async () => { if (!rootPath) return; try { await invoke("git_add", { path: rootPath, files: ["."] }); await refreshGit(); flash(t('git.status.all_staged')); } catch (e) { flash(t('git.error', { message: String(e) })); } };
-  const flash = (msg: string) => { setGitFeedback(msg); setTimeout(() => setGitFeedback(""), 3000); };
+  const flash = (msg: string) => {
+    setGitFeedback(msg);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setGitFeedback(""), 3000);
+  };
 
   const handleAiSuggest = async () => {
     if (!rootPath) return;
@@ -538,9 +694,14 @@ const GitExplorerComponent: React.FC = () => {
   // ============ GIT ============
   if (activeSidebarTab === "git") {
     return (
-      <div className="h-full bg-[#0e0e0e] flex flex-col overflow-hidden">
+      <div className="h-full bg-[#0e0e0e] flex flex-col overflow-hidden relative">
         <Header title={t('git.title')} right={isGitRepo ? (
-          <button onClick={refreshGit} className="p-1 text-[#444] hover:text-white transition-colors rounded"><RefreshCw size={13} className={gitLoading ? "animate-spin" : ""} /></button>
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => handlePull(false)} disabled={gitLoading} title={t('git.action.pull')} className="p-1 text-[#444] hover:text-white disabled:opacity-40 transition-colors rounded"><ArrowDown size={13} /></button>
+            <button onClick={() => handlePull(true)} disabled={gitLoading} title={t('git.action.pull_rebase')} className="p-1 text-[#444] hover:text-white disabled:opacity-40 transition-colors rounded"><RotateCcw size={13} /></button>
+            <button onClick={handleFetch} disabled={gitLoading} title={t('git.action.fetch')} className="p-1 text-[#444] hover:text-white disabled:opacity-40 transition-colors rounded"><Download size={13} /></button>
+            <button onClick={refreshGit} title={t('git.action.refresh')} className="p-1 text-[#444] hover:text-white transition-colors rounded"><RefreshCw size={13} className={gitLoading ? "animate-spin" : ""} /></button>
+          </div>
         ) : undefined} />
 
         {!rootPath ? <Empty title={t('git.title')} icon={<GitBranch size={40} strokeWidth={1} />} /> : !isGitRepo ? (
@@ -556,49 +717,69 @@ const GitExplorerComponent: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col h-full">
-            {gitFeedback && <div className="px-3 py-2 bg-white/5 border-b border-[#1a1a1a] text-[11px] text-white/70">{gitFeedback}</div>}
+            {gitFeedback && (
+              <div className="px-3 py-2 bg-white/[0.03] border-b border-[#1a1a1a] border-l-2 border-l-white/40 text-[11px] text-white/80 flex items-center gap-2">
+                <span className="truncate">{gitFeedback}</span>
+              </div>
+            )}
+            {hasConflicts && (
+              <div className="px-3 py-2 bg-red-500/10 border-b border-red-500/20 border-l-2 border-l-red-400 text-[11px] text-red-200 flex items-center gap-2">
+                <AlertTriangle size={12} className="shrink-0 text-red-400" />
+                <span>{t('git.conflicts.banner')}</span>
+              </div>
+            )}
 
             {/* Branch */}
             <div className="px-3 py-2 border-b border-[#1a1a1a]">
               <button onClick={() => setShowBranchMenu(!showBranchMenu)} className="flex items-center gap-2 w-full text-[12px] text-white hover:bg-white/[0.04] rounded-lg p-1.5 transition-colors">
-                <GitBranch size={13} className="text-[#666]" />
-                <span className={`font-medium truncate ${!currentBranch ? 'text-[#888] italic' : ''}`}>
-                  {currentBranch || t('git.branch.detached')}
-                </span>
+                <GitBranch size={13} className={!currentBranch ? "text-yellow-400" : "text-[#666]"} />
+                {!currentBranch ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-yellow-400/10 border border-yellow-400/20 text-yellow-300 text-[10px] font-medium">
+                    <AlertTriangle size={10} /> {t('git.branch.detached')}
+                  </span>
+                ) : (
+                  <span className="font-medium truncate">{currentBranch}</span>
+                )}
                 {showBranchMenu ? <ChevronUp size={11} className="ml-auto text-[#555]" /> : <ChevronDown size={11} className="ml-auto text-[#555]" />}
               </button>
               {showBranchMenu && (
                 <div className="mt-1 bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
-                  {branches.map((b) => {
-                    const isCurrent = b === currentBranch;
-                    return (
-                      <button
-                        key={b}
-                        onClick={() => handleCheckoutBranch(b)}
-                        disabled={gitLoading}
-                        aria-current={isCurrent ? "true" : undefined}
-                        className={`w-full text-left px-3 py-1.5 text-[11px] hover:bg-white/[0.04] transition-colors disabled:opacity-50 ${isCurrent ? 'text-white font-medium' : 'text-[#999]'}`}
-                      >
-                        {isCurrent ? `● ${b}` : b}
-                      </button>
-                    );
-                  })}
+                  {branches.length > 6 && (
+                    <div className="px-2 pt-2">
+                      <input value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
+                        placeholder={t('git.filter.branches')}
+                        className="w-full bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
+                    </div>
+                  )}
+                  <div className="max-h-[200px] overflow-y-auto scrollbar-thin">
+                    {branches.filter((b) => !branchFilter || b.toLowerCase().includes(branchFilter.toLowerCase())).map((b) => {
+                      const isCurrent = b === currentBranch;
+                      return (
+                        <div key={b} className="group flex items-center hover:bg-white/[0.04] transition-colors">
+                          <button onClick={() => handleCheckoutBranch(b)} disabled={gitLoading}
+                            aria-current={isCurrent ? "true" : undefined}
+                            className={`flex-1 text-left px-3 py-1.5 text-[11px] flex items-center gap-1.5 transition-colors disabled:opacity-50 ${isCurrent ? "text-white font-medium" : "text-[#999]"}`}>
+                            {isCurrent ? <Check size={11} className="text-green-400/80" /> : <span className="w-[11px]" />}
+                            <span className="truncate">{b}</span>
+                          </button>
+                          {!isCurrent && (
+                            <button onClick={() => handleMerge(b)} title={t('git.action.merge')}
+                              className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-[#555] hover:text-white transition-all rounded">
+                              <GitMerge size={12} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                   <div className="border-t border-[#222] p-2 flex gap-1">
-                    <input
-                      value={newBranchName}
-                      onChange={(e) => setNewBranchName(e.target.value)}
+                    <input value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCreateBranch(); }}
                       placeholder={t('git.new_branch')}
-                      className="flex-1 bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]"
-                    />
-                    <button
-                      onClick={handleCreateBranch}
-                      disabled={gitLoading || !newBranchName.trim()}
-                      aria-label={t('git.new_branch')}
-                      className="p-1 bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-40"
-                    >
-                      <Plus size={13} />
-                    </button>
+                      className="flex-1 bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
+                    <button onClick={handleCreateBranch} disabled={!newBranchName.trim() || gitLoading}
+                      aria-label={t('git.action.create_branch')} title={t('git.action.create_branch')}
+                      className="p-1 bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-40"><Plus size={13} /></button>
                   </div>
                 </div>
               )}
@@ -607,13 +788,33 @@ const GitExplorerComponent: React.FC = () => {
             {/* Commit */}
             <div className="px-3 py-3 border-b border-[#1a1a1a]">
               <textarea value={commitMessage} onChange={(e) => setCommitMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && e.ctrlKey) handleCommit(); }}
-                placeholder={t('git.commit_placeholder')}
-                className="w-full bg-[#141414] border border-[#222] rounded-xl p-2.5 text-[12px] text-white placeholder-[#444] focus:outline-none focus:border-[#444] resize-none h-[56px] transition-colors" />
+                placeholder={amendMode ? `${t('git.commit_placeholder')} (${t('git.action.amend')})` : t('git.commit_placeholder')}
+                className="w-full bg-[#141414] border border-[#222] rounded-xl p-2.5 text-[12px] text-white placeholder-[#444] focus:outline-none focus:border-[#444] resize-y min-h-[80px] max-h-[240px] transition-colors" />
               <div className="flex gap-1.5 mt-2">
-                <button onClick={handleCommit} disabled={!commitMessage.trim() || gitLoading}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-white text-black text-[11px] font-semibold rounded-lg transition-all disabled:opacity-30 active:scale-95 hover:bg-white/90">
-                  <GitCommit size={13} /> {t('git.commit_button')}
-                </button>
+                <div className="flex flex-1 min-w-0 gap-px">
+                  <button onClick={handleCommit} disabled={!commitMessage.trim() || gitLoading || hasConflicts}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-white text-black text-[11px] font-semibold rounded-l-lg transition-all disabled:opacity-30 active:scale-95 hover:bg-white/90">
+                    <GitCommit size={13} /> {amendMode ? t('git.action.amend') : t('git.commit_button')}
+                  </button>
+                  <div className="relative" ref={commitMenuRef}>
+                    <button onClick={() => setCommitMenuOpen(!commitMenuOpen)} disabled={gitLoading}
+                      aria-label="Commit options"
+                      className={`h-full px-1.5 flex items-center justify-center bg-white text-black rounded-r-lg transition-all active:scale-95 hover:bg-white/90 ${(!commitMessage.trim() || gitLoading || hasConflicts) ? "opacity-30" : ""}`}>
+                      <ChevronDown size={12} />
+                    </button>
+                    {commitMenuOpen && (
+                      <div className="absolute right-0 top-[calc(100%+4px)] z-20 min-w-[180px] bg-[#141414] border border-[#222] rounded-lg shadow-lg py-1 text-[11px]">
+                        <button onClick={() => { setAmendMode(!amendMode); setCommitMenuOpen(false); }}
+                          className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-white/[0.05] text-white/80">
+                          <span className={`inline-flex items-center justify-center w-3 h-3 rounded-sm border ${amendMode ? "bg-white border-white" : "border-[#333]"}`}>
+                            {amendMode && <Check size={10} className="text-black" strokeWidth={3} />}
+                          </span>
+                          {t('git.action.amend')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <button onClick={handleAiSuggest} disabled={aiSuggestLoading} title={t('git.suggest_ai')}
                   className="w-8 flex items-center justify-center bg-[#1a1a1a] border border-[#222] text-white/60 rounded-lg transition-all disabled:opacity-30 active:scale-95 hover:bg-[#222] hover:text-white">
                   <Sparkles size={13} className={aiSuggestLoading ? "animate-pulse" : ""} />
@@ -638,9 +839,10 @@ const GitExplorerComponent: React.FC = () => {
                 return (
                   <div key={i} className="group flex items-center gap-2 px-4 py-1.5 hover:bg-white/[0.03] text-[12px]">
                     <I size={13} className={m.color} />
-                    <span className="truncate flex-1 text-[#999]">{c.file}</span>
+                    <button onClick={() => handleViewDiff(c.file, true)} title={t('git.action.view_diff')}
+                      className="truncate flex-1 text-left text-[#999] hover:text-white transition-colors">{c.file}</button>
                     <button onClick={() => handleUnstage(c.file)} title={t('git.action.unstage')}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 text-[#555] hover:text-white transition-all rounded">
+                      className="p-0.5 text-[#555] hover:text-white transition-all rounded">
                       <Minus size={13} strokeWidth={1.5} />
                     </button>
                   </div>
@@ -662,17 +864,144 @@ const GitExplorerComponent: React.FC = () => {
                 ) : gitChanges.map((c, i) => {
                   const m = STATUS_META[c.status] || STATUS_META["M"];
                   const I = m.icon;
+                  const isUntracked = c.status === "??";
                   return (
                     <div key={i} className="group flex items-center gap-2 px-4 py-1.5 hover:bg-white/[0.03] text-[12px]">
                       <I size={13} className={m.color} />
-                      <span className="truncate flex-1 text-[#999]">{c.file}</span>
+                      <button onClick={() => !isUntracked && handleViewDiff(c.file, false)} title={isUntracked ? undefined : t('git.action.view_diff')}
+                        className={`truncate flex-1 text-left text-[#999] ${isUntracked ? "cursor-default" : "hover:text-white"} transition-colors`}>{c.file}</button>
+                      {!isUntracked && (
+                        <button onClick={() => handleDiscard(c.file)} title={t('git.action.discard')}
+                          className="p-0.5 text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all rounded">
+                          <Undo2 size={12} strokeWidth={1.5} />
+                        </button>
+                      )}
                       <button onClick={() => handleStage(c.file)} title={t('git.action.stage')}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-[#555] hover:text-white transition-all rounded">
+                        className="p-0.5 text-[#555] hover:text-white transition-all rounded">
                         <Plus size={13} strokeWidth={1.5} />
                       </button>
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Stash */}
+              <div className="border-t border-[#1a1a1a] mt-1">
+                <button onClick={() => setShowStash(!showStash)} className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                  <span className="text-[10px] font-semibold text-[#555] uppercase tracking-widest flex items-center gap-1.5">
+                    <Archive size={11} /> {t('git.section.stash')}
+                    {stashes.length > 0 && <span className="px-1.5 py-[1px] rounded-full bg-white/[0.06] text-white/70 text-[9px] font-semibold tracking-normal normal-case">{stashes.length}</span>}
+                  </span>
+                  {showStash ? <ChevronUp size={11} className="text-[#555]" /> : <ChevronDown size={11} className="text-[#555]" />}
+                </button>
+                {showStash && (
+                  <div>
+                    <div className="px-3 pb-2 flex gap-1">
+                      <input value={stashMessage} onChange={(e) => setStashMessage(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleStash(); }}
+                        placeholder={t('git.stash.placeholder')}
+                        className="flex-1 bg-[#141414] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
+                      <button onClick={handleStash} disabled={gitLoading} title={t('git.action.stash')}
+                        className="px-2 py-1 bg-[#1a1a1a] border border-[#222] text-white/70 text-[11px] rounded-md hover:bg-[#222] hover:text-white transition-colors disabled:opacity-40">
+                        <Archive size={12} />
+                      </button>
+                    </div>
+                    {stashes.length === 0 ? (
+                      <div className="text-center pb-3 text-[11px] text-[#333]">{t('git.stash.empty')}</div>
+                    ) : stashes.map((s) => (
+                      <div key={s.index} className="group flex items-center gap-1 px-4 py-1.5 hover:bg-white/[0.03] text-[12px]">
+                        <Archive size={12} className="text-[#555] shrink-0" />
+                        <span className="truncate flex-1 text-[#999]" title={s.message}>{s.message || s.ref_name}</span>
+                        <button onClick={() => handleStashPop(s.index)} title={t('git.action.stash_pop')}
+                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">pop</button>
+                        <button onClick={() => handleStashApply(s.index)} title={t('git.action.stash_apply')}
+                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">apply</button>
+                        <button onClick={() => handleStashDrop(s)} title={t('git.action.stash_drop')}
+                          className="opacity-40 group-hover:opacity-100 p-0.5 text-[#888] hover:text-red-400 transition-all rounded">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* History */}
+              <div className="border-t border-[#1a1a1a]">
+                <button onClick={() => setShowHistory(!showHistory)} className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                  <span className="text-[10px] font-semibold text-[#555] uppercase tracking-widest flex items-center gap-1.5">
+                    <History size={11} /> {t('git.section.history')}
+                    {gitLog.length > 0 && <span className="px-1.5 py-[1px] rounded-full bg-white/[0.06] text-white/70 text-[9px] font-semibold tracking-normal normal-case">{gitLog.length}</span>}
+                  </span>
+                  {showHistory ? <ChevronUp size={11} className="text-[#555]" /> : <ChevronDown size={11} className="text-[#555]" />}
+                </button>
+                {showHistory && (gitLog.length === 0 ? (
+                  <div className="text-center pb-3 text-[11px] text-[#333]">{t('git.history.empty')}</div>
+                ) : (
+                  <>
+                    {gitLog.map((c) => {
+                      const rt = relativeParts(c.timestamp);
+                      return (
+                        <div key={c.hash} className="group px-4 py-2 hover:bg-white/[0.03] text-[12px] border-b border-[#141414] last:border-b-0">
+                          <div className="flex items-center gap-2">
+                            <GitCommit size={11} className="text-[#555] shrink-0" />
+                            <span className="font-mono text-[10px] text-blue-300/60 shrink-0" title={c.hash}>{c.short_hash}</span>
+                            <span className="truncate flex-1 text-[#ccc]" title={c.subject}>{c.subject}</span>
+                            <span className="text-[10px] text-[#555] shrink-0 tabular-nums" title={new Date(c.timestamp * 1000).toLocaleString()}>{t(`git.time.${rt.unit}` as const, { n: String(rt.n) })}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1 pl-[19px]">
+                            <span className="text-[10px] text-[#555] truncate">{c.author}</span>
+                            <div className="flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleReset("soft", c.hash)} title={t('git.action.reset_soft')}
+                                className="p-0.5 text-[#888] hover:text-white rounded"><RotateCcw size={11} /></button>
+                              <button onClick={() => handleReset("mixed", c.hash)} title={t('git.action.reset_mixed')}
+                                className="p-0.5 text-yellow-400/60 hover:text-yellow-300 hover:bg-yellow-400/10 rounded"><RotateCcw size={11} strokeWidth={2.5} /></button>
+                              <button onClick={() => handleReset("hard", c.hash)} title={t('git.action.reset_hard')}
+                                className="p-0.5 text-red-400/60 hover:text-red-400 hover:bg-red-400/10 rounded"><AlertTriangle size={11} /></button>
+                              <button onClick={() => handleRevert(c.hash, c.short_hash)} title={t('git.action.revert')}
+                                className="p-0.5 text-[#888] hover:text-white rounded"><Undo2 size={11} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {gitLog.length >= logLimit && (
+                      <button onClick={() => setLogLimit(logLimit + 30)} disabled={gitLoading}
+                        className="w-full py-2 text-[11px] text-[#666] hover:text-white hover:bg-white/[0.03] transition-colors disabled:opacity-40">
+                        {t('git.action.load_more')}
+                      </button>
+                    )}
+                  </>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {diffModal && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-3" onClick={() => setDiffModal(null)}>
+            <div className="bg-[#0e0e0e] border border-[#222] rounded-xl w-full h-full flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                <span className="text-[11px] text-white/80 truncate">{t('git.diff.title', { file: diffModal.file })}</span>
+                <button onClick={() => setDiffModal(null)} className="p-1 text-[#555] hover:text-white transition-colors rounded">
+                  <Minus size={14} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto scrollbar-thin">
+                {diffModal.content.trim() === "" ? (
+                  <div className="p-6 text-center text-[11px] text-[#555]">{t('git.diff.empty')}</div>
+                ) : (
+                  <pre className="p-3 text-[11px] font-mono text-[#ccc] whitespace-pre">
+                    {diffModal.content.split("\n").map((line, i) => {
+                      let cls = "text-[#999]";
+                      if (line.startsWith("+") && !line.startsWith("+++")) cls = "text-green-400/90";
+                      else if (line.startsWith("-") && !line.startsWith("---")) cls = "text-red-400/90";
+                      else if (line.startsWith("@@")) cls = "text-blue-400/80";
+                      else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("+++") || line.startsWith("---")) cls = "text-[#666]";
+                      return <div key={i} className={cls}>{line || " "}</div>;
+                    })}
+                  </pre>
+                )}
               </div>
             </div>
           </div>

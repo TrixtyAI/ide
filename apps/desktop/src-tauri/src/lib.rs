@@ -410,12 +410,256 @@ async fn git_create_branch(path: String, branch: String) -> Result<String, Strin
 }
 
 #[tauri::command]
-async fn git_commit(path: String, message: String) -> Result<String, String> {
+async fn git_pull(path: String, rebase: Option<bool>) -> Result<String, String> {
+    let mut args = vec!["pull"];
+    if rebase.unwrap_or(false) {
+        args.push("--rebase");
+    }
+    let output = silent_command("git")
+        .args(&args)
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_fetch(path: String) -> Result<String, String> {
+    let output = silent_command("git")
+        .args(["fetch", "--all", "--prune"])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    if output.status.success() {
+        // git fetch usually writes progress to stderr but nothing to stdout; on success we return
+        // the combined text (if any) so the UI can show "ok" without dumping error-looking output.
+        let combined = format!("{}{}", stdout, stderr);
+        Ok(combined.trim().to_string())
+    } else {
+        Err(stderr)
+    }
+}
+
+#[derive(serde::Serialize)]
+struct GitLogEntry {
+    hash: String,
+    short_hash: String,
+    author: String,
+    email: String,
+    timestamp: i64,
+    subject: String,
+}
+
+#[tauri::command]
+async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry>, String> {
+    let n = limit.unwrap_or(50);
+    // Unit Separator (0x1F) between fields, Record Separator (0x1E) between entries.
+    let format = "--pretty=format:%H\x1f%h\x1f%an\x1f%ae\x1f%at\x1f%s\x1e";
+    let output = silent_command("git")
+        .args(["log", format, &format!("-n{}", n)])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    let raw = String::from_utf8_lossy(&output.stdout).to_string();
+    let mut entries = Vec::new();
+    for record in raw.split('\x1e') {
+        let trimmed = record.trim_start_matches(['\n', '\r']);
+        if trimmed.is_empty() { continue; }
+        let fields: Vec<&str> = trimmed.splitn(6, '\x1f').collect();
+        if fields.len() < 6 { continue; }
+        entries.push(GitLogEntry {
+            hash: fields[0].to_string(),
+            short_hash: fields[1].to_string(),
+            author: fields[2].to_string(),
+            email: fields[3].to_string(),
+            timestamp: fields[4].parse::<i64>().unwrap_or(0),
+            subject: fields[5].trim_end().to_string(),
+        });
+    }
+    Ok(entries)
+}
+
+#[tauri::command]
+async fn git_merge(path: String, branch: String) -> Result<String, String> {
+    validate_branch_name(&branch)?;
+    let output = silent_command("git")
+        .args(["merge", "--no-edit", &branch])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_reset(path: String, mode: String, target: String) -> Result<String, String> {
+    let mode_flag = match mode.as_str() {
+        "soft" => "--soft",
+        "hard" => "--hard",
+        _ => "--mixed",
+    };
+    let output = silent_command("git")
+        .args(["reset", mode_flag, &target])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_revert(path: String, commit: String) -> Result<String, String> {
+    let output = silent_command("git")
+        .args(["revert", "--no-edit", &commit])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[derive(serde::Serialize)]
+struct GitStashEntry {
+    index: u32,
+    ref_name: String,
+    message: String,
+}
+
+#[tauri::command]
+async fn git_stash_list(path: String) -> Result<Vec<GitStashEntry>, String> {
+    let output = silent_command("git")
+        .args(["stash", "list", "--pretty=format:%gd\x1f%s"])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    let raw = String::from_utf8_lossy(&output.stdout).to_string();
+    let mut entries = Vec::new();
+    for (i, line) in raw.lines().enumerate() {
+        if line.is_empty() { continue; }
+        let parts: Vec<&str> = line.splitn(2, '\x1f').collect();
+        entries.push(GitStashEntry {
+            index: i as u32,
+            ref_name: parts.first().copied().unwrap_or("").to_string(),
+            message: parts.get(1).copied().unwrap_or("").to_string(),
+        });
+    }
+    Ok(entries)
+}
+
+#[tauri::command]
+async fn git_stash(path: String, message: Option<String>) -> Result<String, String> {
+    let msg = message.unwrap_or_default();
+    let mut args = vec!["stash", "push", "--include-untracked"];
+    if !msg.is_empty() {
+        args.push("-m");
+        args.push(&msg);
+    }
+    let output = silent_command("git")
+        .args(&args)
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_stash_pop(path: String, index: Option<u32>) -> Result<String, String> {
+    let idx = index.unwrap_or(0);
+    let stash_ref = format!("stash@{{{}}}", idx);
+    let output = silent_command("git")
+        .args(["stash", "pop", &stash_ref])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_stash_apply(path: String, index: u32) -> Result<String, String> {
+    let stash_ref = format!("stash@{{{}}}", index);
+    let output = silent_command("git")
+        .args(["stash", "apply", &stash_ref])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_stash_drop(path: String, index: u32) -> Result<String, String> {
+    let stash_ref = format!("stash@{{{}}}", index);
+    let output = silent_command("git")
+        .args(["stash", "drop", &stash_ref])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+async fn git_commit(path: String, message: String, amend: Option<bool>) -> Result<String, String> {
     // We no longer automatically stage all changes.
     // Users must stage changes explicitly.
 
+    let mut args = vec!["commit"];
+    if amend.unwrap_or(false) {
+        args.push("--amend");
+    }
+    args.push("-m");
+    args.push(&message);
+
     let output = silent_command("git")
-        .args(["commit", "-m", &message])
+        .args(&args)
         .current_dir(&path)
         .output()
         .map_err(|e| e.to_string())?;
@@ -476,10 +720,73 @@ async fn git_push(path: String) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    // First push of a new branch: fall back to --set-upstream origin <branch>.
+    let needs_upstream = stderr.contains("has no upstream branch")
+        || stderr.contains("--set-upstream")
+        || stderr.contains("The current branch");
+    if needs_upstream {
+        let branch_output = silent_command("git")
+            .args(["symbolic-ref", "--quiet", "--short", "HEAD"])
+            .current_dir(&path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if branch_output.status.success() {
+            let branch = String::from_utf8_lossy(&branch_output.stdout).trim().to_string();
+            if !branch.is_empty() {
+                let retry = silent_command("git")
+                    .args(["push", "--set-upstream", "origin", &branch])
+                    .current_dir(&path)
+                    .output()
+                    .map_err(|e| e.to_string())?;
+                if retry.status.success() {
+                    return Ok(String::from_utf8_lossy(&retry.stdout).to_string());
+                }
+                return Err(String::from_utf8_lossy(&retry.stderr).to_string());
+            }
+        }
+    }
+    Err(stderr)
+}
+
+#[tauri::command]
+async fn git_restore(path: String, files: Vec<String>) -> Result<String, String> {
+    // Discards working-tree changes for the given files (like `git restore <files>`).
+    let mut args = vec!["restore", "--"];
+    let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
+    args.extend(file_refs);
+
+    let output = silent_command("git")
+        .args(&args)
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
+}
+
+#[tauri::command]
+async fn get_git_file_diff(path: String, file: String, staged: bool) -> Result<String, String> {
+    let mut args = vec!["diff"];
+    if staged {
+        args.push("--staged");
+    }
+    args.push("--");
+    args.push(&file);
+    let output = silent_command("git")
+        .args(&args)
+        .current_dir(&path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 #[tauri::command]
@@ -780,6 +1087,19 @@ pub fn run() {
             get_git_branches,
             git_checkout_branch,
             git_create_branch,
+            git_pull,
+            git_fetch,
+            git_log,
+            git_merge,
+            git_reset,
+            git_revert,
+            git_stash,
+            git_stash_pop,
+            git_stash_apply,
+            git_stash_drop,
+            git_stash_list,
+            git_restore,
+            get_git_file_diff,
             git_commit,
             git_add,
             git_unstage,
