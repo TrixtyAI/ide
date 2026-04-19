@@ -5,6 +5,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  NODE_VERSION: 24
+
 jobs:
   release:
     permissions:
@@ -29,7 +32,7 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: install pnpm
         uses: pnpm/action-setup@v4
