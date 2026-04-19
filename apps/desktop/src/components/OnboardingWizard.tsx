@@ -5,12 +5,8 @@ import {
   Sparkles,
   Languages,
   Brain,
-  Palette,
-  ChevronRight,
-  ChevronLeft,
   Rocket,
   Download,
-  AlertCircle,
   Minus,
   Square,
   X,
@@ -19,11 +15,10 @@ import {
   Loader2,
   Settings2
 } from "lucide-react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
-import { safeInvoke as invoke } from "@/api/tauri";
+import { isTauri, safeInvoke as invoke } from "@/api/tauri";
 
 const steps = [
   { id: "welcome", title: "onboarding.welcome", icon: Sparkles, color: "text-blue-400" },
@@ -49,22 +44,50 @@ const OnboardingWizard: React.FC = () => {
   const [isVerifyingOllama, setIsVerifyingOllama] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState<"idle" | "success" | "error">("idle");
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isNativeWindow, setIsNativeWindow] = useState(false);
 
-  const handleMinimize = () => getCurrentWindow().minimize();
+  const handleMinimize = async () => {
+    if (!isNativeWindow) return;
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().minimize();
+  };
   const handleMaximize = async () => {
+    if (!isNativeWindow) return;
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
     await getCurrentWindow().toggleMaximize();
     const maximized = await getCurrentWindow().isMaximized();
     setIsMaximized(maximized);
   };
-  const handleClose = () => getCurrentWindow().close();
+  const handleClose = async () => {
+    if (!isNativeWindow) return;
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().close();
+  };
 
   useEffect(() => {
-    const unlisten = getCurrentWindow().onResized(async () => {
-      const maximized = await getCurrentWindow().isMaximized();
-      setIsMaximized(maximized);
-    });
+    let mounted = true;
+    let cleanup: (() => void) | undefined;
+
+    if (!isTauri()) return;
+
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const win = getCurrentWindow();
+        const maximized = await win.isMaximized();
+        if (!mounted) return;
+        setIsNativeWindow(true);
+        setIsMaximized(maximized);
+        cleanup = await win.onResized(async () => {
+          const m = await win.isMaximized();
+          setIsMaximized(m);
+        });
+      } catch {}
+    })();
+
     return () => {
-      unlisten.then(u => u());
+      mounted = false;
+      if (cleanup) cleanup();
     };
   }, []);
 
@@ -81,7 +104,7 @@ const OnboardingWizard: React.FC = () => {
       } else {
         setOllamaStatus("error");
       }
-    } catch (e) {
+    } catch {
       setOllamaStatus("error");
     } finally {
       setIsVerifyingOllama(false);
@@ -148,13 +171,15 @@ const OnboardingWizard: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6 overflow-hidden text-white">
       {/* Absolute Window Header (Top-level) */}
-      <div className="absolute top-0 left-0 right-0 h-10 flex items-center justify-end px-4 z-[120]" data-tauri-drag-region>
-        <div data-tauri-no-drag className="flex items-center gap-1">
-          <button onClick={handleMinimize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white"><Minus size={14} /></button>
-          <button onClick={handleMaximize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white">{isMaximized ? <Copy size={12} /> : <Square size={12} />}</button>
-          <button onClick={handleClose} className="h-8 w-8 flex items-center justify-center hover:bg-red-500/80 hover:text-white rounded-lg transition-colors text-white/20 hover:text-white"><X size={14} /></button>
+      {isNativeWindow && (
+        <div className="absolute top-0 left-0 right-0 h-10 flex items-center justify-end px-4 z-[120]" data-tauri-drag-region>
+          <div data-tauri-no-drag className="flex items-center gap-1">
+            <button onClick={handleMinimize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white"><Minus size={14} /></button>
+            <button onClick={handleMaximize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white">{isMaximized ? <Copy size={12} /> : <Square size={12} />}</button>
+            <button onClick={handleClose} className="h-8 w-8 flex items-center justify-center hover:bg-red-500/80 hover:text-white rounded-lg transition-colors text-white/20 hover:text-white"><X size={14} /></button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Studio Container */}
       <div className="relative w-full max-w-4xl h-[640px] bg-[#0c0c0c] border border-white/5 rounded-2xl overflow-hidden flex shadow-2xl">
