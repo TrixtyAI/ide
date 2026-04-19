@@ -107,12 +107,20 @@ const EditorArea: React.FC = () => {
   }, [openFiles.length]);
 
   // Memory: Clean up Monaco models when files are closed.
-  // Paths are normalized so Windows backslash paths match Monaco's forward-slash URIs.
+  // Normalize separators so Windows backslash paths match Monaco's forward-slash URIs,
+  // and only case-fold on Windows/UNC paths to preserve case-sensitivity on Linux.
+  const openPathKeys = openFiles.map(f => f.path).join("\n");
   React.useEffect(() => {
     if (!monacoRef.current) return;
 
-    const normalize = (p: string) => p.replace(/\\/g, "/").toLowerCase();
-    const openPaths = new Set(openFiles.map(f => normalize(f.path)));
+    const normalize = (p: string) => {
+      const slashed = p.replace(/\\/g, "/");
+      const isWindowsPath = /^[A-Za-z]:\//.test(slashed) || slashed.startsWith("//");
+      return isWindowsPath ? slashed.toLowerCase() : slashed;
+    };
+    const openPaths = new Set(
+      openPathKeys.split("\n").filter(Boolean).map(normalize)
+    );
 
     monacoRef.current.editor.getModels().forEach((model: editor.ITextModel) => {
       if (model.uri.scheme === "inmemory") return;
@@ -120,7 +128,7 @@ const EditorArea: React.FC = () => {
         model.dispose();
       }
     });
-  }, [openFiles]);
+  }, [openPathKeys]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
