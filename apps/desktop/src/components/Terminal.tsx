@@ -14,6 +14,7 @@ const Terminal: React.FC = () => {
   const { t } = useL10n();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
   const initialized = useRef(false);
   const activePtyPath = useRef<string | null | undefined>(undefined); // tracks last spawned path
 
@@ -59,6 +60,7 @@ const Terminal: React.FC = () => {
     term.loadAddon(fitAddon);
     term.open(terminalRef.current);
     xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
 
     term.onData((data) => {
       invoke("write_to_pty", { data }).catch(e => console.error("PTY write error:", e));
@@ -85,6 +87,7 @@ const Terminal: React.FC = () => {
       resizeObserver.disconnect();
       term.dispose();
       xtermRef.current = null;
+      fitAddonRef.current = null;
     };
   }, []);
 
@@ -111,14 +114,26 @@ const Terminal: React.FC = () => {
             xtermRef.current.write(event.payload);
           }
         });
-        
+
         if (isCanceled) {
           u();
           return;
         }
-        
+
         unlisten = u;
-        await invoke("spawn_pty", { cwd: targetPath });
+
+        // Fit the terminal to its container before spawning so the shell
+        // starts with the correct rows/cols and avoids a reflow on the first prompt.
+        const term = xtermRef.current;
+        if (term && fitAddonRef.current && terminalRef.current?.clientWidth) {
+          fitAddonRef.current.fit();
+        }
+
+        await invoke("spawn_pty", {
+          cwd: targetPath,
+          rows: term?.rows,
+          cols: term?.cols,
+        });
       } catch (err) {
         if (!isCanceled && xtermRef.current) {
           xtermRef.current.writeln("\x1b[31m" + t('terminal.error_connect') + "\x1b[0m " + err);
