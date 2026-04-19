@@ -717,6 +717,7 @@ pub fn run() {
             get_registry_catalog,
             fetch_extension_manifest,
             fetch_extension_file,
+            fetch_extension_stars,
             install_extension,
             uninstall_extension,
             update_extension,

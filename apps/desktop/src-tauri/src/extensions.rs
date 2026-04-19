@@ -113,6 +113,54 @@ pub async fn fetch_extension_manifest(
 }
 
 #[tauri::command]
+pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, String> {
+    // Parse owner/repo from a GitHub HTTPS URL. Anything else gracefully returns None.
+    let cleaned = repo_url.trim_end_matches(".git");
+    let prefix = "https://github.com/";
+    if !cleaned.starts_with(prefix) {
+        return Ok(None);
+    }
+    let rest = &cleaned[prefix.len()..];
+    let mut parts = rest.splitn(3, '/');
+    let owner = match parts.next().filter(|s| !s.is_empty()) {
+        Some(o) => o,
+        None => return Ok(None),
+    };
+    let repo = match parts.next().filter(|s| !s.is_empty()) {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+
+    let api_url = format!("https://api.github.com/repos/{}/{}", owner, repo);
+
+    // GitHub API requires a User-Agent header; any failure (network, 403 rate limit,
+    // 404, parse) silently degrades to None so the UI falls back to no-stars display.
+    let client = match reqwest::Client::builder().user_agent("TrixtyIDE").build() {
+        Ok(c) => c,
+        Err(_) => return Ok(None),
+    };
+
+    let response = match client.get(&api_url).send().await {
+        Ok(r) => r,
+        Err(_) => return Ok(None),
+    };
+
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let body: serde_json::Value = match response.json().await {
+        Ok(b) => b,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(body
+        .get("stargazers_count")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as u32))
+}
+
+#[tauri::command]
 pub async fn fetch_extension_file(
     repo_url: String,
     branch: String,

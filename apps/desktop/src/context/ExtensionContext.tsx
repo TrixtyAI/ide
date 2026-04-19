@@ -32,6 +32,7 @@ export interface MarketplaceEntry {
   path?: string;
   manifest?: ExtensionManifest;
   readme?: string; // Loaded dynamically
+  stars?: number; // GitHub stargazers_count, resolved at catalog load time
 }
 
 export interface ExtensionState {
@@ -80,23 +81,31 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const catalogData = await invoke("get_registry_catalog", { url: targetUrl });
       const entries: MarketplaceEntry[] = catalogData.marketplace || [];
 
-      // 2. Fetch the metadata (package.json) for each to get the names, authors...
-      // Doing this concurrently using Promise.all
+      // 2. Fetch the manifest (package.json) and GitHub stars for each entry.
+      // Both requests run concurrently per entry, and allSettled is used so one
+      // failure (e.g. GitHub rate limit on stars) doesn't drop the other data.
       const enrichedEntries = await Promise.all(
         entries.map(async (entry) => {
-          try {
-            const manifest = await invoke("fetch_extension_manifest", {
+          const [manifestResult, starsResult] = await Promise.allSettled([
+            invoke("fetch_extension_manifest", {
               repoUrl: entry.repository || "",
               branch: entry.branch || "main",
               dataUrl: entry.data,
               path: entry.path
-            });
-            return { ...entry, manifest };
-          } catch (e) {
-            console.error(`Error fetching manifest for ${entry.id}`, e);
-            // Return entry without manifest, UI will show generic fallback
-            return entry;
+            }),
+            invoke("fetch_extension_stars", { repoUrl: entry.repository || "" })
+          ]);
+
+          const manifest = manifestResult.status === "fulfilled" ? manifestResult.value : undefined;
+          const stars = starsResult.status === "fulfilled" && starsResult.value != null
+            ? starsResult.value
+            : undefined;
+
+          if (manifestResult.status === "rejected") {
+            console.error(`Error fetching manifest for ${entry.id}`, manifestResult.reason);
           }
+
+          return { ...entry, manifest, stars };
         })
       );
 
