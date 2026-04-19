@@ -1,11 +1,15 @@
 "use client";
 
-import React from "react";
-import { X, FileCode, FileText, FileJson, FileType, Package } from "lucide-react";
+import React, { useState } from "react";
+import { X, FileCode, FileText, FileJson, FileType, Package, CircleOff, ArrowRight, FileCheck, Trash2 } from "lucide-react";
 import { useApp, FileState } from "@/context/AppContext";
+import { useL10n } from "@/hooks/useL10n";
+import ContextMenu, { ContextMenuItem } from "./ui/ContextMenu";
 
 const TabBar: React.FC = () => {
-  const { openFiles, currentFile, setCurrentFile, closeFile } = useApp();
+  const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useApp();
+  const { t } = useL10n();
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetPath: string } | null>(null);
 
   const getFileIcon = (file: FileState) => {
     if (file.type === "virtual") {
@@ -24,6 +28,47 @@ const TabBar: React.FC = () => {
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      targetPath: path
+    });
+  };
+
+  const contextMenuItems: ContextMenuItem[] = contextMenu ? [
+    {
+      label: t('tab.close'),
+      icon: <X size={14} />,
+      shortcut: "Ctrl+F4",
+      onClick: () => closeFile(contextMenu.targetPath)
+    },
+    { separator: true },
+    {
+      label: t('tab.close_others'),
+      icon: <CircleOff size={14} />,
+      onClick: () => closeOthers(contextMenu.targetPath)
+    },
+    {
+      label: t('tab.close_to_right'),
+      icon: <ArrowRight size={14} />,
+      onClick: () => closeToTheRight(contextMenu.targetPath)
+    },
+    {
+      label: t('tab.close_saved'),
+      icon: <FileCheck size={14} />,
+      shortcut: "Ctrl+K U",
+      onClick: () => closeSaved()
+    },
+    {
+      label: t('tab.close_all'),
+      icon: <Trash2 size={14} />,
+      shortcut: "Ctrl+K W",
+      onClick: () => closeAll()
+    }
+  ] : [];
+
   if (openFiles.length === 0) return null;
 
   return (
@@ -34,6 +79,7 @@ const TabBar: React.FC = () => {
           <div
             key={file.path}
             onClick={() => setCurrentFile(file)}
+            onContextMenu={(e) => handleContextMenu(e, file.path)}
             className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-[#1a1a1a] group ${
               isActive
                 ? "bg-[#141414] text-white" 
@@ -63,6 +109,15 @@ const TabBar: React.FC = () => {
           </div>
         );
       })}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };

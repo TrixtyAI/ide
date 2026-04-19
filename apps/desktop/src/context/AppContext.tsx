@@ -27,6 +27,10 @@ interface AppContextType {
 
   openFile: (path: string, name: string, content: string, type?: "file" | "virtual" | "binary") => void;
   closeFile: (path: string) => void;
+  closeOthers: (path: string) => void;
+  closeToTheRight: (path: string) => void;
+  closeSaved: () => void;
+  closeAll: () => void;
   setCurrentFile: (file: FileState | null) => void;
   updateFileContent: (path: string, content: string) => void;
   saveCurrentFile: () => Promise<void>;
@@ -408,6 +412,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [currentFile]);
 
+  const closeOthers = useCallback((path: string) => {
+    setOpenFiles((prev) => {
+      const newFiles = prev.filter((f) => f.path === path);
+      if (currentFile?.path !== path) {
+        setCurrentFile(newFiles[0] || null);
+      }
+      return newFiles;
+    });
+  }, [currentFile]);
+
+  const closeToTheRight = useCallback((path: string) => {
+    setOpenFiles((prev) => {
+      const index = prev.findIndex(f => f.path === path);
+      if (index === -1) return prev;
+      const newFiles = prev.slice(0, index + 1);
+      
+      // If current file was to the right, switch to the target tab
+      if (currentFile && prev.findIndex(f => f.path === currentFile.path) > index) {
+        setCurrentFile(newFiles[index]);
+      }
+      
+      return newFiles;
+    });
+  }, [currentFile]);
+
+  const closeSaved = useCallback(() => {
+    setOpenFiles((prev) => {
+      const newFiles = prev.filter(f => f.isModified);
+      
+      // If current file was closed, switch to the first remaining one
+      if (currentFile && !currentFile.isModified) {
+        setCurrentFile(newFiles.length > 0 ? newFiles[0] : null);
+      }
+      
+      return newFiles;
+    });
+  }, [currentFile]);
+
+  const closeAll = useCallback(() => {
+    setOpenFiles([]);
+    setCurrentFile(null);
+  }, []);
+
   const updateFileContent = useCallback((path: string, content: string) => {
     setOpenFiles((prev) =>
       prev.map((f) =>
@@ -508,6 +555,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rootPath,
         openFile,
         closeFile,
+        closeOthers,
+        closeToTheRight,
+        closeSaved,
+        closeAll,
         setCurrentFile,
         updateFileContent,
         saveCurrentFile,

@@ -379,6 +379,13 @@ export function registerBuiltinTranslations() {
         'agent.common.saving': 'Saving...',
         'agent.common.saved': 'Saved!',
         'agent.tab.configuration': 'Configuration',
+
+        'tab.close': 'Close',
+        'tab.close_others': 'Close Others',
+        'tab.close_to_right': 'Close to the Right',
+        'tab.close_saved': 'Close Saved',
+        'tab.close_all': 'Close All',
+
         'agent.configuration.title': 'Model Management',
         'agent.configuration.desc': 'Configure how Ollama handles model persistence and initialization.',
         'agent.configuration.keepalive_label': 'Keep Alive Duration',
@@ -764,6 +771,13 @@ export function registerBuiltinTranslations() {
         'agent.common.saving': 'Guardando...',
         'agent.common.saved': '¡Guardado!',
         'agent.tab.configuration': 'Configuración',
+
+        'tab.close': 'Cerrar',
+        'tab.close_others': 'Cerrar Otros',
+        'tab.close_to_right': 'Cerrar a la Derecha',
+        'tab.close_saved': 'Cerrar Guardados',
+        'tab.close_all': 'Cerrar Todo',
+
         'agent.configuration.title': 'Gestión del Modelo',
         'agent.configuration.desc': 'Configura cómo Ollama maneja la persistencia e inicialización del modelo.',
         'agent.configuration.keepalive_label': 'Tiempo de persistencia',

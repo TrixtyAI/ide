@@ -92,43 +92,64 @@ const EditorArea: React.FC = () => {
       noSemanticValidation: false,
       noSyntaxValidation: false,
     });
+
+    editor.focus();
   };
 
   // Performance: Efficient Layout handling
   React.useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
+    
+    // Immediate layout
+    editorRef.current.layout();
 
     const resizeObserver = new ResizeObserver(() => {
       editorRef.current?.layout();
     });
 
     resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, [openFiles.length]);
+    
+    // Delayed layout to catch cases where the container might still be expanding
+    const timer = setTimeout(() => {
+      editorRef.current?.layout();
+    }, 50);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timer);
+    };
+  }, [openFiles.length, currentFile?.path]);
 
   // Memory: Clean up Monaco models when files are closed.
-  // Normalize separators so Windows backslash paths match Monaco's forward-slash URIs,
-  // and only case-fold on Windows/UNC paths to preserve case-sensitivity on Linux.
   const openPathKeys = openFiles.map(f => f.path).join("\n");
   React.useEffect(() => {
-    if (!monacoRef.current) return;
+    if (!monacoRef.current || !currentFile) return;
 
     const normalize = (p: string) => {
       const slashed = p.replace(/\\/g, "/");
       const isWindowsPath = /^[A-Za-z]:\//.test(slashed) || slashed.startsWith("//");
-      return isWindowsPath ? slashed.toLowerCase() : slashed;
+      const result = isWindowsPath ? slashed.toLowerCase() : slashed;
+      return result;
     };
-    const openPaths = new Set(
-      openPathKeys.split("\n").filter(Boolean).map(normalize)
-    );
+    
+    const openPathsArray = openFiles.map(f => normalize(f.path));
+    const openPaths = new Set(openPathsArray);
+    const activeModelPath = normalize(currentFile.path);
 
-    monacoRef.current.editor.getModels().forEach((model: editor.ITextModel) => {
-      if (model.uri.scheme === "inmemory") return;
-      if (!openPaths.has(normalize(model.uri.fsPath))) {
+    const models = monacoRef.current.editor.getModels();
+    for (const model of models) {
+      if (model.uri.scheme === "inmemory") continue;
+      
+      const modelPath = normalize(model.uri.fsPath);
+      
+      // Safety: Never dispose of the current file's model
+      if (modelPath === activeModelPath) continue;
+      
+      if (!openPaths.has(modelPath)) {
         model.dispose();
       }
-    });
-  }, [openPathKeys]);
+    }
+  }, [openPathKeys, currentFile?.path]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -182,6 +203,7 @@ const EditorArea: React.FC = () => {
           </div>
         ) : currentFile ? (
           <MonacoEditor
+            key={currentFile.path}
             height="100%"
             language={currentFile.language}
             value={currentFile.content}
@@ -207,7 +229,7 @@ const EditorArea: React.FC = () => {
               roundedSelection: true,
               scrollBeyondLastLine: false,
               readOnly: false,
-              automaticLayout: false, // Performance: Handled by ResizeObserver
+              automaticLayout: true, // Native layout handling
               padding: { top: 15 },
               overviewRulerBorder: false,
               hideCursorInOverviewRuler: true,
