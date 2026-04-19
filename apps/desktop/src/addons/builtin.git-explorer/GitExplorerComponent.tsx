@@ -314,8 +314,8 @@ const GitExplorerComponent: React.FC = () => {
   };
 
   const handleSearchClick = async (r: SearchResult) => {
-    try { const c = await invoke("read_file", { path: r.file_path }); openFile(r.file_path, r.file_name, c); }
-    catch (e) { console.error(e); }
+    try { const c = await invoke("read_file", { path: r.file_path }, { silent: true }); openFile(r.file_path, r.file_name, c); }
+    catch (e) { console.error("[GitExplorer] Failed to read file", r.file_path, e); }
   };
 
   const handleDeleteItem = async (entry: FileEntry) => {
