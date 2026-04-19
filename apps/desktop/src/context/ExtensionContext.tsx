@@ -16,6 +16,7 @@ export interface ExtensionManifest {
   };
   categories?: string[];
   keywords?: string[];
+  icon?: string;
   main?: string;
   engines?: {
     trixty: string;

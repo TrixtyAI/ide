@@ -7,6 +7,46 @@ import remarkGfm from "remark-gfm";
 import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
 import { useL10n } from "@/hooks/useL10n";
 
+function resolveIconUrl(entry: MarketplaceEntry): string | null {
+  const icon = entry.manifest?.icon?.trim();
+  if (!icon) return null;
+  if (/^https?:\/\//i.test(icon)) return icon;
+
+  const repo = entry.repository?.replace(/\.git$/, "");
+  if (!repo?.startsWith("https://github.com/")) return null;
+
+  const base = repo.replace("https://github.com/", "https://raw.githubusercontent.com/");
+  const branch = entry.branch || "main";
+  const subpath = entry.path ? `/${entry.path.replace(/^\/+|\/+$/g, "")}` : "";
+  const cleanIcon = icon.replace(/^\/+/, "");
+  return `${base}/${branch}${subpath}/${cleanIcon}`;
+}
+
+const AddonIcon: React.FC<{
+  entry: MarketplaceEntry;
+  fallbackSize: number;
+  fallbackStrokeWidth?: number;
+  fallbackClassName?: string;
+}> = ({ entry, fallbackSize, fallbackStrokeWidth, fallbackClassName }) => {
+  const [failed, setFailed] = useState(false);
+  const url = resolveIconUrl(entry);
+
+  if (!url || failed) {
+    return <Package size={fallbackSize} strokeWidth={fallbackStrokeWidth} className={fallbackClassName} />;
+  }
+  return (
+    <img
+      src={url}
+      onError={() => setFailed(true)}
+      className="w-full h-full object-contain"
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+    />
+  );
+};
+
 const DetailsView: React.FC<{
   entry: MarketplaceEntry,
   onBack: () => void
@@ -81,8 +121,8 @@ const DetailsView: React.FC<{
 
           <div className="flex gap-8 mb-8">
             {/* Logo */}
-            <div className="w-[128px] h-[128px] bg-white/[0.03] border border-white/5 rounded-xl shadow-sm flex items-center justify-center shrink-0">
-               <Package size={64} strokeWidth={1} className="text-white/20" />
+            <div className="w-[128px] h-[128px] bg-white/[0.03] border border-white/5 rounded-xl shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+              <AddonIcon entry={entry} fallbackSize={64} fallbackStrokeWidth={1} fallbackClassName="text-white/20" />
             </div>
 
             {/* Core Info */}
@@ -260,8 +300,8 @@ const MarketplaceView: React.FC = () => {
                 className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#333] transition-all cursor-pointer group"
               >
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-transparent group-hover:bg-white/10 group-hover:border-white/5 transition-colors">
-                    <Package size={18} className="text-white/40" />
+                  <div className="w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-transparent group-hover:bg-white/10 group-hover:border-white/5 transition-colors overflow-hidden">
+                    <AddonIcon entry={ext} fallbackSize={18} fallbackClassName="text-white/40" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[13px] font-semibold text-white truncate">{ext.manifest?.name || ext.id}</h3>
