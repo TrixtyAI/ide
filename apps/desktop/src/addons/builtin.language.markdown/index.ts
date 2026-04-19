@@ -84,8 +84,8 @@ export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
 			[/\b__([^\\_]|@escapes|_(?!_))+__\b/, 'strong'],
 			[/\*\*(?:[^\\*]|\\.)+\*\*/, 'strong'],
 			[/\b_[^_]+_\b/, 'emphasis'],
-			[/\*(?:@escapes|\\.|[^\\*])+\*/, 'emphasis'],
-			[/`([^\\`]|@escapes)+`/, 'variable'],
+			[/\*([^\\*]|@escapes)+\*/, 'emphasis'],
+			[/`(?:[^\\`]|\\@control)+`/, 'variable'],
 
 			// links
 			[/\{+[^}]+\}+/, 'string.target'],
