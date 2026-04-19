@@ -259,8 +259,17 @@ const GitExplorerComponent: React.FC = () => {
     } else {
       const bins = [".png",".jpg",".jpeg",".gif",".exe",".dll",".bin",".zip",".pdf",".ico",".woff",".woff2",".ttf"];
       if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) return;
-      try { const c = await invoke("read_file", { path: entry.path }); openFile(entry.path, entry.name, c); }
-      catch (e) { if (typeof e === "string" && e.includes("UTF-8")) openFile(entry.path, entry.name, t('editor.bin_file')); }
+      try {
+        const c = await invoke("read_file", { path: entry.path }, { silent: true });
+        openFile(entry.path, entry.name, c);
+      } catch (e) {
+        const msg = typeof e === "string" ? e : String(e);
+        if (msg.includes("UTF-8")) {
+          openFile(entry.path, entry.name, t('editor.bin_file'));
+        } else {
+          console.error("[GitExplorer] Failed to read file", entry.path, e);
+        }
+      }
     }
   };
 
