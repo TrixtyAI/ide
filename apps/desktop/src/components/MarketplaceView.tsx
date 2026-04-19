@@ -133,7 +133,9 @@ const DetailsView: React.FC<{
 
               <div className="flex items-center gap-5 text-[13px] text-[#cccccc] mb-4">
                 <span className="text-[#3794ff] hover:underline cursor-pointer">{entry.manifest?.author || "Unknown"}</span>
-                <span className="flex items-center gap-1.5" title={t('marketplace.github_stars')}><Star size={14} className="text-[#cccccc]" /> {t('marketplace.github_stars')}</span>
+                {entry.stars != null && (
+                  <span className="flex items-center gap-1.5" title={t('marketplace.github_stars')}><Star size={14} className="text-[#cccccc]" /> {entry.stars.toLocaleString()}</span>
+                )}
               </div>
 
               <p className="text-[13px] text-[#cccccc] mb-5 font-medium">
@@ -315,7 +317,12 @@ const MarketplaceView: React.FC = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-[11px] text-[#444]">
-                    v{ext.manifest?.version || "1.0.0"}
+                    <span>v{ext.manifest?.version || "1.0.0"}</span>
+                    {ext.stars != null && (
+                      <span className="flex items-center gap-1" title={t('marketplace.github_stars')}>
+                        <Star size={10} /> {ext.stars.toLocaleString()}
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] font-medium">
                     {installedIds.includes(ext.id) ? (

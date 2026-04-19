@@ -2,7 +2,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::OnceLock;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
+
+// Shared reqwest client for GitHub API calls. Built once on first use so that
+// connection pooling and keep-alive work across the many per-entry calls that
+// `fetch_extension_stars` makes during catalog refresh.
+static GITHUB_CLIENT: OnceLock<Option<reqwest::Client>> = OnceLock::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryCatalog {
@@ -110,6 +117,63 @@ pub async fn fetch_extension_manifest(
         .map_err(|e| format!("JSON Parsing Failed: {}. Raw Response: {}", e, text))?;
 
     Ok(json)
+}
+
+#[tauri::command]
+pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, String> {
+    // Parse owner/repo from a GitHub HTTPS URL. Anything else gracefully returns None.
+    let cleaned = repo_url.trim_end_matches(".git");
+    let prefix = "https://github.com/";
+    if !cleaned.starts_with(prefix) {
+        return Ok(None);
+    }
+    let rest = &cleaned[prefix.len()..];
+    let mut parts = rest.splitn(3, '/');
+    let owner = match parts.next().filter(|s| !s.is_empty()) {
+        Some(o) => o,
+        None => return Ok(None),
+    };
+    let repo = match parts.next().filter(|s| !s.is_empty()) {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+
+    let api_url = format!("https://api.github.com/repos/{}/{}", owner, repo);
+
+    // GitHub API requires a User-Agent header; any failure (network, 403 rate limit,
+    // 404, parse, timeout) silently degrades to None so the UI falls back to no-stars display.
+    let client = match GITHUB_CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .user_agent("TrixtyIDE")
+                .timeout(Duration::from_secs(10))
+                .build()
+                .ok()
+        })
+        .as_ref()
+    {
+        Some(c) => c,
+        None => return Ok(None),
+    };
+
+    let response = match client.get(&api_url).send().await {
+        Ok(r) => r,
+        Err(_) => return Ok(None),
+    };
+
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let body: serde_json::Value = match response.json().await {
+        Ok(b) => b,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(body
+        .get("stargazers_count")
+        .and_then(|v| v.as_u64())
+        .and_then(|n| u32::try_from(n).ok()))
 }
 
 #[tauri::command]

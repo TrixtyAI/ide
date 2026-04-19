@@ -31,6 +31,7 @@ export interface TauriInvokeMap {
   "toggle_extension_state": { args: { id: string; isActive: boolean }; return: void };
   "fetch_extension_manifest": { args: { repoUrl: string; branch: string; dataUrl?: string; path?: string }; return: ExtensionManifest };
   "fetch_extension_file": { args: { repoUrl: string; branch: string; path?: string; fileName: string }; return: string };
+  "fetch_extension_stars": { args: { repoUrl: string }; return: number | null };
   "read_file": { args: { path: string }; return: string };
   "write_file": { args: { path: string; content: string }; return: void };
   "read_directory": { args: { path: string }; return: DirEntry[] };
