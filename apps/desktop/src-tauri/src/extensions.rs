@@ -2,7 +2,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::OnceLock;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
+
+// Shared reqwest client for GitHub API calls. Built once on first use so that
+// connection pooling and keep-alive work across the many per-entry calls that
+// `fetch_extension_stars` makes during catalog refresh.
+static GITHUB_CLIENT: OnceLock<Option<reqwest::Client>> = OnceLock::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryCatalog {
@@ -134,10 +141,19 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
     let api_url = format!("https://api.github.com/repos/{}/{}", owner, repo);
 
     // GitHub API requires a User-Agent header; any failure (network, 403 rate limit,
-    // 404, parse) silently degrades to None so the UI falls back to no-stars display.
-    let client = match reqwest::Client::builder().user_agent("TrixtyIDE").build() {
-        Ok(c) => c,
-        Err(_) => return Ok(None),
+    // 404, parse, timeout) silently degrades to None so the UI falls back to no-stars display.
+    let client = match GITHUB_CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .user_agent("TrixtyIDE")
+                .timeout(Duration::from_secs(10))
+                .build()
+                .ok()
+        })
+        .as_ref()
+    {
+        Some(c) => c,
+        None => return Ok(None),
     };
 
     let response = match client.get(&api_url).send().await {
@@ -157,7 +173,7 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
     Ok(body
         .get("stargazers_count")
         .and_then(|v| v.as_u64())
-        .map(|n| n as u32))
+        .and_then(|n| u32::try_from(n).ok()))
 }
 
 #[tauri::command]
