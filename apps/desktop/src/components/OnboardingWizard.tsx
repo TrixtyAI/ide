@@ -78,10 +78,15 @@ const OnboardingWizard: React.FC = () => {
         if (!mounted) return;
         setIsNativeWindow(true);
         setIsMaximized(maximized);
-        cleanup = await win.onResized(async () => {
+        const unlisten = await win.onResized(async () => {
           const m = await win.isMaximized();
           setIsMaximized(m);
         });
+        if (!mounted) {
+          unlisten();
+          return;
+        }
+        cleanup = unlisten;
       } catch {}
     })();
 
