@@ -1,0 +1,30 @@
+name: Dependencies
+description: Report a dependency that needs updating or is causing issues.
+title: "[Deps]: "
+labels: ["dependencies"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!NOTE]
+        > Use this template to request a dependency update or report issues with current dependencies.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the dependency issue
+      description: Which dependency needs attention and why?
+      placeholder: e.g. Update react to v19...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to submit a PR for this dependency update?
+      multiple: false
+      options:
+        - 'Yes'
+        - 'No'
+    validations:
+      required: true

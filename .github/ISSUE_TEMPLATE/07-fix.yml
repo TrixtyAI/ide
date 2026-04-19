@@ -1,0 +1,55 @@
+name: Fix
+description: Submit or suggest a specific fix.
+title: "[Fix]: "
+labels: ["Fix"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > If you have a fix ready, please open a Pull Request directly. Use this template if you want to suggest a specific code fix but cannot open a PR yet.
+
+  - type: textarea
+    attributes:
+      label: Describe the fix
+      description: A clear and concise description of what the fix is.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Context / Problem
+      description: Why is this fix necessary? (Reference an existing issue if applicable)
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Trixty Version
+      description:
+      placeholder: 'vx.x.x'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: What operating system are you using?
+      multiple: false
+      options:
+        - Windows
+        - MacOS
+        - Linux
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to implement this fix yourself by sending a PR?
+      multiple: false
+      options:
+        - 'Yes'
+        - 'No'
+    validations:
+      required: true

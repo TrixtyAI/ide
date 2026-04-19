@@ -1,0 +1,30 @@
+name: Documentation
+description: Report missing or incorrect documentation.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!NOTE]
+        > Help us improve our documentation. If you found a typo or missing info, please let us know.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the documentation issue
+      description: What is missing or needs to be fixed?
+      placeholder: Describe the documentation issue here...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to fix this documentation issue yourself by sending a PR?
+      multiple: false
+      options:
+        - 'Yes'
+        - 'No'
+    validations:
+      required: true

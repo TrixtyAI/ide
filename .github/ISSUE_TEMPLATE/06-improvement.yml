@@ -1,0 +1,29 @@
+name: Improvement
+description: Suggest an improvement to existing functionality.
+title: "[Improvement]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!NOTE]
+        > Use this template for minor improvements to existing features. For brand new features, use the "Feature" template.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the improvement
+      description: A clear and concise description of what you want to improve.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to implement this improvement yourself by sending a PR?
+      multiple: false
+      options:
+        - 'Yes'
+        - 'No'
+    validations:
+      required: true
