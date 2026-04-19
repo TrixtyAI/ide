@@ -8,6 +8,21 @@ export interface SearchResult {
   content: string;
 }
 
+export interface GitLogEntry {
+  hash: string;
+  short_hash: string;
+  author: string;
+  email: string;
+  timestamp: number;
+  subject: string;
+}
+
+export interface GitStashEntry {
+  index: number;
+  ref_name: string;
+  message: string;
+}
+
 export interface DirEntry {
   name: string;
   path: string;
@@ -58,9 +73,22 @@ export interface TauriInvokeMap {
   "get_git_branches": { args: { path: string }; return: { branches: string[]; current: string } };
   "git_checkout_branch": { args: { path: string; branch: string }; return: string };
   "git_create_branch": { args: { path: string; branch: string }; return: string };
+  "git_pull": { args: { path: string; rebase?: boolean }; return: string };
+  "git_fetch": { args: { path: string }; return: string };
+  "git_log": { args: { path: string; limit?: number }; return: GitLogEntry[] };
+  "git_merge": { args: { path: string; branch: string }; return: string };
+  "git_reset": { args: { path: string; mode: "soft" | "mixed" | "hard"; target: string }; return: string };
+  "git_revert": { args: { path: string; commit: string }; return: string };
+  "git_stash": { args: { path: string; message?: string }; return: string };
+  "git_stash_pop": { args: { path: string; index?: number }; return: string };
+  "git_stash_apply": { args: { path: string; index: number }; return: string };
+  "git_stash_drop": { args: { path: string; index: number }; return: string };
+  "git_stash_list": { args: { path: string }; return: GitStashEntry[] };
+  "git_restore": { args: { path: string; files: string[] }; return: string };
+  "get_git_file_diff": { args: { path: string; file: string; staged: boolean }; return: string };
   "get_git_diff": { args: { path: string }; return: string };
   "git_init": { args: { path: string }; return: string };
-  "git_commit": { args: { path: string; message: string }; return: string };
+  "git_commit": { args: { path: string; message: string; amend?: boolean }; return: string };
   "git_push": { args: { path: string }; return: string };
   "search_in_project": { args: { query: string; rootPath: string }; return: SearchResult[] };
   "read_extension_script": { args: { id: string }; return: string };
