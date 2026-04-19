@@ -16,6 +16,8 @@ pub fn spawn_pty<R: Runtime>(
     app: AppHandle<R>,
     state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
     cwd: Option<String>,
+    rows: Option<u16>,
+    cols: Option<u16>,
 ) -> Result<(), String> {
     // If session exists, it will be replaced (dropping old resources kills the previous PTY)
 
@@ -51,8 +53,8 @@ pub fn spawn_pty<R: Runtime>(
 
     let pair = pty_system
         .openpty(PtySize {
-            rows: 24,
-            cols: 80,
+            rows: rows.unwrap_or(24),
+            cols: cols.unwrap_or(80),
             pixel_width: 0,
             pixel_height: 0,
         })
