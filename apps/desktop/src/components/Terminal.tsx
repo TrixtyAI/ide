@@ -16,7 +16,6 @@ const Terminal: React.FC = () => {
   const xtermRef = useRef<Xterm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initialized = useRef(false);
-  const activePtyPath = useRef<string | null | undefined>(undefined); // tracks last spawned path
 
   // 1. Initialize Xterm once on mount
   useEffect(() => {
@@ -96,10 +95,6 @@ const Terminal: React.FC = () => {
     if (!xtermRef.current) return;
 
     const targetPath = terminalPath || rootPath || undefined;
-
-    // Skip if we're already running a PTY for this exact path
-    if (activePtyPath.current !== undefined && activePtyPath.current === targetPath) return;
-    activePtyPath.current = targetPath ?? null;
 
     let isCanceled = false;
     let unlisten: (() => void) | undefined;
