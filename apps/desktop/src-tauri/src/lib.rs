@@ -365,10 +365,23 @@ async fn get_git_branches(path: String) -> Result<GitBranches, String> {
     Ok(GitBranches { branches, current })
 }
 
+// Reject names that git would interpret as an option flag. Prevents callers
+// from smuggling `--orphan`, `--detach`, etc. through the branch argument.
+fn validate_branch_name(branch: &str) -> Result<(), String> {
+    if branch.is_empty() {
+        return Err("Branch name cannot be empty".to_string());
+    }
+    if branch.starts_with('-') {
+        return Err("Branch name cannot start with '-'".to_string());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn git_checkout_branch(path: String, branch: String) -> Result<String, String> {
+    validate_branch_name(&branch)?;
     let output = silent_command("git")
-        .args(["checkout", &branch])
+        .args(["switch", &branch])
         .current_dir(&path)
         .output()
         .map_err(|e| e.to_string())?;
@@ -382,8 +395,9 @@ async fn git_checkout_branch(path: String, branch: String) -> Result<String, Str
 
 #[tauri::command]
 async fn git_create_branch(path: String, branch: String) -> Result<String, String> {
+    validate_branch_name(&branch)?;
     let output = silent_command("git")
-        .args(["checkout", "-b", &branch])
+        .args(["switch", "-c", &branch])
         .current_dir(&path)
         .output()
         .map_err(|e| e.to_string())?;
