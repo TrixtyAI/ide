@@ -37,7 +37,7 @@ export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
       ],
 
       comment: [
-        [/-->/, 'comment', '@pop'],
+        [/--!?>/, 'comment', '@pop'],
         [/[^-]+/, 'comment.content'],
         [/./, 'comment.content']
       ],
