@@ -8,8 +8,13 @@ on:
 env:
   NODE_VERSION: 24
 
+env:
+  NODE_VERSION: 24
+
 jobs:
-  test-build:
+  release:
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -48,8 +53,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: install dependencies
+      - name: install frontend dependencies
         run: pnpm install --no-frozen-lockfile
+
+      - name: Sync version
+        run: pnpm version:sync
 
       - name: Build check (Tauri)
         uses: tauri-apps/tauri-action@v0.6.2
