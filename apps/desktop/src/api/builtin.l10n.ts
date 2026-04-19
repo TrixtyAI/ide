@@ -227,7 +227,7 @@ export function registerBuiltinTranslations() {
         'terminal.error_connect': 'Error connecting to terminal: ',
         'editor.empty_desc': 'Select a file from the explorer to begin',
         'editor.view_not_found': 'View not found',
-        'editor.bin_file': '--- BINARY ---',
+        'editor.bin_file': 'The file is not displayed in the text editor because it is either binary or uses an unsupported text encoding.',
 
         'onboarding.welcome': 'Welcome',
         'onboarding.language': 'Language',
@@ -557,7 +557,7 @@ export function registerBuiltinTranslations() {
         'terminal.error_connect': 'Error al conectar con la terminal: ',
         'editor.empty_desc': 'Selecciona un archivo del explorador para comenzar',
         'editor.view_not_found': 'Vista no encontrada',
-        'editor.bin_file': '--- BINARIO ---',
+        'editor.bin_file': 'El archivo no se muestra en el editor de texto porque es binario o utiliza una codificación de texto no compatible.',
 
         'onboarding.welcome': 'Bienvenida',
         'onboarding.language': 'Idioma',

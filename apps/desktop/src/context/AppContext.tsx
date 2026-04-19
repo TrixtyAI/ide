@@ -9,7 +9,7 @@ export interface FileState {
   content: string;
   isModified: boolean;
   language: string;
-  type?: "file" | "virtual";
+  type?: "file" | "virtual" | "binary";
 }
 
 interface AppContextType {
@@ -25,7 +25,7 @@ interface AppContextType {
 
   setLocale: (locale: string) => void;
 
-  openFile: (path: string, name: string, content: string, type?: "file" | "virtual") => void;
+  openFile: (path: string, name: string, content: string, type?: "file" | "virtual" | "binary") => void;
   closeFile: (path: string) => void;
   setCurrentFile: (file: FileState | null) => void;
   updateFileContent: (path: string, content: string) => void;
@@ -371,7 +371,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
 
-  const openFile = useCallback((path: string, name: string, content: string, type: "file" | "virtual" = "file") => {
+  const openFile = useCallback((path: string, name: string, content: string, type: "file" | "virtual" | "binary" = "file") => {
     setOpenFiles((prev) => {
       const existing = prev.find((f) => f.path === path);
       if (existing) {
@@ -421,6 +421,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveCurrentFile = async () => {
     if (!currentFile) return;
+    // Only real file tabs are writable. Virtual tabs have no on-disk path,
+    // and binary tabs carry an empty content string that would overwrite the file.
+    if (currentFile.type && currentFile.type !== "file") return;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("write_file", { path: currentFile.path, content: currentFile.content });
