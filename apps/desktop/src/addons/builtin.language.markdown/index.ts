@@ -81,8 +81,8 @@ export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
 			[/@escapes/, 'escape'],
 
 			// various markup
-			[/\b__(?:@escapes|[^\\_]|_(?!_))+__\b/, 'strong'],
-			[/\*\*([^\\*]|@escapes|\*(?!\*))+\*\*/, 'strong'],
+			[/\b__([^\\_]|@escapes|_(?!_))+__\b/, 'strong'],
+			[/\*\*(?:[^\\*]|\\.)+\*\*/, 'strong'],
 			[/\b_[^_]+_\b/, 'emphasis'],
 			[/\*([^\\*]|@escapes)+\*/, 'emphasis'],
 			[/`([^\\`]|@escapes)+`/, 'variable'],
