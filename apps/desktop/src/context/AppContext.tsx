@@ -421,6 +421,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveCurrentFile = async () => {
     if (!currentFile) return;
+    // Only real file tabs are writable. Virtual tabs have no on-disk path,
+    // and binary tabs carry an empty content string that would overwrite the file.
+    if (currentFile.type && currentFile.type !== "file") return;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("write_file", { path: currentFile.path, content: currentFile.content });

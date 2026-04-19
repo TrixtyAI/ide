@@ -258,7 +258,10 @@ const GitExplorerComponent: React.FC = () => {
       if (!exp && (!entry.children || entry.children.length === 0)) await loadDirectory(entry.path, entry.path);
     } else {
       const bins = [".png",".jpg",".jpeg",".gif",".exe",".dll",".bin",".zip",".pdf",".ico",".woff",".woff2",".ttf"];
-      if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) return;
+      if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) {
+        openFile(entry.path, entry.name, "", "binary");
+        return;
+      }
       try {
         const c = await invoke("read_file", { path: entry.path }, { silent: true });
         openFile(entry.path, entry.name, c);
