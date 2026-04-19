@@ -55,7 +55,9 @@ export interface TauriInvokeMap {
   "git_unstage": { args: { path: string; files: string[] }; return: void };
   "git_add_safe_directory": { args: { path: string }; return: void };
   "get_git_status": { args: { path: string }; return: string };
-  "get_git_branches": { args: { path: string }; return: string[] };
+  "get_git_branches": { args: { path: string }; return: { branches: string[]; current: string } };
+  "git_checkout_branch": { args: { path: string; branch: string }; return: string };
+  "git_create_branch": { args: { path: string; branch: string }; return: string };
   "get_git_diff": { args: { path: string }; return: string };
   "git_init": { args: { path: string }; return: string };
   "git_commit": { args: { path: string; message: string }; return: string };
