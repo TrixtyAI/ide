@@ -154,31 +154,32 @@ const GitExplorerComponent: React.FC = () => {
   const refreshGit = useCallback(async () => {
     if (!rootPath) return;
     try {
-      const status = await invoke("get_git_status", { path: rootPath });
-      if (status) {
-        setIsGitRepo(true);
-        const lines = status.split("\n").filter((l: string) => l.trim());
-        // Porcelain v1: XY filename
-        // X = staged status, Y = unstaged status
-        const staged: GitFileChange[] = [];
-        const unstaged: GitFileChange[] = [];
-        for (const l of lines) {
-          const x = l[0]; // staged
-          const y = l[1]; // unstaged
-          const file = l.substring(3).trim();
-          if (x !== " " && x !== "?") staged.push({ status: x, file });
-          if (y !== " " && y !== "?") unstaged.push({ status: y, file });
-          // Untracked files (??) go to unstaged
-          if (x === "?" && y === "?") unstaged.push({ status: "??", file });
-        }
-        setStagedChanges(staged);
-        setGitChanges(unstaged);
+      const status = await invoke("get_git_status", { path: rootPath }, { silent: true });
+      setIsGitRepo(true);
+      const lines = status.split("\n").filter((l: string) => l.trim());
+      // Porcelain v1: XY filename
+      // X = staged status, Y = unstaged status
+      const staged: GitFileChange[] = [];
+      const unstaged: GitFileChange[] = [];
+      for (const l of lines) {
+        const x = l[0]; // staged
+        const y = l[1]; // unstaged
+        const file = l.substring(3).trim();
+        if (x !== " " && x !== "?") staged.push({ status: x, file });
+        if (y !== " " && y !== "?") unstaged.push({ status: y, file });
+        // Untracked files (??) go to unstaged
+        if (x === "?" && y === "?") unstaged.push({ status: "??", file });
       }
+      setStagedChanges(staged);
+      setGitChanges(unstaged);
       const bl = await invoke("get_git_branches", { path: rootPath });
       setBranches(bl);
       if (bl.length > 0) setCurrentBranch(bl[0]);
     } catch (err) {
-      const errStr = String(err);
+      const errStr = String(err).toLowerCase();
+      const isNotGitRepoError =
+        errStr.includes("not a git repository") ||
+        errStr.includes("must be run in a work tree");
       if (errStr.includes("dubious ownership")) {
         const shouldFix = window.confirm(
           `${t('git.explorer.safe_dir_title')}\n\n${t('git.explorer.safe_dir_desc', { path: rootPath })}\n\n(This runs: git config --global --add safe.directory)`
@@ -193,10 +194,14 @@ const GitExplorerComponent: React.FC = () => {
             console.error("[Git safe dir fix error]", fixErr);
           }
         }
-      } else {
+      } else if (!isNotGitRepoError) {
         console.error("[Git refresh error]", err);
       }
       setIsGitRepo(false);
+      setStagedChanges([]);
+      setGitChanges([]);
+      setBranches([]);
+      setCurrentBranch("");
     }
   }, [rootPath]);
 
