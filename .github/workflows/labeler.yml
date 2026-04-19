@@ -17,8 +17,5 @@ jobs:
     steps:
       - name: Labeler Action
         uses: jimschubert/labeler-action@v2
-        with:
-          # The configuration file is expected at .github/labeler.yml by default
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
