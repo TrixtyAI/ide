@@ -162,22 +162,7 @@ const AiChatComponent: React.FC = () => {
     };
     fetchModels();
   }, [aiSettings.endpoint, selectedModel, proxyFetch]);
-  
-  // Check for updates on mount
-  useEffect(() => {
-    const checkUpdate = async () => {
-        try {
-            const update = await check();
-            if (update) setAvailableUpdate(update);
-        } catch (e) {
-            // Silently fail in dev if no updater server is configured
-            if (process.env.NODE_ENV !== 'development') {
-                console.error("Update check failed", e);
-            }
-        }
-    };
-    checkUpdate();
-  }, []);
+
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -534,42 +519,7 @@ const AiChatComponent: React.FC = () => {
     updateAISettings({ ...aiSettings, deepMode: !aiSettings.deepMode });
   };
 
-  const handleCheckUpdate = async () => {
-    try {
-      setUpdateStatus(t('ai.status.checking'));
-      const update = await check();
-      if (update) {
-        setUpdateStatus(t('ai.status.downloading_v', { version: update.version }));
-        let downloaded = 0;
-        let contentLength = 0;
-        await update.downloadAndInstall((event) => {
-          switch (event.event) {
-            case 'Started':
-              contentLength = event.data.contentLength as number;
-              break;
-            case 'Progress':
-              downloaded += event.data.chunkLength;
-              if (contentLength > 0) {
-                const progress = Math.round((downloaded / contentLength) * 100).toString();
-                setUpdateStatus(t('ai.status.downloading', { progress }));
-              }
-              break;
-            case 'Finished':
-              setUpdateStatus(t('ai.status.relaunching'));
-              break;
-          }
-        });
-        await relaunch();
-      } else {
-        setUpdateStatus(t('ai.status.up_to_date'));
-        setTimeout(() => setUpdateStatus(null), 3000);
-      }
-    } catch (err) {
-      console.error(err);
-      setUpdateStatus(t('ai.status.failed'));
-      setTimeout(() => setUpdateStatus(null), 3000);
-    }
-  };
+
 
   const openExternal = async (url: string) => {
     try {
