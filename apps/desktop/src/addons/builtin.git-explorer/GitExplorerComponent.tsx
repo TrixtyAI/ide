@@ -317,10 +317,12 @@ const GitExplorerComponent: React.FC = () => {
   const handleDiscard = async (file: string) => {
     if (!rootPath) return;
     if (!(await ask(t('git.discard.confirm', { file }), { title: 'Trixty IDE', kind: 'warning' }))) return;
+    setGitLoading(true);
     try {
       await invoke("git_restore", { path: rootPath, files: [file] });
       await refreshGit();
     } catch (e) { flash(t('git.error', { message: String(e) })); }
+    finally { setGitLoading(false); }
   };
   const handleViewDiff = async (file: string, staged: boolean) => {
     if (!rootPath) return;
@@ -797,9 +799,12 @@ const GitExplorerComponent: React.FC = () => {
                     <GitCommit size={13} /> {amendMode ? t('git.action.amend') : t('git.commit_button')}
                   </button>
                   <div className="relative" ref={commitMenuRef}>
-                    <button onClick={() => setCommitMenuOpen(!commitMenuOpen)} disabled={gitLoading}
-                      aria-label="Commit options"
-                      className={`h-full px-1.5 flex items-center justify-center bg-white text-black rounded-r-lg transition-all active:scale-95 hover:bg-white/90 ${(!commitMessage.trim() || gitLoading || hasConflicts) ? "opacity-30" : ""}`}>
+                    <button onClick={() => setCommitMenuOpen(!commitMenuOpen)}
+                      disabled={!commitMessage.trim() || gitLoading || hasConflicts}
+                      aria-label={t('git.action.commit_options')}
+                      aria-haspopup="menu"
+                      aria-expanded={commitMenuOpen}
+                      className={`h-full px-1.5 flex items-center justify-center bg-white text-black rounded-r-lg transition-all disabled:opacity-30 active:scale-95 hover:bg-white/90`}>
                       <ChevronDown size={12} />
                     </button>
                     {commitMenuOpen && (
@@ -913,9 +918,9 @@ const GitExplorerComponent: React.FC = () => {
                         <Archive size={12} className="text-[#555] shrink-0" />
                         <span className="truncate flex-1 text-[#999]" title={s.message}>{s.message || s.ref_name}</span>
                         <button onClick={() => handleStashPop(s.index)} title={t('git.action.stash_pop')}
-                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">pop</button>
+                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">{t('git.action.stash_pop')}</button>
                         <button onClick={() => handleStashApply(s.index)} title={t('git.action.stash_apply')}
-                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">apply</button>
+                          className="px-1.5 py-0.5 text-[10px] text-[#888] hover:text-white transition-all rounded">{t('git.action.stash_apply')}</button>
                         <button onClick={() => handleStashDrop(s)} title={t('git.action.stash_drop')}
                           className="opacity-40 group-hover:opacity-100 p-0.5 text-[#888] hover:text-red-400 transition-all rounded">
                           <Trash2 size={12} />

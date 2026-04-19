@@ -510,6 +510,9 @@ async fn git_merge(path: String, branch: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn git_reset(path: String, mode: String, target: String) -> Result<String, String> {
+    if target.is_empty() || target.starts_with('-') {
+        return Err("Invalid reset target".to_string());
+    }
     let mode_flag = match mode.as_str() {
         "soft" => "--soft",
         "hard" => "--hard",
@@ -530,6 +533,9 @@ async fn git_reset(path: String, mode: String, target: String) -> Result<String,
 
 #[tauri::command]
 async fn git_revert(path: String, commit: String) -> Result<String, String> {
+    if commit.is_empty() || commit.starts_with('-') {
+        return Err("Invalid commit reference".to_string());
+    }
     let output = silent_command("git")
         .args(["revert", "--no-edit", &commit])
         .current_dir(&path)
@@ -786,7 +792,11 @@ async fn get_git_file_diff(path: String, file: String, staged: bool) -> Result<S
         .output()
         .map_err(|e| e.to_string())?;
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
 }
 
 #[tauri::command]
