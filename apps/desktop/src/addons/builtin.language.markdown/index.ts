@@ -82,15 +82,15 @@ export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
 
 			// various markup
 			[/\b__([^\\_]|@escapes|_(?!_))+__\b/, 'strong'],
-			[/\*\*([^\\*]|@escapes|\*(?!\*))+\*\*/, 'strong'],
+			[/\*\*(?:[^\\*]|\\.)+\*\*/, 'strong'],
 			[/\b_[^_]+_\b/, 'emphasis'],
 			[/\*([^\\*]|@escapes)+\*/, 'emphasis'],
-			[/`([^\\`]|@escapes)+`/, 'variable'],
+			[/`(?:[^\\`]|\\@control)+`/, 'variable'],
 
 			// links
 			[/\{+[^}]+\}+/, 'string.target'],
 			[/(!?\[)((?:[^\]\\]|@escapes)*)(\]\([^\)]+\))/, ['string.link', '', 'string.link']],
-			[/(!?\[)((?:[^\]\\]|@escapes)*)(\])/, 'string.link'],
+			[/(!?\[)((?:\\.|[^\]\\])*)(\])/, 'string.link'],
 
 			// or html
 			{ include: 'html' },
@@ -117,7 +117,7 @@ export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
 
 		comment: [
 			[/[^<\-]+/, 'comment.content'],
-			[/-->/, 'comment', '@pop'],
+			[/--!?>/, 'comment', '@pop'],
 			[/<!--/, 'comment.content.invalid'],
 			[/[<\-]/, 'comment.content']
 		],
