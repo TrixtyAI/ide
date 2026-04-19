@@ -101,15 +101,16 @@ export function generateAwarenessBlock(params: {
     locale: string;
   };
   skills: { id: string, name: string, active: boolean }[];
+  docs: { id: string, name: string, active: boolean }[];
   mode: string;
   rootPath: string | null;
   projectTreeSummary: string[];
   internetAccess?: string;
 }) {
-  const { system, stack, settings, skills, mode, rootPath, projectTreeSummary, internetAccess } = params;
+  const { system, stack, settings, skills, docs, mode, rootPath, projectTreeSummary, internetAccess } = params;
 
   const activeSkills = skills.filter(s => s.active).map(s => s.name).join(", ") || "None";
-  const disabledSkills = skills.filter(s => !s.active).map(s => s.name).join(", ") || "None";
+  const activeDocsList = docs.filter(s => s.active).map(s => s.name).join(", ") || "None";
 
   return `
 ### ENVIRONMENT_AWARENESS
@@ -120,7 +121,7 @@ export function generateAwarenessBlock(params: {
 
 ### CAPABILITY_INVENTORY
 - **Active Skills**: ${activeSkills}
-- **Disabled Skills**: ${disabledSkills}
+- **Active Documentation**: ${activeDocsList}
 - **Current Mode**: ${mode.toUpperCase()}
 - **Internet Access**: ${internetAccess || "Disabled"}
 - **Available Tools**: ${rootPath && mode === 'agent' ? "All IDE tools enabled" : "Restricted (No direct execution)"}

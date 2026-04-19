@@ -60,7 +60,7 @@ const AiChatComponent: React.FC = () => {
   } = useApp();
   const {
     aggregatedPrompt, chatMode, setChatMode, getSystemPrompt,
-    skills, activeSkills, refreshAgentData
+    skills, activeSkills, docs, activeDocs, refreshAgentData
   } = useAgent();
   const { t } = useL10n();
 
@@ -333,6 +333,7 @@ const AiChatComponent: React.FC = () => {
           locale: locale
         },
         skills: skills.map(s => ({ id: s.id, name: s.name, active: activeSkills.includes(s.id) })),
+        docs: docs.map(d => ({ id: d.id, name: d.name, active: activeDocs.includes(d.id) })),
         mode: chatMode,
         rootPath,
         internetAccess: chatMode === 'agent' ? "Enabled (via web_search tool)" : "Disabled",

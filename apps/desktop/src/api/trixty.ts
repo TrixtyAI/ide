@@ -224,6 +224,7 @@ class WorkspaceRegistry {
 
 class AgentRegistry {
     private activeSkills = new Set<string>();
+    private activeDocs = new Set<string>();
     private listeners = new Set<() => void>();
 
     private notify() {
@@ -242,6 +243,20 @@ class AgentRegistry {
 
     getActiveSkills(): string[] {
         return Array.from(this.activeSkills);
+    }
+
+    registerDoc(id: string) {
+        this.activeDocs.add(id);
+        this.notify();
+    }
+
+    unregisterDoc(id: string) {
+        this.activeDocs.delete(id);
+        this.notify();
+    }
+
+    getActiveDocs(): string[] {
+        return Array.from(this.activeDocs);
     }
 
     subscribe(listener: () => void): () => void {
