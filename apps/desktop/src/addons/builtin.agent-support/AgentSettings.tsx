@@ -46,7 +46,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
       return (
         <div className="flex flex-col items-center justify-center py-20 px-10 text-center animate-in fade-in duration-500">
           <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-            <AlertCircle size={32} className="text-amber-500/50" />
+            <AlertCircle size={32} strokeWidth={1.5} className="text-amber-500/50" />
           </div>
           <h4 className="text-white font-bold text-lg mb-2">{t('git.no_repo')}</h4>
           <p className="text-[13px] text-[#666] max-w-sm leading-relaxed">
@@ -63,12 +63,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex gap-4">
               <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
-                <Bot size={32} className="text-blue-400" />
+                <Bot size={32} strokeWidth={1.5} className="text-blue-400" />
               </div>
               <div>
                 <h4 className="text-white font-bold text-lg leading-tight">Trixty AI Agent</h4>
                 <p className="text-[11px] text-blue-400/80 font-mono mt-1 flex items-center gap-1">
-                  <Lock size={10} /> {t('agent.profile.protected')}
+                  <Lock size={10} strokeWidth={1.5} /> {t('agent.profile.protected')}
                 </p>
                 <p className="text-[12px] text-[#777] mt-2 leading-relaxed">
                   {t('agent.profile.protected_desc')}
@@ -105,7 +105,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
               >
-                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? <CheckCircle2 size={14} strokeWidth={1.5} /> : (isSaving ? <RefreshCw size={14} strokeWidth={1.5} className="animate-spin" /> : <Save size={14} strokeWidth={1.5} />)}
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
@@ -130,7 +130,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
               >
-                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? <CheckCircle2 size={14} strokeWidth={1.5} /> : (isSaving ? <RefreshCw size={14} strokeWidth={1.5} className="animate-spin" /> : <Save size={14} strokeWidth={1.5} />)}
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
@@ -155,7 +155,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
               >
-                {saveSuccess ? <CheckCircle2 size={14} /> : (isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />)}
+                {saveSuccess ? <CheckCircle2 size={14} strokeWidth={1.5} /> : (isSaving ? <RefreshCw size={14} strokeWidth={1.5} className="animate-spin" /> : <Save size={14} strokeWidth={1.5} />)}
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
@@ -174,7 +174,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
             <div className="grid grid-cols-1 gap-2">
               {skills.length === 0 ? (
                 <div className="p-10 border border-dashed border-[#222] rounded-2xl flex flex-col items-center justify-center text-center">
-                  <Sparkles size={32} className="text-[#222] mb-3" />
+                  <Sparkles size={32} strokeWidth={1.5} className="text-[#222] mb-3" />
                   <p className="text-[11px] text-[#444]">{t('agent.skills.none')}</p>
                 </div>
               ) : (
@@ -192,7 +192,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${
                         activeSkills.includes(skill.id) ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-[#111] border-white/5 text-[#444]"
                       }`}>
-                        <Sparkles size={18} />
+                        <Sparkles size={18} strokeWidth={1.5} />
                       </div>
                       <div>
                         <h5 className={`text-[13px] font-bold ${activeSkills.includes(skill.id) ? "text-white" : "text-[#777]"}`}>{skill.name}</h5>
@@ -241,7 +241,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 <p className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
                 
                 <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex gap-3">
-                   <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                   <AlertCircle size={16} strokeWidth={1.5} className="text-amber-500 shrink-0 mt-0.5" />
                    <p className="text-[11px] text-amber-500/80 leading-relaxed italic">
                      {t('agent.configuration.keepalive_warning')}
                    </p>
@@ -272,7 +272,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 <div className="p-4 bg-amber-500/[0.03] border border-amber-500/10 rounded-2xl flex gap-4 backdrop-blur-sm relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/10 shrink-0 relative z-10 shadow-inner">
-                    <AlertTriangle size={18} className="text-amber-500/70" />
+                    <AlertTriangle size={18} strokeWidth={1.5} className="text-amber-500/70" />
                   </div>
                   <div className="relative z-10 flex items-center">
                     <h5 className="text-[12px] font-bold text-amber-500/90 tracking-tight leading-tight">

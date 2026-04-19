@@ -192,7 +192,7 @@ const OnboardingWizard: React.FC = () => {
         {/* Left Sidebar Navigator */}
         <div className="w-64 border-r border-white/5 bg-[#080808] flex flex-col p-8 select-none" data-tauri-drag-region>
           <div className="flex items-center gap-3 mb-10 opacity-80 pointer-events-none">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
             <span className="font-bold tracking-tight text-white/90">Trixty IDE</span>
@@ -208,7 +208,7 @@ const OnboardingWizard: React.FC = () => {
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? "bg-white/[0.05] text-white" : "text-white/30"
                     }`}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-all ${isActive ? "border-blue-500 text-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" :
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-all ${isActive ? "border-blue-500 text-blue-500" :
                       isCompleted ? "border-green-500 bg-green-500 text-black border-green-500" : "border-white/10"
                     }`}>
                     {isCompleted ? "✓" : idx + 1}
@@ -335,7 +335,7 @@ const OnboardingWizard: React.FC = () => {
                       <div className="bg-[#080808] border border-white/5 rounded-2xl p-8 font-mono shadow-inner group relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-blue-500/40 h-full" />
                         <div style={{ fontSize: `${editorSettings.fontSize}px`, lineHeight: `${editorSettings.lineHeight}px` }} className="text-white/90">
-                          <span className="text-purple-400">const</span> trixty = <span className="text-blue-400">"Modern IDE"</span>;
+                          <span className="text-purple-400">const</span> trixty = <span className="text-blue-400">&quot;Modern IDE&quot;</span>;
                         </div>
                       </div>
 

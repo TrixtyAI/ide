@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Package, Download, Star, Search, ChevronLeft, Power, Trash2, RefreshCw } from "lucide-react";
+import { Package, Download, Star, Search, ChevronLeft, Power, Trash2, RefreshCw, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
@@ -25,13 +25,14 @@ function resolveIconUrl(entry: MarketplaceEntry): string | null {
 const AddonIcon: React.FC<{
   entry: MarketplaceEntry;
   fallbackSize: number;
+  fallbackStrokeWidth?: number;
   fallbackClassName?: string;
-}> = ({ entry, fallbackSize, fallbackClassName }) => {
+}> = ({ entry, fallbackSize, fallbackStrokeWidth, fallbackClassName }) => {
   const [failed, setFailed] = useState(false);
   const url = resolveIconUrl(entry);
 
   if (!url || failed) {
-    return <Package size={fallbackSize} className={fallbackClassName} />;
+    return <Package size={fallbackSize} strokeWidth={fallbackStrokeWidth} className={fallbackClassName} />;
   }
   return (
     <img
@@ -120,8 +121,8 @@ const DetailsView: React.FC<{
 
           <div className="flex gap-8 mb-8">
             {/* Logo */}
-            <div className="w-[128px] h-[128px] bg-[#ff8a65] rounded-xl shadow-md flex items-center justify-center shrink-0 overflow-hidden">
-              <AddonIcon entry={entry} fallbackSize={64} fallbackClassName="text-white/90" />
+            <div className="w-[128px] h-[128px] bg-white/[0.03] border border-white/5 rounded-xl shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+              <AddonIcon entry={entry} fallbackSize={64} fallbackStrokeWidth={1} fallbackClassName="text-white/20" />
             </div>
 
             {/* Core Info */}
@@ -146,19 +147,19 @@ const DetailsView: React.FC<{
                     {t('marketplace.not_available')}
                   </span>
                 ) : !isInstalled ? (
-                  <button onClick={handleInstall} disabled={loadingAction !== null} className="bg-[#007acc] text-white text-[13px] font-medium px-6 py-1.5 hover:bg-[#0062a3] disabled:opacity-50 transition-colors">
+                  <button onClick={handleInstall} disabled={loadingAction !== null} className="bg-blue-600 text-white text-[13px] font-medium px-6 py-1.5 rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/10">
                     {loadingAction === "install" ? t('marketplace.installing') : t('marketplace.install_button')}
                   </button>
                 ) : (
                   <>
-                    <button onClick={handleUpdate} disabled={loadingAction !== null} className="bg-[#007acc] text-white text-[13px] font-medium px-4 py-1.5 hover:bg-[#0062a3] flex items-center gap-2 disabled:opacity-50 transition-colors" title="Update locally">
-                      {loadingAction === "update" ? <RefreshCw size={13} className="animate-spin" /> : null}
+                    <button onClick={handleUpdate} disabled={loadingAction !== null} className="bg-blue-600 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg hover:bg-blue-500 flex items-center gap-2 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/10" title="Update locally">
+                      {loadingAction === "update" ? <RefreshCw size={13} strokeWidth={1.5} className="animate-spin" /> : null}
                       {t('marketplace.update_button', { version: entry.manifest?.version || "Latest" })}
                     </button>
-                    <button onClick={handleToggleActive} disabled={loadingAction !== null} className="bg-[#333333] text-white text-[13px] font-medium px-4 py-1.5 rounded-none hover:bg-[#444444] disabled:opacity-50 transition-colors">
+                    <button onClick={handleToggleActive} disabled={loadingAction !== null} className="bg-white/5 border border-white/10 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors">
                       {isActive ? t('marketplace.disable_button') : t('marketplace.enable_button')}
                     </button>
-                    <button onClick={handleUninstall} disabled={loadingAction !== null} className="bg-[#333333] text-white text-[13px] font-medium px-4 py-1.5 rounded-none hover:bg-[#444444] disabled:opacity-50 transition-colors">
+                    <button onClick={handleUninstall} disabled={loadingAction !== null} className="bg-white/5 border border-white/10 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors">
                       {t('marketplace.uninstall_button')}
                     </button>
                   </>
@@ -219,8 +220,8 @@ const DetailsView: React.FC<{
             {/* Resources */}
             <div>
               <h3 className="text-white font-medium mb-3 border-b border-[#2d2d2d] pb-1">{t('marketplace.metadata.resources')}</h3>
-              <ul className="space-y-2 text-[#3794ff]">
-                <li><a href={entry.repository} target="_blank" className="hover:underline flex items-center gap-3"><div className="w-[14px] h-[14px] bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cccccc%22 stroke-width=%222%22><path d=%22M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7%22/></svg>')] bg-center bg-no-repeat shrink-0"></div> {t('marketplace.metadata.repository')}</a></li>
+              <ul className="space-y-2 text-blue-400">
+                <li><a href={entry.repository} target="_blank" className="hover:underline flex items-center gap-3"><ExternalLink size={14} strokeWidth={1.5} className="text-[#555]" /> {t('marketplace.metadata.repository')}</a></li>
               </ul>
             </div>
           </div>

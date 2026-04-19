@@ -68,12 +68,11 @@ const ActivityBar: React.FC = () => {
         );
       })}
       <div className="mt-auto flex flex-col gap-1 items-center">
-        {/* Extensions Marketplace (Core Static) */}
         <button
           onClick={() => handleTabClick("extensions")}
           className="w-[40px] h-[40px] flex mb-1 items-center justify-center rounded-lg text-[#555] hover:text-white/80 hover:bg-white/5 transition-all group relative"
         >
-          <Package size={20} strokeWidth={1.5} />
+          <Package size={18} strokeWidth={1.5} />
           <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1a1a1a] text-white text-[11px] rounded-md border border-[#2a2a2a] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity shadow-xl">
             {t('extensions.title')}
           </div>
@@ -84,7 +83,7 @@ const ActivityBar: React.FC = () => {
           className={`w-[40px] h-[40px] flex items-center justify-center rounded-lg transition-all group relative ${activeSidebarTab === "settings" ? "text-white bg-white/10" : "text-[#555] hover:text-white/80 hover:bg-white/5"
             }`}
         >
-          <Settings size={20} strokeWidth={1.5} />
+          <Settings size={18} strokeWidth={1.5} />
           <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1a1a1a] text-white text-[11px] rounded-md border border-[#2a2a2a] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity shadow-xl">
             {t('settings.title')}
           </div>

@@ -174,7 +174,8 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
 
     let mut results = Vec::new();
     let query_lower = query.to_lowercase();
-    let max_results = 500;
+    let max_results = 200; // Reduced for performance
+    let max_file_size = 500 * 1024; // 500KB limit for search indexing
 
     for entry in WalkDir::new(&root_path)
         .into_iter()
@@ -185,6 +186,8 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
                 && name != "target"
                 && name != ".next"
                 && name != "dist"
+                && name != "build"
+                && name != ".next"
         })
         .filter_map(|e| e.ok())
     {
@@ -194,14 +197,27 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
 
         let path = entry.path();
         if path.is_file() {
+            // Performance: Skip files based on extension or size
+            let metadata = match entry.metadata() {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+
+            if metadata.len() > max_file_size {
+                continue;
+            }
+
             let file = match File::open(path) {
                 Ok(f) => f,
                 Err(_) => continue,
             };
 
             let reader = BufReader::new(file);
+            // Optimization: Read line by line but with a limit on line length to avoid CPU spikes on minified files
             for (index, line_result) in reader.lines().enumerate() {
                 if let Ok(line) = line_result {
+                    if line.len() > 1000 { continue; } // Skip very long lines (minified)
+                    
                     if line.to_lowercase().contains(&query_lower) {
                         results.push(SearchResult {
                             file_path: path.to_string_lossy().to_string(),
@@ -214,7 +230,7 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
                         }
                     }
                 } else {
-                    break; // Skip binary files
+                    break; // Likely binary
                 }
             }
         }

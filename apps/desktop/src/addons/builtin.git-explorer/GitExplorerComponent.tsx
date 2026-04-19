@@ -4,7 +4,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, Search,
   GitBranch, GitCommit, Upload, Plus, Sparkles, ChevronUp,
-  FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, Settings, History, ClipboardPaste, FileCode, Trash2
+  FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, Settings, History, ClipboardPaste, FileCode, Trash2,
+  Minus
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { open, ask } from "@tauri-apps/plugin-dialog";
@@ -53,26 +54,26 @@ const GitExplorerComponent: React.FC = () => {
     setLoading(true);
     try {
       const data = await invoke("read_directory", { path });
-      
+
       // Filtering logic
       const patterns = systemSettings.filesExclude || [];
       const isMatch = pm(patterns, { dot: true });
-      
+
       const filtered = data.filter((entry: FileEntry) => {
         if (!rootPath) return true;
-        
+
         // Match against name
         if (isMatch(entry.name)) return false;
-        
+
         // Match against relative path from root
         const relPath = entry.path.replace(rootPath, "").replace(/^[\\\/]/, "").replace(/\\/g, "/");
         if (relPath && isMatch(relPath)) return false;
-        
+
         return true;
       });
 
       const sorted = filtered.sort((a, b) => (b.is_dir ? 1 : 0) - (a.is_dir ? 1 : 0) || a.name.localeCompare(b.name));
-      
+
       if (!parentPath) { setEntries(sorted); } else {
         setEntries((prev) => {
           const update = (items: FileEntry[]): FileEntry[] => items.map((i) => {
@@ -98,15 +99,15 @@ const GitExplorerComponent: React.FC = () => {
   // Auto-Reveal Logic
   useEffect(() => {
     if (!currentFile || !rootPath || !currentFile.path.startsWith(rootPath)) return;
-    
+
     const relativePath = currentFile.path.replace(rootPath, "");
     const parts = relativePath.split("/").filter(Boolean);
-    
+
     if (parts.length > 0) {
       const newExpanded = { ...expandedDirs };
       let currentPath = rootPath;
       let changed = false;
-      
+
       // We don't expand the file itself, only its parents
       for (let i = 0; i < parts.length - 1; i++) {
         currentPath += (currentPath.endsWith("/") ? "" : "/") + parts[i];
@@ -117,7 +118,7 @@ const GitExplorerComponent: React.FC = () => {
           loadDirectory(currentPath, currentPath);
         }
       }
-      
+
       if (changed) {
         setExpandedDirs(newExpanded);
       }
@@ -234,13 +235,13 @@ const GitExplorerComponent: React.FC = () => {
     try {
       const diff = await invoke("get_git_diff", { path: rootPath });
       if (!diff.trim()) { flash(t('git.status.no_staged_changes')); setAiSuggestLoading(false); return; }
-      
+
       const res = await fetch(`${aiSettings.endpoint || "http://localhost:11434"}/api/generate`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           model: "llama3", // Or choose a better default if needed
-          prompt: `Based on this git diff, write a concise commit message in conventional commits format. Output ONLY the message.\n\n${diff.substring(0, 3000)}`, 
-          stream: false 
+          prompt: `Based on this git diff, write a concise commit message in conventional commits format. Output ONLY the message.\n\n${diff.substring(0, 3000)}`,
+          stream: false
         }),
       });
       const data = await res.json();
@@ -276,10 +277,10 @@ const GitExplorerComponent: React.FC = () => {
 
   const handleDeleteItem = async (entry: FileEntry) => {
     const isFolder = entry.is_dir;
-    const confirmMsg = isFolder 
+    const confirmMsg = isFolder
       ? t('git.explorer.delete_folder_confirm', { name: entry.name })
       : t('git.explorer.delete_file_confirm', { name: entry.name });
-    
+
     if (await ask(confirmMsg, { title: 'Trixty IDE', kind: 'warning' })) {
       try {
         await invoke("delete_path", { path: entry.path });
@@ -326,17 +327,17 @@ const GitExplorerComponent: React.FC = () => {
             <button onClick={handleOpenFolder} className="p-1 text-[#444] hover:text-white transition-colors rounded"><FolderOpen size={13} /></button>
           </div>
         } />
-        <div 
+        <div
           className="flex-1 overflow-y-auto py-1 scrollbar-thin relative"
           onContextMenu={(ev) => {
             if (ev.currentTarget === ev.target) {
               ev.preventDefault();
               // Right click on empty area - target root
               if (rootPath) {
-                setContextMenu({ 
-                  x: ev.clientX, 
-                  y: ev.clientY, 
-                  entry: { name: "", path: rootPath, is_dir: true } 
+                setContextMenu({
+                  x: ev.clientX,
+                  y: ev.clientY,
+                  entry: { name: "", path: rootPath, is_dir: true }
                 });
               }
             }
@@ -345,14 +346,14 @@ const GitExplorerComponent: React.FC = () => {
           {!rootPath ? <Empty title={t('explorer.title')} icon={<Folder size={40} strokeWidth={1} />} /> : (
             (function render(items: FileEntry[], level = 0): React.ReactNode {
               const currentItems = [...items];
-              
+
               return (
                 <>
                   {items.map((e) => {
                     const isActive = currentFile?.path === e.path;
                     return (
                       <div key={e.path}>
-                        <div 
+                        <div
                           onClick={() => handleEntryClick(e)}
                           onContextMenu={(ev) => {
                             ev.preventDefault();
@@ -370,7 +371,7 @@ const GitExplorerComponent: React.FC = () => {
                           {e.is_dir ? <Folder size={15} className={`${isActive ? 'text-white' : 'text-[#666]'}`} /> : <File size={15} className={`${isActive ? 'text-white' : 'text-[#444]'}`} />}
                           <span className={`truncate text-[12px] ${isActive ? 'font-medium' : ''}`}>{e.name}</span>
                         </div>
-                        
+
                         {/* New Item Input Inline */}
                         {newEntry && newEntry.parentPath === e.path && expandedDirs[e.path] && (
                           <div style={{ paddingLeft: `${(level + 1) * 14 + 12}px` }} className="flex items-center py-1 gap-2">
@@ -393,7 +394,7 @@ const GitExplorerComponent: React.FC = () => {
                       </div>
                     );
                   })}
-                  
+
                   {/* Handle new entry in the root */}
                   {newEntry && newEntry.parentPath === rootPath && level === 0 && (
                     <div style={{ paddingLeft: "12px" }} className="flex items-center py-1 gap-2">
@@ -571,9 +572,7 @@ const GitExplorerComponent: React.FC = () => {
                     <span className="truncate flex-1 text-[#999]">{c.file}</span>
                     <button onClick={() => handleUnstage(c.file)} title={t('git.action.unstage')}
                       className="opacity-0 group-hover:opacity-100 p-0.5 text-[#555] hover:text-white transition-all rounded">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
+                      <Minus size={13} strokeWidth={1.5} />
                     </button>
                   </div>
                 );
@@ -600,10 +599,7 @@ const GitExplorerComponent: React.FC = () => {
                       <span className="truncate flex-1 text-[#999]">{c.file}</span>
                       <button onClick={() => handleStage(c.file)} title={t('git.action.stage')}
                         className="opacity-0 group-hover:opacity-100 p-0.5 text-[#555] hover:text-white transition-all rounded">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="5" x2="12" y2="19"/>
-                          <line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
+                        <Plus size={13} strokeWidth={1.5} />
                       </button>
                     </div>
                   );
