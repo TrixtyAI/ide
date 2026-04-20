@@ -1,4 +1,3 @@
-import React from "react";
 import { trixty } from "@/api/trixty";
 import { logger } from "@/lib/logger";
 

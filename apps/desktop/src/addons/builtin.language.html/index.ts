@@ -1,4 +1,3 @@
-import { trixty } from "@/api/trixty";
 import { logger } from "@/lib/logger";
 
 export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
