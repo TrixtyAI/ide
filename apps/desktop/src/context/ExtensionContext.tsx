@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
 
@@ -61,7 +61,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [catalog, setCatalog] = useState<MarketplaceEntry[]>([]);
   const [installedIds, setInstalledIds] = useState<string[]>([]);
   const [activeIds, setActiveIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refreshCatalog = async () => {
@@ -114,13 +114,12 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const installed = await invoke("get_installed_extensions");
       setInstalledIds(installed);
 
-      // 4. Check active states
-      const active: string[] = [];
-      for (const id of installed) {
-        const isAct = await invoke("is_extension_active", { id });
-        if (isAct) active.push(id);
-      }
-      setActiveIds(active);
+      // 4. Check active states in parallel so N installed extensions cost one
+      // round-trip window instead of N serial awaits.
+      const activeFlags = await Promise.all(
+        installed.map((id) => invoke("is_extension_active", { id }))
+      );
+      setActiveIds(installed.filter((_, i) => activeFlags[i]));
 
     } catch (e) {
       setError(String(e));
@@ -129,10 +128,6 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    refreshCatalog();
-  }, []);
 
   const installExtension = async (entry: MarketplaceEntry) => {
     // If it's a repo-based, we pass the repo url. If they define "data" url only,

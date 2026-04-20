@@ -235,11 +235,21 @@ const DetailsView: React.FC<{
 };
 
 const MarketplaceView: React.FC = () => {
-  const { catalog, installedIds, loading, error } = useExtensions();
+  const { catalog, installedIds, loading, error, refreshCatalog } = useExtensions();
   const { t } = useL10n();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedEntry, setSelectedEntry] = useState<MarketplaceEntry | null>(null);
+
+  // Load the remote catalog lazily: the marketplace used to fetch registry +
+  // per-entry manifests + GitHub stars on every boot even when the user never
+  // opened it. We now defer that work to the first mount of this view.
+  useEffect(() => {
+    if (catalog.length === 0 && !loading && !error) {
+      refreshCatalog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (selectedEntry) {
     return <DetailsView entry={selectedEntry} onBack={() => setSelectedEntry(null)} />;
