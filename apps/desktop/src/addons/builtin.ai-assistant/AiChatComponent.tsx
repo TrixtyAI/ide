@@ -81,11 +81,16 @@ const AiChatComponent: React.FC = () => {
 
   useEffect(() => {
     // Load last used model from storage
+    let cancelled = false;
     const loadLastModel = async () => {
       const savedModel = await trixtyStore.get<string | null>("trixty_ai_last_model", null);
+      if (cancelled) return;
       if (savedModel) setSelectedModel(savedModel);
     };
     loadLastModel();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -128,37 +133,52 @@ const AiChatComponent: React.FC = () => {
     fetchTree();
   }, [rootPath]);
 
-  // Fetch Ollama models
+  // Fetch Ollama models.
+  // `selectedModel` is intentionally NOT in the dependency array: the effect
+  // itself writes to it, which would otherwise retrigger the fetch in a loop.
+  // We use the functional form of `setSelectedModel` to read the latest value
+  // without taking a dependency on it.
   useEffect(() => {
+    let cancelled = false;
     const fetchModels = async () => {
       try {
         setOllamaStatus('checking');
         const response = await proxyFetch(`${aiSettings.endpoint}/api/tags`);
         const data = await response.json();
+        if (cancelled) return;
         if (data.models) {
-          const models = data.models;
+          const models: OllamaModel[] = data.models;
           setModels(models);
           setOllamaStatus('connected');
           if (models.length > 0) {
-            trixtyStore.get<string | null>("trixty_ai_last_model", null).then(savedModel => {
-              const exists = models.find((m: { name: string }) => m.name === savedModel);
-              if (savedModel && exists) {
-                setSelectedModel(savedModel);
-              } else if (!selectedModel && models.length > 0) {
-                setSelectedModel(models[0].name);
-              }
-            });
+            const savedModel = await trixtyStore.get<string | null>("trixty_ai_last_model", null);
+            if (cancelled) return;
+            const exists = models.find((m) => m.name === savedModel);
+            if (savedModel && exists) {
+              setSelectedModel(savedModel);
+            } else {
+              // Validate the current `prev` against the freshly fetched list too —
+              // switching endpoints (e.g. to a different Ollama instance) can leave
+              // `prev` pointing at a model that no longer exists.
+              setSelectedModel((prev) =>
+                prev && models.some((m) => m.name === prev) ? prev : models[0].name
+              );
+            }
           }
         } else {
-           setOllamaStatus('not_found');
+          setOllamaStatus('not_found');
         }
       } catch (err) {
+        if (cancelled) return;
         console.error("Failed to fetch Ollama models:", err);
         setOllamaStatus('not_found');
       }
     };
     fetchModels();
-  }, [aiSettings.endpoint, selectedModel, proxyFetch]);
+    return () => {
+      cancelled = true;
+    };
+  }, [aiSettings.endpoint, proxyFetch]);
 
 
   useEffect(() => {
