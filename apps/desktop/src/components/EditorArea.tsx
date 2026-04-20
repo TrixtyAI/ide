@@ -155,6 +155,7 @@ const EditorArea: React.FC = () => {
         model.dispose();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPathKeys, currentFile?.path]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Settings, Package, Code2 } from "lucide-react";
+import { Settings, Package } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { trixty, WebviewView } from "@/api/trixty";
 import { useL10n } from "@/hooks/useL10n";
-import logoWhite from "@/assets/branding/logo-white.png";
 
 const ActivityBar: React.FC = () => {
   const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, setSidebarOpen, openFile, setSettingsOpen } = useApp();

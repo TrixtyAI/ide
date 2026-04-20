@@ -36,6 +36,7 @@ const TitleBar: React.FC = () => {
       >
         {/* Logo */}
         <div className="w-5 h-5 shrink-0 flex items-center justify-center pt-0.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoWhite.src} alt="Trixty Logo" className="w-4 h-4 object-contain brightness-100" />
         </div>
 

@@ -1,4 +1,3 @@
-import { trixty } from "@/api/trixty";
 import { logger } from "@/lib/logger";
 
 // Re-exporting core definitions for internal use

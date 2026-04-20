@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, Brain, Code2, ChevronDown, ListRestart, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock } from "lucide-react";
+import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useAgent } from "@/context/AgentContext";
 import ReactMarkdown from "react-markdown";
@@ -12,6 +12,7 @@ import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
 import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { logger } from "@/lib/logger";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -40,7 +41,6 @@ type OllamaChatMessage =
 
 const AiChatComponent: React.FC = () => {
   const {
-    isRightPanelOpen,
     setRightPanelOpen,
     rootPath,
     openFiles,
@@ -58,7 +58,7 @@ const AiChatComponent: React.FC = () => {
     locale
   } = useApp();
   const {
-    aggregatedPrompt, chatMode, setChatMode, getSystemPrompt,
+    chatMode, setChatMode, getSystemPrompt,
     skills, activeSkills, docs, activeDocs, refreshAgentData
   } = useAgent();
   const { t } = useL10n();
@@ -73,7 +73,6 @@ const AiChatComponent: React.FC = () => {
   const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const [projectTree, setProjectTree] = useState<string[]>([]);
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
-  const [toolResults, setToolResults] = useState<Record<string, string | number | boolean | string[]>>({});
   const menuRef = useRef<HTMLDivElement>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -127,7 +126,7 @@ const AiChatComponent: React.FC = () => {
         const files = await invoke("get_recursive_file_list", { rootPath });
         setProjectTree(files);
       } catch (err) {
-        console.error("Failed to fetch project tree:", err);
+        logger.error("Failed to fetch project tree:", err);
       }
     };
     fetchTree();
@@ -170,7 +169,7 @@ const AiChatComponent: React.FC = () => {
         }
       } catch (err) {
         if (cancelled) return;
-        console.error("Failed to fetch Ollama models:", err);
+        logger.error("Failed to fetch Ollama models:", err);
         setOllamaStatus('not_found');
       }
     };
@@ -234,11 +233,12 @@ const AiChatComponent: React.FC = () => {
           warningShown = true;
         }
       } catch (err) {
-        console.error("System monitor error:", err);
+        logger.error("System monitor error:", err);
       }
     }, 2000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTyping, aiSettings.freezeProtection, activeSessionId]);
 
 
@@ -282,7 +282,7 @@ const AiChatComponent: React.FC = () => {
           // Refresh context so the memory visualizer updates
           try {
             await refreshAgentData();
-          } catch(e) {}
+          } catch {}
           return "Memory updated successfully.";
         default:
           return `Error: Unknown tool ${name}`;
@@ -309,7 +309,7 @@ const AiChatComponent: React.FC = () => {
         keep_alive: 0
       });
     } catch (err) {
-      console.error("Failed to unload model:", err);
+      logger.error("Failed to unload model:", err);
     }
   };
 
@@ -413,7 +413,7 @@ const AiChatComponent: React.FC = () => {
             if (!response.ok && aiSettings.deepMode) {
                 const errorData = await response.json();
                 if (response.status === 400 || (errorData.error && errorData.error.includes("think"))) {
-                    console.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
+                    logger.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
                   const reqBody = { ...body, think: false };
                     response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", reqBody);
                 }
@@ -517,7 +517,7 @@ const AiChatComponent: React.FC = () => {
     try {
       const { open } = await import("@tauri-apps/plugin-shell");
       await open(url);
-    } catch (e) {
+    } catch {
       window.open(url, '_blank');
     }
   };
@@ -711,7 +711,7 @@ const AiChatComponent: React.FC = () => {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, className, children, ...props }) {
+                        code({ className, children, ...props }) {
                           return (
                             <code className={`${className} bg-[#0e0e0e] px-1 py-0.5 rounded text-white/80 font-mono text-[12px]`} {...props}>
                               {children}

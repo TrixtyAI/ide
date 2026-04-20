@@ -7,6 +7,7 @@ import { listen } from "@tauri-apps/api/event";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
+import { logger } from "@/lib/logger";
 import "@xterm/xterm/css/xterm.css";
 
 const Terminal: React.FC = () => {
@@ -15,7 +16,6 @@ const Terminal: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const initialized = useRef(false);
 
   // 1. Initialize Xterm once on mount
   useEffect(() => {
@@ -62,7 +62,7 @@ const Terminal: React.FC = () => {
     fitAddonRef.current = fitAddon;
 
     term.onData((data) => {
-      invoke("write_to_pty", { data }).catch(e => console.error("PTY write error:", e));
+      invoke("write_to_pty", { data }).catch(e => logger.error("PTY write error:", e));
     });
 
     const resizeObserver = new ResizeObserver(() => {
@@ -71,7 +71,7 @@ const Terminal: React.FC = () => {
         invoke("resize_pty", {
           rows: term.rows,
           cols: term.cols
-        }).catch(e => console.error("PTY resize error:", e));
+        }).catch(e => logger.error("PTY resize error:", e));
       }
     });
     resizeObserver.observe(terminalRef.current);
@@ -91,7 +91,7 @@ const Terminal: React.FC = () => {
       // when the component unmounts (e.g. the bottom panel is closed).
       // `kill_pty` returns Ok even with no active PTY, so any rejection here is a
       // real failure (IPC missing, mutex poisoned, etc.) and worth surfacing.
-      invoke("kill_pty").catch((e) => console.error("PTY cleanup error:", e));
+      invoke("kill_pty").catch((e) => logger.error("PTY cleanup error:", e));
     };
   }, []);
 
@@ -147,6 +147,7 @@ const Terminal: React.FC = () => {
       isCanceled = true;
       if (unlisten) unlisten();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalPath, rootPath]);
 
   return <div ref={terminalRef} className="w-full p-3 h-full" />;

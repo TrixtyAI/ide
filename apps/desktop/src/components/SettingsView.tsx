@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Languages,
   Type,
-  Palette,
   Globe,
   Info,
   ChevronRight,
@@ -16,7 +15,6 @@ import {
   AlertTriangle,
   Trash2,
   Plus,
-  Search as SearchIcon,
   Bot,
   RefreshCw
 } from "lucide-react";
@@ -24,13 +22,12 @@ import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
+import { logger } from "@/lib/logger";
 import logoWhite from "@/assets/branding/logo-white.png";
 import AgentSettings from "@/addons/builtin.agent-support/AgentSettings";
 
 const SettingsView: React.FC = () => {
   const {
-    aiSettings,
-    updateAISettings,
     editorSettings,
     updateEditorSettings,
     locale,
@@ -52,7 +49,7 @@ const SettingsView: React.FC = () => {
     if (isSettingsOpen && activeCategory === "about" && !systemInfo) {
       invoke("get_trixty_about_info")
         .then(setSystemInfo)
-        .catch(console.error);
+        .catch(logger.error);
     }
   }, [isSettingsOpen, activeCategory, systemInfo]);
 
@@ -307,6 +304,7 @@ Node.js: ${systemInfo.node_version}
               <div className="p-8 border-b border-[#1a1a1a] flex items-center justify-between">
                 <div className="flex items-center gap-5">
                   <div className="w-14 h-14 bg-white/[0.03] rounded-2xl flex items-center justify-center border border-white/5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={logoWhite.src} alt="Trixty Logo" className="w-8 h-8 object-contain" />
                   </div>
                   <div>

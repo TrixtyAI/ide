@@ -1,5 +1,6 @@
 import { safeInvoke as invoke, DirEntry } from "@/api/tauri";
 import { AISettings, EditorSettings, SystemSettings } from "@/context/AppContext";
+import { logger } from "@/lib/logger";
 
 export interface SystemInfo {
   os_name: string;
@@ -30,7 +31,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
       memory_usage: health.memory_usage
     };
   } catch (err) {
-    console.error("Failed to fetch system info:", err);
+    logger.error("Failed to fetch system info:", err);
     return {
       os_name: "Unknown",
       os_version: "Unknown",
@@ -85,7 +86,7 @@ export async function detectProjectStack(rootPath: string | null): Promise<Proje
       }
     }
   } catch (err) {
-    console.error("Stack detection failed:", err);
+    logger.error("Stack detection failed:", err);
   }
 
   return stack;

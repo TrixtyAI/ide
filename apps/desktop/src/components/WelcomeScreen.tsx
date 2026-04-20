@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { Plus, FolderOpen, Search, Command, BookOpen, Terminal } from "lucide-react";
+import { FolderOpen, Terminal } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const WelcomeScreen: React.FC = () => {
-  const { handleOpenFolder, setRightPanelOpen, setActiveSidebarTab, setSidebarOpen, setBottomPanelOpen } = useApp();
+  const { handleOpenFolder, setBottomPanelOpen } = useApp();
   const { t } = useL10n();
   const shortcuts = [
     //{ label: t('welcome.shortcut.new_project'), keys: ["Ctrl", "Alt", "N"], icon: Plus, action: () => { } },
@@ -19,6 +19,7 @@ const WelcomeScreen: React.FC = () => {
     <div className="h-full w-full flex flex-col items-center justify-center bg-[#0e0e0e] text-[#666]">
       <div className="mb-12 flex flex-col items-center">
         <div className="w-24 h-24  flex items-center justify-center mb-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoWhite.src} alt="Trixty Logo" className="w-14 h-14 object-contain" />
         </div>
         <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">{t('welcome.title')}</h1>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import ActivityBar from "@/components/ActivityBar";
 import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
 import EditorArea from "@/components/EditorArea";
@@ -14,12 +14,6 @@ import OnboardingWizard from "@/components/OnboardingWizard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function Home() {
   const {

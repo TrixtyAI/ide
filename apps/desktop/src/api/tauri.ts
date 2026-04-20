@@ -1,5 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { type MarketplaceEntry, type ExtensionManifest } from "@/context/ExtensionContext";
+import { logger } from "@/lib/logger";
 
 export interface SearchResult {
   file_path: string;
@@ -143,14 +144,14 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
       return await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
     } catch (error) {
       if (!options.silent) {
-        console.error(`[Tauri Invoke Error] ${cmd}:`, error);
+        logger.error(`[Tauri Invoke Error] ${cmd}:`, error);
       }
       throw error;
     }
   }
 
   // Graceful degradation for browser development
-  console.warn(`[Tauri Mock] Command ignored (not in Tauri): ${cmd}`, payload);
+  logger.warn(`[Tauri Mock] Command ignored (not in Tauri): ${cmd}`, payload);
   
   // Return empty/default values for common commands to avoid UI breakage
   const defaults: Partial<{ [K in keyof TauriInvokeMap]: TauriInvokeMap[K]["return"] }> = {

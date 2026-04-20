@@ -18,7 +18,7 @@ class TrixtyStore {
 
     if (!isTauri()) {
       if (!this.hasLoggedBrowserFallback) {
-        console.warn("[Store] Tauri runtime not detected. Falling back to localStorage.");
+        logger.warn("[Store] Tauri runtime not detected. Falling back to localStorage.");
         this.hasLoggedBrowserFallback = true;
       }
       return;
@@ -34,7 +34,7 @@ class TrixtyStore {
         // Migration from localStorage
         await this.migrateFromLocalStorage();
       } catch (e) {
-        console.error(`[Store] Failed to initialize store:`, e);
+        logger.error(`[Store] Failed to initialize store:`, e);
         this.initPromise = null; // Allow retry on failure
         throw e;
       }
@@ -70,7 +70,7 @@ class TrixtyStore {
             await this.store.set(key, parsed);
             migratedSomething = true;
           } catch (e) {
-            console.error(`[Store] Failed to migrate ${key}:`, e);
+            logger.error(`[Store] Failed to migrate ${key}:`, e);
           }
         }
       }

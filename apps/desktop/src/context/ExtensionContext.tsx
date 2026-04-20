@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
-import { useApp } from "./AppContext"; // For rootPath or generic alerts if needed
+import { logger } from "@/lib/logger";
 
 export interface ExtensionManifest {
   name: string;
@@ -63,7 +63,6 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activeIds, setActiveIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { rootPath } = useApp();
 
   const refreshCatalog = async () => {
     setLoading(true);
@@ -102,7 +101,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             : undefined;
 
           if (manifestResult.status === "rejected") {
-            console.error(`Error fetching manifest for ${entry.id}`, manifestResult.reason);
+            logger.error(`Error fetching manifest for ${entry.id}`, manifestResult.reason);
           }
 
           return { ...entry, manifest, stars };
@@ -125,7 +124,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     } catch (e) {
       setError(String(e));
-      console.error("Failed to load extensions", e);
+      logger.error("Failed to load extensions", e);
     } finally {
       setLoading(false);
     }
@@ -194,7 +193,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             fileName: fileName
         });
         return text;
-      } catch (e) {
+      } catch {
          return "";
       }
   }, []);

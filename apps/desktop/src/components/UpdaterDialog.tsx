@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Download, X, ArrowUpCircle, RefreshCw, CheckCircle2 } from "lucide-react";
 import { safeInvoke } from "@/api/tauri";
 import { listen } from "@tauri-apps/api/event";
-import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
 
@@ -16,18 +15,6 @@ type UpdaterState =
   | { phase: "ready" }
   | { phase: "error"; message: string }
   | { phase: "up-to-date" };
-
-interface GitHubAsset {
-  name: string;
-  browser_download_url: string;
-  digest?: string;
-}
-
-interface GitHubRelease {
-  assets: GitHubAsset[];
-  prerelease: boolean;
-  name: string;
-}
 
 const UpdaterDialog: React.FC = () => {
   const { t } = useL10n();
@@ -56,7 +43,7 @@ const UpdaterDialog: React.FC = () => {
       });
 
     } catch (err) {
-      console.warn("[Updater] Check failed:", err);
+      logger.warn("[Updater] Check failed:", err);
       if (isManual) setState({ phase: "error", message: "Check failed. No release exists or network error." });
     }
   }, []);
