@@ -68,7 +68,6 @@ interface AppContextType {
 }
 
 export interface SystemSettings {
-  updateChannel: "stable" | "insiders";
   hasCompletedOnboarding: boolean;
   filesExclude: string[];
 }
@@ -127,7 +126,6 @@ const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
 };
 
 const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-  updateChannel: "stable",
   hasCompletedOnboarding: false,
   filesExclude: [
     '**/.git',

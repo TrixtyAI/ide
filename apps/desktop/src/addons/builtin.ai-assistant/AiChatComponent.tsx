@@ -69,12 +69,10 @@ const AiChatComponent: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const [availableUpdate, setAvailableUpdate] = useState<{ downloadAndInstall: (cb: (e: { event: string; data?: unknown }) => void) => Promise<void>; version: string; body?: string } | null>(null);
-  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const [projectTree, setProjectTree] = useState<string[]>([]);
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
   const [toolResults, setToolResults] = useState<Record<string, string | number | boolean | string[]>>({});
-  const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
