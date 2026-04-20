@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAgent } from "@/context/AgentContext";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
@@ -22,9 +22,43 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   } = useAgent();
   const { aiSettings, updateAISettings } = useApp();
   const { t } = useL10n();
-  const [localContent, setLocalContent] = useState("");
+
+  const getInitialContent = (tab: AgentSettingsProps['activeTab']) => {
+    switch (tab) {
+      case 'manual': return agents || '';
+      case 'design': return design || '';
+      case 'user': return userContext || '';
+      default: return '';
+    }
+  };
+
+  const [localContent, setLocalContent] = useState(() => getInitialContent(activeTab));
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const lastSyncedContentRef = useRef(localContent);
+  const previousIsLoadingRef = useRef(isLoading);
+  const previousActiveTabRef = useRef(activeTab);
+
+  // Reset the editor buffer on tab change and hydrate once async agent data
+  // finishes loading, but only when the buffer still matches the last value
+  // we synced in — that way an in-progress edit is never clobbered by a
+  // background refresh completing.
+  useEffect(() => {
+    const nextContent = getInitialContent(activeTab);
+    const tabChanged = previousActiveTabRef.current !== activeTab;
+    const finishedLoading = previousIsLoadingRef.current && !isLoading;
+    const isDirty = localContent !== lastSyncedContentRef.current;
+
+    if (!isLoading && (tabChanged || (finishedLoading && !isDirty))) {
+      setLocalContent(nextContent);
+      lastSyncedContentRef.current = nextContent;
+    }
+
+    previousIsLoadingRef.current = isLoading;
+    previousActiveTabRef.current = activeTab;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isLoading, agents, design, userContext]);
 
   const handleSave = async (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md') => {
     setIsSaving(true);
@@ -111,8 +145,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={agents || t('agent.manual.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.manual.placeholder')}
@@ -136,8 +170,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={design || t('agent.design.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.design.placeholder')}
@@ -161,8 +195,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={userContext || t('agent.user.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.user.placeholder')}
