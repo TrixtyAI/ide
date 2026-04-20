@@ -1,7 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "@/api/tauri";
+
+type TauriWindowModule = typeof import("@tauri-apps/api/window");
+type TauriWindow = ReturnType<TauriWindowModule["getCurrentWindow"]>;
 
 interface UseTauriWindowResult {
   /** Whether the app is running inside the Tauri native shell. */
@@ -20,80 +23,107 @@ interface UseTauriWindowResult {
  * Centralises Tauri native-window interactions used by the title bar and the
  * onboarding wizard so both share the same detection, cleanup and state.
  *
- * The hook dynamically imports `@tauri-apps/api/window` to keep the module tree
- * safe in non-Tauri (browser / SSR) contexts.
+ * The window handle is fetched once and cached in a ref, so subsequent actions
+ * reuse it instead of re-importing `@tauri-apps/api/window` per call.
  */
 export function useTauriWindow(): UseTauriWindowResult {
   const [isNativeWindow, setIsNativeWindow] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
-  useEffect(() => {
-    if (!isTauri()) return;
+  const isMountedRef = useRef(true);
+  const winPromiseRef = useRef<Promise<TauriWindow | null> | null>(null);
 
-    let mounted = true;
+  const getWin = useCallback((): Promise<TauriWindow | null> => {
+    if (!isTauri()) return Promise.resolve(null);
+    if (!winPromiseRef.current) {
+      winPromiseRef.current = import("@tauri-apps/api/window")
+        .then((mod) => mod.getCurrentWindow())
+        .catch(() => null);
+    }
+    return winPromiseRef.current;
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    if (!isTauri()) {
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
+
     let cleanup: (() => void) | undefined;
 
     (async () => {
+      const win = await getWin();
+      if (!isMountedRef.current || !win) return;
+
+      // Declare native as soon as the window handle resolves — don't let a
+      // failure in isMaximized() hide the native environment.
+      setIsNativeWindow(true);
+
       try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const win = getCurrentWindow();
         const maximized = await win.isMaximized();
-        if (!mounted) return;
-        setIsNativeWindow(true);
-        setIsMaximized(maximized);
+        if (isMountedRef.current) setIsMaximized(maximized);
+      } catch {
+        // Maximize state unavailable — keep native detection enabled.
+      }
 
+      try {
         const unlisten = await win.onResized(async () => {
-          const m = await win.isMaximized();
-          if (mounted) setIsMaximized(m);
+          try {
+            const m = await win.isMaximized();
+            if (isMountedRef.current) setIsMaximized(m);
+          } catch {
+            // Maximize state unavailable during resize updates.
+          }
         });
-
-        if (!mounted) {
+        if (!isMountedRef.current) {
           unlisten();
           return;
         }
         cleanup = unlisten;
       } catch {
-        // Window API not available — fall back to non-native behaviour.
+        // onResized unavailable — no live tracking, initial state stays.
       }
     })();
 
     return () => {
-      mounted = false;
+      isMountedRef.current = false;
       if (cleanup) cleanup();
     };
-  }, []);
+  }, [getWin]);
 
   const minimize = useCallback(async () => {
-    if (!isTauri()) return;
+    const win = await getWin();
+    if (!win) return;
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().minimize();
+      await win.minimize();
     } catch {
-      // swallow: window API unavailable
+      // swallow: window API transient failure
     }
-  }, []);
+  }, [getWin]);
 
   const toggleMaximize = useCallback(async () => {
-    if (!isTauri()) return;
+    const win = await getWin();
+    if (!win) return;
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const win = getCurrentWindow();
       await win.toggleMaximize();
-      setIsMaximized(await win.isMaximized());
+      const next = await win.isMaximized();
+      if (isMountedRef.current) setIsMaximized(next);
     } catch {
-      // swallow: window API unavailable
+      // swallow: window API transient failure
     }
-  }, []);
+  }, [getWin]);
 
   const close = useCallback(async () => {
-    if (!isTauri()) return;
+    const win = await getWin();
+    if (!win) return;
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
+      await win.close();
     } catch {
-      // swallow: window API unavailable
+      // swallow: window API transient failure
     }
-  }, []);
+  }, [getWin]);
 
   return { isNativeWindow, isMaximized, minimize, toggleMaximize, close };
 }
