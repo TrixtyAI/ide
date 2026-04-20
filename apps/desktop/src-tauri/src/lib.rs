@@ -126,8 +126,8 @@ async fn install_update(
         })?;
         Ok(())
     } else {
-        error!("Install update called but no update found for URL: {}", url);
-        Err("No update found at the provided URL".to_string())
+        error!("Install update called but no update found");
+        Err("No update found".to_string())
     }
 }
 // ============================================================
