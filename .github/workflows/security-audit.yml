@@ -1,0 +1,65 @@
+name: Security Audit
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday at 00:00
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  audit-js:
+    name: JS Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Audit High/Critical (Fail if found)
+        id: audit_high
+        run: pnpm audit --prod --audit-level high
+        continue-on-error: false
+
+      - name: Audit Moderate/Low (Log if found)
+        if: success() || failure()
+        id: audit_all
+        run: |
+          pnpm audit --prod --audit-level low > audit_report.txt || true
+          if [ -s audit_report.txt ]; then
+            echo "ISSUES_FOUND=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Issue on Findings
+        if: steps.audit_all.outputs.ISSUES_FOUND == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "[Security] Dependency Audit Findings (JS)"
+          content-filepath: audit_report.txt
+          labels: security, automated-audit
+
+  audit-rust:
+    name: Rust Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit --directory apps/desktop/src-tauri
+        continue-on-error: true # We handle failure logic manually or via cargo-deny
+
+      - name: Run cargo deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: advisories
