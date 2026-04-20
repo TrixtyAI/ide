@@ -155,10 +155,14 @@ const EditorArea: React.FC = () => {
 
   const handleEditorChange = (value: string | undefined) => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    // Capture the path and content at the moment the edit happened. If the timer
+    // fires after the user has switched tabs, it must still write into the file
+    // that was being edited — not into whatever is currently active.
+    const path = currentFile?.path;
+    if (!path) return;
+    const content = value ?? "";
     debounceTimer.current = setTimeout(() => {
-      if (currentFile) {
-        updateFileContent(currentFile.path, value || "");
-      }
+      updateFileContent(path, content);
     }, 300);
   };
 
