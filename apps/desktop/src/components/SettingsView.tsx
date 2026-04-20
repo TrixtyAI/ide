@@ -160,6 +160,20 @@ Node.js: ${systemInfo.node_version}
                     />
                   </div>
                 </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!editorSettings.minimapEnabled}
+                      onChange={(e) => updateEditorSettings({ minimapEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                  </label>
+                  <span className="text-[13px] text-[#aaa]">
+                    {t('settings.editor.minimap')}
+                  </span>
+                </div>
               </div>
             </section>
 

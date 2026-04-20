@@ -90,6 +90,7 @@ export interface EditorSettings {
   fontFamily: string;
   theme: string;
   lineHeight: number;
+  minimapEnabled: boolean;
 }
 
 export interface ChatMessage {
@@ -124,6 +125,7 @@ const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
   theme: "trixty-dark",
   lineHeight: 21,
+  minimapEnabled: false,
 };
 
 const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
@@ -270,7 +272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedEditorSettings = await trixtyStore.get<EditorSettings | null>("trixty-editor-settings", null);
         logger.debug("[AppContext] Editor Settings loaded:", !!savedEditorSettings);
         if (savedEditorSettings) {
-          setEditorSettings(savedEditorSettings);
+          setEditorSettings(prev => ({ ...prev, ...savedEditorSettings }));
         }
 
         // 5. Load System Settings

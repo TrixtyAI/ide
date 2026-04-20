@@ -52,7 +52,7 @@ class WindowRegistry {
         for (const listener of this.listeners) listener();
     }
 
-    subscribe(listener: () => void): () => void {
+    subscribe = (listener: () => void): () => void => {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
     }
@@ -115,7 +115,7 @@ class L10nRegistry {
         return text;
     }
 
-    subscribe(listener: () => void): () => void {
+    subscribe = (listener: () => void): () => void => {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
     }
@@ -268,7 +268,7 @@ class AgentRegistry {
         return Array.from(this.activeDocs);
     }
 
-    subscribe(listener: () => void): () => void {
+    subscribe = (listener: () => void): () => void => {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
     }
