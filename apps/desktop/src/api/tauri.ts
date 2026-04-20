@@ -36,6 +36,27 @@ export type OllamaRequest =
   | { type: 'tags' }
   | { type: 'version' };
 
+/**
+ * Central registry of Tauri commands exposed to the frontend.
+ *
+ * Naming convention at the TS ↔ Rust boundary:
+ * - Rust command handlers are defined in `snake_case` (e.g. `install_extension`, `git_url`, `root_path`).
+ * - Their TypeScript entries here use `camelCase` for argument names (e.g. `gitUrl`, `rootPath`).
+ * - Tauri performs the `camelCase` ↔ `snake_case` conversion automatically on both sides.
+ *
+ * When adding a new command:
+ * 1. Define the Rust `#[tauri::command]` using `snake_case` parameters.
+ * 2. Register it in the `run()` builder via `tauri::generate_handler![...]` in `src-tauri/src/lib.rs`.
+ * 3. Add an entry here with `camelCase` argument names matching the Rust parameters.
+ *
+ * Tauri-injected parameters such as `AppHandle`, `State<T>` or `Window` are NOT part of the
+ * frontend call signature — they are resolved by the Tauri runtime and must be omitted from
+ * the TypeScript entry.
+ *
+ * Example: a Rust handler
+ * `async fn install_extension(app: AppHandle, id: String, git_url: String) -> Result<(), String>`
+ * maps to `"install_extension": { args: { id: string; gitUrl: string }; return: void }`.
+ */
 export interface TauriInvokeMap {
   "get_installed_extensions": { args: undefined; return: string[] };
   "get_registry_catalog": { args: { url: string }; return: { marketplace: MarketplaceEntry[] } };
