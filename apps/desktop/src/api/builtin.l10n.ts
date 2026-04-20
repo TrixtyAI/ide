@@ -199,6 +199,10 @@ export function registerBuiltinTranslations() {
         'window.maximize': 'Maximize',
         'window.restore': 'Restore',
         'window.close': 'Close',
+        'window.close.unsaved.title': 'Unsaved changes',
+        'window.close.unsaved.message': 'You have unsaved changes in open tabs. Close anyway and discard them?',
+        'window.close.unsaved.discard': 'Discard & Close',
+        'window.close.unsaved.cancel': 'Cancel',
 
         'welcome.title': 'Trixty',
         'welcome.subtitle': 'Optimized for Speed. Powered by Intelligence.',
@@ -588,6 +592,10 @@ export function registerBuiltinTranslations() {
         'window.maximize': 'Maximizar',
         'window.restore': 'Restaurar',
         'window.close': 'Cerrar',
+        'window.close.unsaved.title': 'Cambios sin guardar',
+        'window.close.unsaved.message': 'Tienes cambios sin guardar en pestañas abiertas. ¿Cerrar de todos modos y descartarlos?',
+        'window.close.unsaved.discard': 'Descartar y cerrar',
+        'window.close.unsaved.cancel': 'Cancelar',
 
         'welcome.title': 'Trixty',
         'welcome.subtitle': 'Optimizado para Velocidad. Potenciado por Inteligencia.',

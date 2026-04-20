@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { trixtyStore } from "@/api/store";
 import { logger } from "@/lib/logger";
+import { isTauri } from "@/api/tauri";
 
 export interface FileState {
   path: string;
@@ -189,6 +190,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  // Track openFiles via a ref so the close-requested listener registered once
+  // below can always read the latest modified state without re-registering.
+  const openFilesRef = useRef(openFiles);
+  useEffect(() => {
+    openFilesRef.current = openFiles;
+  }, [openFiles]);
+
+  // Intercept native close (X button, Alt+F4, system menu) and prompt the user
+  // if there are unsaved tabs. `destroy()` bypasses the close-requested event
+  // so the subsequent close doesn't re-enter this handler.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [{ getCurrentWindow }, { ask }, { trixty }] = await Promise.all([
+          import("@tauri-apps/api/window"),
+          import("@tauri-apps/plugin-dialog"),
+          import("@/api/trixty"),
+        ]);
+        const win = getCurrentWindow();
+        const unlistenFn = await win.onCloseRequested(async (event) => {
+          const hasUnsaved = openFilesRef.current.some((f) => f.isModified);
+          if (!hasUnsaved) return;
+          event.preventDefault();
+          try {
+            const confirmed = await ask(trixty.l10n.t("window.close.unsaved.message"), {
+              title: trixty.l10n.t("window.close.unsaved.title"),
+              kind: "warning",
+              okLabel: trixty.l10n.t("window.close.unsaved.discard"),
+              cancelLabel: trixty.l10n.t("window.close.unsaved.cancel"),
+            });
+            if (confirmed) {
+              await win.destroy();
+            }
+          } catch (e) {
+            // If the dialog or destroy pipeline fails, fall back to closing
+            // rather than leaving the window stuck with the close prevented.
+            console.error("[AppContext] close-requested handler failed:", e);
+            await win.destroy();
+          }
+        });
+        if (cancelled) unlistenFn();
+        else unlisten = unlistenFn;
+      } catch {
+        // Window / dialog API unavailable — fall back to default close behaviour.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   const getSystemDefaultLocale = useCallback(() => {
     return 'en';
