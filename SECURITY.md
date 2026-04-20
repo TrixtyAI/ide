@@ -24,7 +24,7 @@ Report suspected vulnerabilities privately through GitHub's **Private Vulnerabil
    - Affected versions and platforms (Windows, macOS, Linux)
    - Any suggested remediation
 
-If Private Vulnerability Reporting is not available for you, please contact the maintainers through the repository Discussions or any official contact listed in the README, and request a private channel before sharing details.
+If Private Vulnerability Reporting is not available for you, please **do not share vulnerability details publicly** (including in Discussions or public issues). Instead, use any existing private contact channel you already have with the maintainers to request a secure way to submit the report.
 
 ## What to Expect
 
