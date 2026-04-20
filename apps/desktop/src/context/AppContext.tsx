@@ -214,22 +214,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           import("@/api/trixty"),
         ]);
         const win = getCurrentWindow();
-        const handler = await win.onCloseRequested(async (event) => {
+        const unlistenFn = await win.onCloseRequested(async (event) => {
           const hasUnsaved = openFilesRef.current.some((f) => f.isModified);
           if (!hasUnsaved) return;
           event.preventDefault();
-          const confirmed = await ask(trixty.l10n.t("window.close.unsaved.message"), {
-            title: trixty.l10n.t("window.close.unsaved.title"),
-            kind: "warning",
-            okLabel: trixty.l10n.t("window.close.unsaved.discard"),
-            cancelLabel: trixty.l10n.t("window.close.unsaved.cancel"),
-          });
-          if (confirmed) {
+          try {
+            const confirmed = await ask(trixty.l10n.t("window.close.unsaved.message"), {
+              title: trixty.l10n.t("window.close.unsaved.title"),
+              kind: "warning",
+              okLabel: trixty.l10n.t("window.close.unsaved.discard"),
+              cancelLabel: trixty.l10n.t("window.close.unsaved.cancel"),
+            });
+            if (confirmed) {
+              await win.destroy();
+            }
+          } catch (e) {
+            // If the dialog or destroy pipeline fails, fall back to closing
+            // rather than leaving the window stuck with the close prevented.
+            console.error("[AppContext] close-requested handler failed:", e);
             await win.destroy();
           }
         });
-        if (cancelled) handler();
-        else unlisten = handler;
+        if (cancelled) unlistenFn();
+        else unlisten = unlistenFn;
       } catch {
         // Window / dialog API unavailable — fall back to default close behaviour.
       }
