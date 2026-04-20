@@ -87,6 +87,11 @@ const Terminal: React.FC = () => {
       term.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
+      // Kill the Rust-side PTY so the child shell and reader thread don't leak
+      // when the component unmounts (e.g. the bottom panel is closed).
+      // `kill_pty` returns Ok even with no active PTY, so any rejection here is a
+      // real failure (IPC missing, mutex poisoned, etc.) and worth surfacing.
+      invoke("kill_pty").catch((e) => console.error("PTY cleanup error:", e));
     };
   }, []);
 
