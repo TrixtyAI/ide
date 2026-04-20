@@ -80,7 +80,12 @@ export function resolveGitRepoUrl(entry: MarketplaceEntry): string | null {
     }
     const segments = u.pathname.split("/").filter(Boolean);
     if (segments.length < 2) return null;
-    const [owner, repo] = segments;
+    const [owner, rawRepo] = segments;
+    // Strip an existing `.git` so catalog entries that already point at a
+    // `...repo.git/...` path don't end up producing `.git.git` and failing
+    // `git clone`.
+    const repo = rawRepo.endsWith(".git") ? rawRepo.slice(0, -4) : rawRepo;
+    if (!repo) return null;
     return `https://github.com/${owner}/${repo}.git`;
   } catch {
     return null;
@@ -125,6 +130,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // failure (e.g. GitHub rate limit on stars) doesn't drop the other data.
       const enrichedEntries = await Promise.all(
         entries.map(async (entry) => {
+          const resolvedRepoUrl = resolveGitRepoUrl(entry) || "";
           const [manifestResult, starsResult] = await Promise.allSettled([
             invoke("fetch_extension_manifest", {
               repoUrl: entry.repository || "",
@@ -132,7 +138,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               dataUrl: entry.data,
               path: entry.path
             }),
-            invoke("fetch_extension_stars", { repoUrl: entry.repository || "" })
+            invoke("fetch_extension_stars", { repoUrl: resolvedRepoUrl })
           ]);
 
           const manifest = manifestResult.status === "fulfilled" ? manifestResult.value : undefined;
