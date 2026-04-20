@@ -1,6 +1,5 @@
 mod about;
 mod pty;
-mod tunnel;
 
 mod extensions;
 use extensions::*;
@@ -15,7 +14,6 @@ use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
-use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 /// On other platforms this is equivalent to `Command::new(program)`.
@@ -1141,9 +1139,6 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
         })))
-        .manage(TunnelState {
-            instances: Mutex::new(std::collections::HashMap::new()),
-        })
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -1198,9 +1193,6 @@ pub fn run() {
             create_directory,
             reveal_path,
             delete_path,
-            get_active_ports,
-            start_tunnel,
-            stop_tunnel,
             perform_web_search,
             about::get_trixty_about_info
         ])
