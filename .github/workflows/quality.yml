@@ -17,7 +17,7 @@ jobs:
 
       - name: Save PR number
         if: github.event_name == 'pull_request'
-        run: echo ${{ github.event.pull_request.number }} > logs/pr_number.txt
+        run: echo ${{ github.event.pull_request.number }} | Out-File -FilePath logs/pr_number.txt -Encoding utf8
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -67,11 +67,11 @@ jobs:
       - name: Generate status report
         if: always()
         run: |
-          echo "install=${{ steps.install.outcome }}" >> logs/status.env
-          echo "lint=${{ steps.lint.outcome }}" >> logs/status.env
-          echo "typecheck=${{ steps.typecheck.outcome }}" >> logs/status.env
-          echo "clippy=${{ steps.clippy.outcome }}" >> logs/status.env
-          echo "fmt=${{ steps.fmt.outcome }}" >> logs/status.env
+          "install=${{ steps.install.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "lint=${{ steps.lint.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "typecheck=${{ steps.typecheck.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "clippy=${{ steps.clippy.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "fmt=${{ steps.fmt.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
 
       - name: Upload quality results
         if: always()
