@@ -8,8 +8,6 @@ import ReactMarkdown from "react-markdown";
 import { trixtyStore } from "@/api/store";
 import { useL10n } from "@/hooks/useL10n";
 import remarkGfm from "remark-gfm";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
 import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
@@ -498,24 +496,6 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!availableUpdate) return;
-    try {
-        setUpdateStatus("...");
-      await availableUpdate.downloadAndInstall((event: { event: string; data?: unknown }) => {
-            if (event.event === 'Progress') {
-              const d = event.data as { chunkLength: number; contentLength?: number };
-              const p = Math.round((d.chunkLength / (d.contentLength || 1)) * 100);
-                setUpdateStatus(`${p}%`);
-            } else if (event.event === 'Finished') {
-                relaunch();
-            }
-        });
-    } catch (e) {
-        setUpdateStatus("err");
-    }
-  };
-
   const toggleDeepMode = () => {
     updateAISettings({ ...aiSettings, deepMode: !aiSettings.deepMode });
   };
@@ -628,18 +608,6 @@ const AiChatComponent: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1">
-          {availableUpdate && (
-              <button
-                onClick={handleUpdate}
-                title={updateStatus ? t('ai.status.downloading', { progress: updateStatus }) : t('ai.update.available')}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all mr-2 group"
-              >
-                  <Download size={12} className={updateStatus ? "animate-bounce" : "group-hover:translate-y-0.5 transition-transform"} />
-                  <span className="text-[9px] font-bold uppercase">{updateStatus || t('ai.update.button')}</span>
-              </button>
-          )}
-
-
           <button
             onClick={() => { setShowHistory(!showHistory); }}
             className={`text-[#555] hover:text-white p-1 rounded hover:bg-white/10 transition-colors ${showHistory ? "text-white bg-white/10" : ""}`}
