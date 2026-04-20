@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GitBranch, Wifi, Bell, Cpu, Cloud, RefreshCw } from "lucide-react";
+import { GitBranch, Wifi, Bell, Cloud, RefreshCw } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Package, Download, Star, Search, ChevronLeft, Power, Trash2, RefreshCw, ExternalLink } from "lucide-react";
+import { Package, Star, Search, ChevronLeft, RefreshCw, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
@@ -35,6 +35,7 @@ const AddonIcon: React.FC<{
     return <Package size={fallbackSize} strokeWidth={fallbackStrokeWidth} className={fallbackClassName} />;
   }
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={url}
       onError={() => setFailed(true)}
@@ -81,7 +82,7 @@ const DetailsView: React.FC<{
     });
 
     return () => { active = false; };
-  }, [entry, fetchFile]);
+  }, [entry, fetchFile, t]);
 
   const handleInstall = async () => {
     setLoadingAction("install");

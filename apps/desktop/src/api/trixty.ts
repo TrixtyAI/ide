@@ -19,7 +19,7 @@ class CommandRegistry {
 
     registerCommand<K extends keyof TrixtyCommands>(id: K, callback: TrixtyCommands[K]) {
         if (this.commands.has(id)) {
-            console.warn(`Command ${id} is already registered. Overwriting.`);
+            logger.warn(`Command ${id} is already registered. Overwriting.`);
         }
         this.commands.set(id, callback as unknown as CommandCallback);
     }
@@ -148,7 +148,7 @@ class LanguageRegistry {
                 this.monaco = instance;
                 logger.debug("[LanguageRegistry] Monaco instance initialized. Flushing buffer...");
                 this.flush();
-            }).catch(console.error);
+            }).catch(logger.error);
         }
     }
 
@@ -166,7 +166,7 @@ class LanguageRegistry {
                     this.indentationSettings.set(item.data.id, item.data.options);
                 }
             } catch (e) {
-                console.error("[LanguageRegistry] Error flushing buffered language item:", e);
+                logger.error("[LanguageRegistry] Error flushing buffered language item:", e);
             }
         }
       logger.debug(`[LanguageRegistry] Flushed ${this.buffer.length} items to Monaco.`);

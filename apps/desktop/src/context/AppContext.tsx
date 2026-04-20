@@ -285,14 +285,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsInitialLoadComplete(true);
         logger.debug("[AppContext] Initial load complete.");
       } catch (err) {
-        console.error("[AppContext] Error loading initial state:", err);
+        logger.error("[AppContext] Error loading initial state:", err);
         // Even on error, we should probably allow saving new changes
         setIsInitialLoadComplete(true);
       }
     };
 
     loadInitialState();
-  }, [createSession, setLocale]);
+  }, [createSession, setLocale, getSystemDefaultLocale]);
 
   // Global: Remove default context menu
   useEffect(() => {
@@ -487,7 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       setCurrentFile((prev) => (prev ? { ...prev, isModified: false } : null));
     } catch (error) {
-      console.error("Failed to save file:", error);
+      logger.error("Failed to save file:", error);
     }
   };
 
@@ -503,7 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRootPath(selected);
       }
     } catch (err) {
-      console.error("Error opening folder dialog:", err);
+      logger.error("Error opening folder dialog:", err);
     }
   }, []);
 

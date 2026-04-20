@@ -4,10 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAgent } from "@/context/AgentContext";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
-import { 
-  Bot, ShieldCheck, User as UserIcon, Brain, Wrench, 
-  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, Palette, AlertTriangle
+import {
+  Bot,
+  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, AlertTriangle
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface AgentSettingsProps {
   activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration';
@@ -15,10 +16,10 @@ interface AgentSettingsProps {
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   const { rootPath } = useApp();
-  const { 
-    identity, soul, agents, userContext, tools, memory, design,
+  const {
+    identity, soul, agents, userContext, memory, design,
     skills, activeSkills, toggleSkill, docs, activeDocs, toggleDoc,
-    saveAgentFile, isLoading, refreshAgentData 
+    saveAgentFile, isLoading
   } = useAgent();
   const { aiSettings, updateAISettings } = useApp();
   const { t } = useL10n();
@@ -67,7 +68,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsSaving(false);
     }

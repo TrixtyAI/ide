@@ -1,3 +1,4 @@
+use log::error;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::{
     io::{Read, Write},
@@ -5,7 +6,6 @@ use std::{
     thread,
 };
 use tauri::{AppHandle, Emitter, Runtime};
-use log::{error, warn};
 
 pub struct PtyState {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,

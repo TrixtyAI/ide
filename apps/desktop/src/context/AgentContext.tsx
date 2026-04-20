@@ -5,13 +5,7 @@ import { safeInvoke as invoke } from "@/api/tauri";
 import { useApp } from "@/context/AppContext";
 import { CORE_IDENTITY, CORE_SOUL } from "@/addons/builtin.agent-support/index";
 import { trixty } from "@/api/trixty";
-
-interface AgentFileInfo {
-  name: string;
-  path: string;
-  content: string;
-  isCore?: boolean;
-}
+import { logger } from "@/lib/logger";
 
 interface SkillInfo {
   id: string;
@@ -76,7 +70,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const path = `${rootPath}/.agents/${name}`;
     try {
       return await invoke("read_file", { path }, { silent: true });
-    } catch (e) {
+    } catch {
       // It's okay if file doesn't exist
       return "";
     }
@@ -109,7 +103,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       const results = await Promise.all(skillPromises);
       return results.filter((s): s is SkillInfo => s !== null);
-    } catch (e) {
+    } catch {
       return [];
     }
   }, [rootPath]);
@@ -141,7 +135,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       const results = await Promise.all(docPromises);
       return results.filter((s): s is DocInfo => s !== null);
-    } catch (e) {
+    } catch {
       return [];
     }
   }, [rootPath]);
@@ -160,7 +154,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await invoke("write_file", { path, content: JSON.stringify(settings, null, 2) });
     } catch (e) {
-      console.error("[AgentContext] Failed to save project settings:", e);
+      logger.error("[AgentContext] Failed to save project settings:", e);
     }
   }, [rootPath]);
 
@@ -170,7 +164,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const content = await invoke("read_file", { path }, { silent: true });
       return JSON.parse(content);
-    } catch (e) {
+    } catch {
       return { activeSkills: [], activeDocs: [] };
     }
   }, [rootPath]);
@@ -207,7 +201,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Check if .agents directory exists first to avoid noisy console errors from safeInvoke
       try {
         await invoke("read_directory", { path: `${rootPath}/.agents` }, { silent: true });
-      } catch (e) {
+      } catch {
         // .agents folder likely doesn't exist, clear local project state and exit
         setAgents("");
         setTools("");
@@ -246,11 +240,11 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       validSkills.forEach((id: string) => trixty.agent.registerSkill(id));
       validDocs.forEach((id: string) => trixty.agent.registerDoc(id));
     } catch (err) {
-      console.error("[AgentContext] Error refreshing agent data:", err);
+      logger.error("[AgentContext] Error refreshing agent data:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [rootPath, loadFile, loadSkills]);
+  }, [rootPath, loadFile, loadSkills, loadDocs, loadProjectSettings]);
 
   // Lock modes if no rootPath
   useEffect(() => {
@@ -320,7 +314,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (fileName === "TOOLS.md") setTools(content);
       if (fileName === "DESIGN.md") setDesign(content);
     } catch (err) {
-      console.error(`[AgentContext] Error saving ${fileName}:`, err);
+      logger.error(`[AgentContext] Error saving ${fileName}:`, err);
       throw err;
     }
   }, [rootPath]);
@@ -379,7 +373,7 @@ ${activeDocContents}\n\n`;
     }
     
     return prompt;
-  }, [agents, userContext, tools, memory, skills, activeSkills]);
+  }, [agents, userContext, tools, memory, skills, activeSkills, design, localDocContext]);
 
   const getSystemPrompt = useCallback(() => {
     const base = aggregatedPrompt;
@@ -413,7 +407,7 @@ ${localDocContext}
 - MEMORY MANAGEMENT: You are responsible for maintaining ".agents/MEMORY.md". Update it autonomously using your file tools whenever you make an important technical decision, complete a task, or change the architecture. Keep it concise.
 - WORKFLOW: Synchronize with project files, execute commands, and fulfill the requested changes.
 - COMPLEXITY RULE: If a task seems too large or architectural, suggest switching to Planner mode before executing.`;
-  }, [aggregatedPrompt, chatMode]);
+  }, [aggregatedPrompt, chatMode, localDocContext, userContext]);
 
   return (
     <AgentContext.Provider value={{

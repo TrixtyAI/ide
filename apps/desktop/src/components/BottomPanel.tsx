@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import Terminal from "./Terminal";
-import { X, Terminal as TerminalIcon, Globe, Plus, ExternalLink, RefreshCw, Loader2 } from "lucide-react";
+import { X, Terminal as TerminalIcon, Plus, ExternalLink, Loader2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import { listen } from "@tauri-apps/api/event";
 import { safeInvoke as invoke } from "@/api/tauri";
+import { logger } from "@/lib/logger";
 
 interface PortEntry {
   port: number;
@@ -17,7 +18,7 @@ const BottomPanel: React.FC = () => {
   const { setBottomPanelOpen } = useApp();
   const { t } = useL10n();
   const [activeTab, setActiveTab] = useState("terminal");
-  const [ports, setPorts] = useState<PortEntry[]>([]); // User manually added (deprecated for discovery)
+  const [ports] = useState<PortEntry[]>([]); // User manually added (deprecated for discovery)
   const [discoveredPorts, setDiscoveredPorts] = useState<number[]>([]);
   const [ignoredPorts, setIgnoredPorts] = useState<number[]>([]);
   const [tunnels, setTunnels] = useState<Record<number, { url: string; loading: boolean }>>({});
@@ -34,7 +35,7 @@ const BottomPanel: React.FC = () => {
         // Only show ports that aren't in the ignored list
         setDiscoveredPorts(active.filter((p: number) => !ignoredPorts.includes(p)));
       } catch (e) {
-        console.error("Discovery error:", e);
+        logger.error("Discovery error:", e);
       }
     };
 
@@ -65,7 +66,7 @@ const BottomPanel: React.FC = () => {
       const url = await invoke("start_tunnel", { port });
       setTunnels(prev => ({ ...prev, [port]: { url, loading: false } }));
     } catch (e) {
-      console.error("Tunnel error:", e);
+      logger.error("Tunnel error:", e);
       setTunnels(prev => {
         const next = { ...prev };
         delete next[port];
@@ -84,7 +85,7 @@ const BottomPanel: React.FC = () => {
         return next;
       });
     } catch (e) {
-      console.error("Stop tunnel error:", e);
+      logger.error("Stop tunnel error:", e);
     }
   };
 

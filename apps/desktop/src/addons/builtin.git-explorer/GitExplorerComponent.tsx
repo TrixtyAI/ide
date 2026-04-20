@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, Search,
   GitBranch, GitCommit, Upload, Plus, Sparkles, ChevronUp,
-  FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, Settings, History, ClipboardPaste, FileCode, Trash2,
+  FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, History, Trash2,
   Minus, ArrowDown, Download, GitMerge, Archive, RotateCcw, Undo2, Check, AlertTriangle
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
@@ -12,8 +12,9 @@ import type { GitLogEntry, GitStashEntry } from "@/api/tauri";
 import { open, ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
-import ContextMenu, { ContextMenuItem } from "@/components/ui/ContextMenu";
+import ContextMenu from "@/components/ui/ContextMenu";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { logger } from "@/lib/logger";
 import pm from "picomatch";
 
 interface FileEntry { name: string; path: string; is_dir: boolean; children?: FileEntry[]; }
@@ -112,14 +113,14 @@ const GitExplorerComponent: React.FC = () => {
           return update(prev);
         });
       }
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) { logger.error(e); } finally { setLoading(false); }
   }, [rootPath, systemSettings.filesExclude]);
 
   const handleOpenFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false, title: t('explorer.select_folder') });
       if (selected && typeof selected === "string") { setRootPath(selected); setEntries([]); setExpandedDirs({}); loadDirectory(selected); }
-    } catch (e) { console.error(e); }
+    } catch (e) { logger.error(e); }
   };
 
   useEffect(() => { if (rootPath) loadDirectory(rootPath); }, [rootPath, loadDirectory]);
@@ -151,6 +152,10 @@ const GitExplorerComponent: React.FC = () => {
         setExpandedDirs(newExpanded);
       }
     }
+    // Intentionally exclude `expandedDirs`: this effect updates it via `setExpandedDirs`,
+    // so including it would retrigger auto-reveal after every expansion change and cause
+    // repeated directory loading/re-expansion loops for the same selected file.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFile?.path, rootPath, loadDirectory]);
 
   const handleCreateEntry = async () => {
@@ -172,7 +177,7 @@ const GitExplorerComponent: React.FC = () => {
       }
       loadDirectory(parentPath, parentPath === rootPath ? undefined : parentPath);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setNewEntry(null);
       setNewEntryName("");
@@ -236,11 +241,11 @@ const GitExplorerComponent: React.FC = () => {
             await refreshGit();
             return;
           } catch (fixErr) {
-            console.error("[Git safe dir fix error]", fixErr);
+            logger.error("[Git safe dir fix error]", fixErr);
           }
         }
       } else if (!isNotGitRepoError) {
-        console.error("[Git refresh error]", err);
+        logger.error("[Git refresh error]", err);
       }
       setIsGitRepo(false);
       setStagedChanges([]);
@@ -251,6 +256,11 @@ const GitExplorerComponent: React.FC = () => {
       setStashes([]);
       setHasConflicts(false);
     }
+    // Intentionally exclude `t`: re-creating `refreshGit` on every locale change would
+    // invalidate the `useEffect` that polls it and retrigger the whole git refresh on
+    // language switch. Error messages read via `t` only need to be current at the time
+    // the error surfaces, not at callback-creation time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootPath, logLimit]);
 
   useEffect(() => { gitLoadingRef.current = gitLoading; }, [gitLoading]);
@@ -452,7 +462,7 @@ const GitExplorerComponent: React.FC = () => {
         if (msg.includes("UTF-8")) {
           openFile(entry.path, entry.name, "", "binary");
         } else {
-          console.error("[GitExplorer] Failed to read file", entry.path, e);
+          logger.error("[GitExplorer] Failed to read file", entry.path, e);
         }
       }
     }
@@ -462,12 +472,12 @@ const GitExplorerComponent: React.FC = () => {
     if (!searchQuery.trim() || !rootPath) return;
     setIsSearching(true);
     try { setSearchResults(await invoke("search_in_project", { query: searchQuery, rootPath })); }
-    catch (e) { console.error(e); } finally { setIsSearching(false); }
+    catch (e) { logger.error(e); } finally { setIsSearching(false); }
   };
 
   const handleSearchClick = async (r: SearchResult) => {
     try { const c = await invoke("read_file", { path: r.file_path }, { silent: true }); openFile(r.file_path, r.file_name, c); }
-    catch (e) { console.error("[GitExplorer] Failed to read file", r.file_path, e); }
+    catch (e) { logger.error("[GitExplorer] Failed to read file", r.file_path, e); }
   };
 
   const handleDeleteItem = async (entry: FileEntry) => {
@@ -485,7 +495,7 @@ const GitExplorerComponent: React.FC = () => {
         const parent = entry.path.split('/').slice(0, -1).join('/');
         loadDirectory(parent || rootPath!, parent === rootPath ? undefined : parent);
       } catch (e) {
-        console.error("Delete error:", e);
+        logger.error("Delete error:", e);
       }
     }
   };
@@ -540,8 +550,6 @@ const GitExplorerComponent: React.FC = () => {
         >
           {!rootPath ? <Empty title={t('explorer.title')} icon={<Folder size={40} strokeWidth={1} />} /> : (
             (function render(items: FileEntry[], level = 0): React.ReactNode {
-              const currentItems = [...items];
-
               return (
                 <>
                   {items.map((e) => {

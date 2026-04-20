@@ -5,17 +5,17 @@ mod tunnel;
 mod extensions;
 use extensions::*;
 
+use log::{error, info, warn};
 use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
 use scraper::{Html, Selector};
-use serde::{Serialize, Deserialize};
-use tauri_plugin_store::StoreExt;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
+use tauri_plugin_store::StoreExt;
 use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
-use log::{error, warn, info};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 /// On other platforms this is equivalent to `Command::new(program)`.
@@ -63,10 +63,7 @@ struct InstallerProgress {
 async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
     use tauri_plugin_updater::UpdaterExt;
 
-    let updater = app
-        .updater_builder()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
 
     // Gracefully handle check errors (e.g. 404 when no release exists yet)
     let update = match updater.check().await {
@@ -84,21 +81,15 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 }
 
 #[tauri::command]
-async fn install_update(
-    app: tauri::AppHandle,
-    window: tauri::Window,
-) -> Result<(), String> {
+async fn install_update(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     use tauri::Emitter;
     use tauri_plugin_updater::UpdaterExt;
 
-    let updater = app
-        .updater_builder()
-        .build()
-        .map_err(|e| {
-            let err = e.to_string();
-            error!("Update install - build failed: {}", err);
-            err
-        })?;
+    let updater = app.updater_builder().build().map_err(|e| {
+        let err = e.to_string();
+        error!("Update install - build failed: {}", err);
+        err
+    })?;
     let update = updater.check().await.map_err(|e| {
         let err = e.to_string();
         error!("Update install - check failed: {}", err);
@@ -218,7 +209,6 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
                 && name != ".next"
                 && name != "dist"
                 && name != "build"
-                && name != ".next"
         })
         .filter_map(|e| e.ok())
     {
@@ -247,8 +237,10 @@ async fn search_in_project(query: String, root_path: String) -> Result<Vec<Searc
             // Optimization: Read line by line but with a limit on line length to avoid CPU spikes on minified files
             for (index, line_result) in reader.lines().enumerate() {
                 if let Ok(line) = line_result {
-                    if line.len() > 1000 { continue; } // Skip very long lines (minified)
-                    
+                    if line.len() > 1000 {
+                        continue;
+                    } // Skip very long lines (minified)
+
                     if line.to_lowercase().contains(&query_lower) {
                         results.push(SearchResult {
                             file_path: path.to_string_lossy().to_string(),
@@ -508,9 +500,13 @@ async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry>, S
     let mut entries = Vec::new();
     for record in raw.split('\x1e') {
         let trimmed = record.trim_start_matches(['\n', '\r']);
-        if trimmed.is_empty() { continue; }
+        if trimmed.is_empty() {
+            continue;
+        }
         let fields: Vec<&str> = trimmed.splitn(6, '\x1f').collect();
-        if fields.len() < 6 { continue; }
+        if fields.len() < 6 {
+            continue;
+        }
         entries.push(GitLogEntry {
             hash: fields[0].to_string(),
             short_hash: fields[1].to_string(),
@@ -602,7 +598,9 @@ async fn git_stash_list(path: String) -> Result<Vec<GitStashEntry>, String> {
     let raw = String::from_utf8_lossy(&output.stdout).to_string();
     let mut entries = Vec::new();
     for (i, line) in raw.lines().enumerate() {
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         let parts: Vec<&str> = line.splitn(2, '\x1f').collect();
         entries.push(GitStashEntry {
             index: i as u32,
@@ -776,7 +774,9 @@ async fn git_push(path: String) -> Result<String, String> {
             .output()
             .map_err(|e| e.to_string())?;
         if branch_output.status.success() {
-            let branch = String::from_utf8_lossy(&branch_output.stdout).trim().to_string();
+            let branch = String::from_utf8_lossy(&branch_output.stdout)
+                .trim()
+                .to_string();
             if !branch.is_empty() {
                 let retry = silent_command("git")
                     .args(["push", "--set-upstream", "origin", &branch])
@@ -1056,7 +1056,6 @@ fn create_directory(path: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_url(url: String) -> Result<(), String> {
-    use tauri_plugin_shell::ShellExt;
     // We'll initialize shell plugin in run() but we can also use this command
     // as a fallback or if we want more control.
     // However, the easiest way is to use the plugin directly from JS.
@@ -1119,10 +1118,10 @@ pub fn run() {
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::all() 
-                    & !tauri_plugin_window_state::StateFlags::VISIBLE
+                    tauri_plugin_window_state::StateFlags::all()
+                        & !tauri_plugin_window_state::StateFlags::VISIBLE,
                 )
-                .build()
+                .build(),
         )
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -1237,7 +1236,7 @@ pub fn run() {
                         if let (Some(s_val), Some(m_val)) = (settings_val, last_model_val) {
                             if let (Ok(settings), Ok(model)) = (
                                 serde_json::from_value::<AISettings>(s_val),
-                                serde_json::from_value::<String>(m_val)
+                                serde_json::from_value::<String>(m_val),
                             ) {
                                 if settings.load_on_startup && !model.is_empty() {
                                     should_wait = true;
@@ -1251,8 +1250,11 @@ pub fn run() {
                                         .timeout(std::time::Duration::from_secs(180))
                                         .build()
                                         .unwrap_or_default();
-                                        
-                                    let url = format!("{}/api/generate", settings.endpoint.trim_end_matches('/'));
+
+                                    let url = format!(
+                                        "{}/api/generate",
+                                        settings.endpoint.trim_end_matches('/')
+                                    );
                                     let body = serde_json::json!({
                                         "model": model,
                                         "keep_alive": format!("{}m", settings.keep_alive)
@@ -1269,7 +1271,7 @@ pub fn run() {
                     log::info!("[Startup] Ollama not found. Skipping pre-load.");
                 }
 
-                // If we didn't have to wait for a heavy model load, a tiny delay 
+                // If we didn't have to wait for a heavy model load, a tiny delay
                 // ensures the transition doesn't happen before the main window is ready to render.
                 if !should_wait {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;

@@ -113,14 +113,6 @@ const OnboardingWizard: React.FC = () => {
     })
   };
 
-  const stepThemes = [
-    { color: "rgba(59, 130, 246, 0.4)" }, // Blue (Welcome)
-    { color: "rgba(234, 179, 8, 0.4)" },   // Yellow (Language)
-    { color: "rgba(168, 85, 247, 0.4)" },  // Purple (AI)
-    { color: "rgba(236, 72, 153, 0.4)" },  // Pink (Appearance)
-    { color: "rgba(249, 115, 22, 0.4)" }   // Orange (Finish)
-  ];
-
   if (systemSettings.hasCompletedOnboarding) return null;
 
   return (

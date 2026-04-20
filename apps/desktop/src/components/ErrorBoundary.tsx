@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
       const { open } = await import("@tauri-apps/plugin-shell");
       await open(url);
     } catch (e) {
-      console.error("Failed to open report URL via plugin:", e);
+      logger.error("Failed to open report URL via plugin:", e);
       window.open(url, "_blank");
     }
   };

@@ -30,14 +30,14 @@ export class PluginManager {
             builtinAiAssistant.activate();
             logger.debug("[PluginManager] builtin.ai-assistant activated.");
         } catch (e) {
-            console.error("Failed to activate AI assistant", e);
+            logger.error("Failed to activate AI assistant", e);
         }
 
         try {
             builtinGitExplorer.activate();
             logger.debug("[PluginManager] builtin.git-explorer activated.");
         } catch (e) {
-            console.error("Failed to activate Git Explorer", e);
+            logger.error("Failed to activate Git Explorer", e);
         }
 
       // Language Addons
@@ -50,14 +50,14 @@ export class PluginManager {
 
         logger.debug("[PluginManager] Built-in language addons activated.");
       } catch (e) {
-        console.error("Failed to activate language addons", e);
+        logger.error("Failed to activate language addons", e);
       }
 
         // Dynamically load external scripts from Tauri File System
         try {
             await this.loadExternalAddons();
         } catch (e) {
-            console.error("Failed to load external addons", e);
+            logger.error("Failed to load external addons", e);
         }
     }
 
@@ -88,10 +88,10 @@ export class PluginManager {
                         activate(window.trixty);
                         logger.debug(`[PluginManager] Addon ${ext_id} activated successfully!`);
                     } else {
-                        console.warn(`[PluginManager] Addon ${ext_id} executed but exported no 'activate' function.`);
+                        logger.warn(`[PluginManager] Addon ${ext_id} executed but exported no 'activate' function.`);
                     }
                 } catch (err) {
-                    console.error(`[PluginManager] Error evaluating addon ${ext_id}:`, err);
+                    logger.error(`[PluginManager] Error evaluating addon ${ext_id}:`, err);
                 }
             } else {
                 logger.debug(`[PluginManager] Skipping ${ext_id} (Disabled)`);
