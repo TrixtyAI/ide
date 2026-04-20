@@ -22,11 +22,32 @@ comments:
 labels:
   'bug':
     include:
+      - '\\[Bug\\]:'
+      - '\\[Fix\\]:'
       - '\bbug[s]?\b'
     exclude: []
     branches:
       - 'master'
       - 'main'
+  'enhancement':
+    include:
+      - '\\[Feature\\]:'
+      - '\\[Improvement\\]:'
+      - '\bfeat\b'
+      - '\benhancement\b'
+    exclude: []
+  'dependencies':
+    include:
+      - '\\[Deps\\]:'
+      - '\bdeps\b'
+      - '\bdependencies\b'
+    exclude: []
+  'documentation':
+    include:
+      - '\\[Docs\\]:'
+      - '\bdocs?\b'
+      - '\bdocumentation\b'
+    exclude: []
   'help wanted':
     include:
       - '\bhelp( me)?\b'
@@ -36,11 +57,6 @@ labels:
     include:
       - '\bduplicate\b'
       - '\bdupe\b'
-    exclude: []
-  'enhancement':
-    include:
-      - '\bfeat\b'
-      - '\benhancement\b'
     exclude: []
   'question':
     include:
