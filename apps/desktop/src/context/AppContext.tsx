@@ -606,10 +606,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 100);
   }, [getSystemDefaultLocale, setLocale]);
 
-  // Memoize the context value so consumers — and the entire tree — don't
-  // re-render every time this provider re-renders. Without this, a keystroke
-  // in the editor that calls `updateFileContent` would cascade through every
-  // component reading even an unrelated slice of AppContext.
+  // Memoize the context value so unrelated provider re-renders (for example
+  // an `isSettingsOpen` toggle or an `aiSettings` update) don't ship a fresh
+  // reference to every `useApp()` consumer. Writes that actually touch
+  // `openFiles`/`currentFile` — e.g. a keystroke through `updateFileContent`
+  // — still notify consumers; React context has no selector granularity, so
+  // splitting the provider is the follow-up for that finer case.
   const value = useMemo(() => ({
     openFiles,
     currentFile,
