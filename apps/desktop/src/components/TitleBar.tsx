@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Minus, Square, X, Copy, PanelRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
+import { useTauriWindow } from "@/hooks/useTauriWindow";
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const TitleBar: React.FC = () => {
   const { currentFile, rootPath, isRightPanelOpen, setRightPanelOpen } = useApp();
-  const [isMaximized, setIsMaximized] = useState(true);
+  const { isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
   const { t } = useL10n();
 
   // Build dynamic title
@@ -24,58 +25,6 @@ const TitleBar: React.FC = () => {
     }
     parts.push("Trixty IDE");
     return parts.join(" — ");
-  };
-
-  // Check maximize state on mount and listen for changes
-  useEffect(() => {
-    const checkMaximized = async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const win = getCurrentWindow();
-        const maximized = await win.isMaximized();
-        setIsMaximized(maximized);
-
-        // Listen for resize events to track maximize state
-        const unlisten = await win.onResized(async () => {
-          const m = await win.isMaximized();
-          setIsMaximized(m);
-        });
-
-        return unlisten;
-      } catch {
-        return undefined;
-      }
-    };
-
-    let cleanup: (() => void) | undefined;
-    checkMaximized().then((fn) => {
-      cleanup = fn;
-    });
-
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
-
-  const handleMinimize = async () => {
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().minimize();
-    } catch { }
-  };
-
-  const handleMaximize = async () => {
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().toggleMaximize();
-    } catch { }
-  };
-
-  const handleClose = async () => {
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
-    } catch { }
   };
 
   return (
@@ -115,7 +64,7 @@ const TitleBar: React.FC = () => {
 
         <div className="w-[1px] h-[14px] bg-[#222]" />
         <button
-          onClick={handleMinimize}
+          onClick={minimize}
           className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-white/10 hover:text-white transition-colors"
           title={t('window.minimize')}
         >
@@ -123,7 +72,7 @@ const TitleBar: React.FC = () => {
         </button>
 
         <button
-          onClick={handleMaximize}
+          onClick={toggleMaximize}
           className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-white/10 hover:text-white transition-colors"
           title={isMaximized ? t('window.restore') : t('window.maximize')}
         >
@@ -135,7 +84,7 @@ const TitleBar: React.FC = () => {
         </button>
 
         <button
-          onClick={handleClose}
+          onClick={close}
           className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-[#e81123] hover:text-white transition-colors"
           title={t('window.close')}
         >

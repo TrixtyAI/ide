@@ -18,7 +18,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
-import { isTauri, safeInvoke as invoke } from "@/api/tauri";
+import { safeInvoke as invoke } from "@/api/tauri";
+import { useTauriWindow } from "@/hooks/useTauriWindow";
 
 const steps = [
   { id: "welcome", title: "onboarding.welcome", icon: Sparkles, color: "text-blue-400" },
@@ -43,58 +44,7 @@ const OnboardingWizard: React.FC = () => {
   const [direction, setDirection] = useState(0);
   const [isVerifyingOllama, setIsVerifyingOllama] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState<"idle" | "success" | "error">("idle");
-  const [isMaximized, setIsMaximized] = useState(false);
-  const [isNativeWindow, setIsNativeWindow] = useState(false);
-
-  const handleMinimize = async () => {
-    if (!isNativeWindow) return;
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().minimize();
-  };
-  const handleMaximize = async () => {
-    if (!isNativeWindow) return;
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().toggleMaximize();
-    const maximized = await getCurrentWindow().isMaximized();
-    setIsMaximized(maximized);
-  };
-  const handleClose = async () => {
-    if (!isNativeWindow) return;
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().close();
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    let cleanup: (() => void) | undefined;
-
-    if (!isTauri()) return;
-
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const win = getCurrentWindow();
-        const maximized = await win.isMaximized();
-        if (!mounted) return;
-        setIsNativeWindow(true);
-        setIsMaximized(maximized);
-        const unlisten = await win.onResized(async () => {
-          const m = await win.isMaximized();
-          setIsMaximized(m);
-        });
-        if (!mounted) {
-          unlisten();
-          return;
-        }
-        cleanup = unlisten;
-      } catch {}
-    })();
-
-    return () => {
-      mounted = false;
-      if (cleanup) cleanup();
-    };
-  }, []);
+  const { isNativeWindow, isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
 
   const checkOllama = useCallback(async () => {
     setIsVerifyingOllama(true);
@@ -179,9 +129,9 @@ const OnboardingWizard: React.FC = () => {
       {isNativeWindow && (
         <div className="absolute top-0 left-0 right-0 h-10 flex items-center justify-end px-4 z-[120]" data-tauri-drag-region>
           <div data-tauri-no-drag className="flex items-center gap-1">
-            <button onClick={handleMinimize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white"><Minus size={14} /></button>
-            <button onClick={handleMaximize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white">{isMaximized ? <Copy size={12} /> : <Square size={12} />}</button>
-            <button onClick={handleClose} className="h-8 w-8 flex items-center justify-center hover:bg-red-500/80 hover:text-white rounded-lg transition-colors text-white/20 hover:text-white"><X size={14} /></button>
+            <button onClick={minimize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white"><Minus size={14} /></button>
+            <button onClick={toggleMaximize} className="h-8 w-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-white/20 hover:text-white">{isMaximized ? <Copy size={12} /> : <Square size={12} />}</button>
+            <button onClick={close} className="h-8 w-8 flex items-center justify-center hover:bg-red-500/80 hover:text-white rounded-lg transition-colors text-white/20 hover:text-white"><X size={14} /></button>
           </div>
         </div>
       )}
