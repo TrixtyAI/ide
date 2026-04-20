@@ -42,8 +42,8 @@ If you're ready to dive into the code, follow these steps:
 
 ### 1. Environment Setup
 Ensure you have the following installed:
-- **Node.js** (v18+) & **pnpm**
-- **Rust** & **Cargo** & **visual studio tools for windows**
+- **Node.js** (v24+) & **pnpm** (v9.15+)
+- **Rust** & **Cargo** & **Visual Studio Build Tools** (on Windows)
 - **Ollama** (for testing AI features)
 
 ### 2. Fork & Clone
@@ -66,11 +66,23 @@ git checkout -b feature/my-cool-feature
 git checkout -b fix/issue-123
 ```
 
+### 4. Useful Scripts
+
+| Command | What it does |
+| --- | --- |
+| `pnpm desktop` | Runs the desktop app in development mode (syncs version first) |
+| `pnpm build` | Runs the Turborepo build pipeline |
+| `pnpm version:sync` | Propagates the root `package.json` version to `Cargo.toml` and `tauri.conf.json` |
+| `pnpm --filter @trixty/desktop lint` | Runs ESLint on the frontend |
+| `pnpm --filter @trixty/desktop exec tsc --noEmit` | Type-checks the frontend without emitting files |
+| `cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml` | Runs clippy on the Rust backend |
+| `cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml` | Formats the Rust backend |
+
 ---
 
 ## 🚀 Submitting a Pull Request
 
-1. **Test your changes**: Ensure the app builds (`pnpm desktop`) and your changes work as expected.
+1. **Verify your changes**: Ensure the app builds (`pnpm desktop`) and behaves as expected.
 2. **Push to GitHub**: `git push origin your-branch-name`.
 3. **Open a PR**: Fill out the PR template completely.
 4. **Be Patient**: The maintainers will review your PR as soon as possible. We may ask for changes or refinements.
@@ -82,7 +94,7 @@ git checkout -b fix/issue-123
 Before submitting, please ensure:
 - [ ] You have searched for existing PRs.
 - [ ] Your code follows the project's style and standards.
-- [ ] You have added tests or verified the change manually.
+- [ ] You have verified the change manually (the project does not yet have an automated test suite).
 - [ ] Your PR description explains **what** changed and **why**.
 - [ ] You agree to the **UPL-1.0** license terms.
 

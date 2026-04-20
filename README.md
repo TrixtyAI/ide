@@ -3,7 +3,7 @@
   <h1>Trixty IDE</h1>
   <p><strong>A modern, agentic, and highly extensible IDE built for the next generation of developers.</strong></p>
 
-  [![Version](https://img.shields.io/badge/version-1.0.0--beta.1-blue?style=flat-square)](https://github.com/TrixtyAI/ide)
+  [![Version](https://img.shields.io/github/package-json/v/TrixtyAI/ide?style=flat-square&color=blue)](https://github.com/TrixtyAI/ide/releases)
   [![License](https://img.shields.io/badge/license-UPL--1.0-green?style=flat-square)](LICENSE)
   [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](#)
   [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-orange.svg?style=flat-square)](CONTRIBUTING.md)
@@ -41,8 +41,8 @@ Trixty leverages the latest technologies to ensure a smooth and robust developme
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
-- [pnpm](https://pnpm.io/)
+- [Node.js](https://nodejs.org/) (v24+)
+- [pnpm](https://pnpm.io/) (v9.15+)
 - [Rust & Cargo](https://www.rust-lang.org/tools/install) (for desktop builds)
 - [Ollama](https://ollama.com/) (required for AI features)
 
