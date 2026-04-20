@@ -41,30 +41,8 @@ const UpdaterDialog: React.FC = () => {
     }
     
     try {
-      const headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2026-03-10"
-      };
-
-      let endpointUrl = "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json";
-      try {
-        const fetchUrl = "https://api.github.com/repos/TrixtyAI/ide/releases/latest";
-        const res = await fetch(fetchUrl, { headers });
-        
-        if (res.ok) {
-          const data = await res.json();
-          const asset = data.assets?.find((a: GitHubAsset) => a.name === "latest.json");
-          if (asset?.browser_download_url) {
-            endpointUrl = asset.browser_download_url;
-            logger.debug(`[Updater] Found latest release: ${data.name}`);
-          }
-        }
-      } catch (err) {
-        console.warn("[Updater] API access failed, using fallback.", err);
-      }
-
-      // 2. Pass this dynamically discovered URL to our custom Rust command
-      const update = await safeInvoke("check_update", { url: endpointUrl });
+      // Pass no URL, Rust will use pinned endpoints in tauri.conf.json
+      const update = await safeInvoke("check_update");
 
       if (!update) {
          if (isManual) setState({ phase: "up-to-date" });
@@ -76,10 +54,6 @@ const UpdaterDialog: React.FC = () => {
         version: update.version,
         body: update.body ?? null,
       });
-
-      // Maintain endpoint for installation phase
-      (window as Window & typeof globalThis & { __trixty_update_url__?: string })
-        .__trixty_update_url__ = endpointUrl;
 
     } catch (err) {
       console.warn("[Updater] Check failed:", err);
@@ -104,14 +78,6 @@ const UpdaterDialog: React.FC = () => {
     try {
       setState({ phase: "downloading", progress: 0 });
 
-      const url = (window as Window & typeof globalThis & { __trixty_update_url__?: string })
-        .__trixty_update_url__;
-
-      if (!url) {
-        setState({ phase: "error", message: "Update URL lost. Please restart the app." });
-        return;
-      }
-
       let downloaded = 0;
       let total = 0;
 
@@ -124,7 +90,7 @@ const UpdaterDialog: React.FC = () => {
       });
 
       try {
-        await safeInvoke("install_update", { url });
+        await safeInvoke("install_update");
         
         setState({ phase: "ready" });
         
