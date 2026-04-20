@@ -87,6 +87,9 @@ const Terminal: React.FC = () => {
       term.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
+      // Kill the Rust-side PTY so the child shell and reader thread don't leak
+      // when the component unmounts (e.g. the bottom panel is closed).
+      invoke("kill_pty").catch(() => { /* ignore if none active */ });
     };
   }, []);
 
