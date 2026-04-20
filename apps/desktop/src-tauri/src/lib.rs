@@ -1145,10 +1145,16 @@ pub fn run() {
             about::get_trixty_about_info
         ])
         .setup(|app| {
-            // Get window instances
-            let main_window = app.get_webview_window("main").unwrap();
-            let splash_window = app.get_webview_window("splashscreen").unwrap();
-            let _ = splash_window.center();
+            // Main window is required — failing fast with a structured error beats
+            // a thread-panic that silently kills the whole app at startup.
+            let main_window = app
+                .get_webview_window("main")
+                .ok_or_else(|| "main window not declared in tauri.conf.json".to_string())?;
+            // Splashscreen is optional; bundles without one just skip it.
+            let splash_window = app.get_webview_window("splashscreen");
+            if let Some(ref w) = splash_window {
+                let _ = w.center();
+            }
 
             let app_handle = app.handle().clone();
             // Spawn a background task for Ollama pre-loading and window management
@@ -1174,8 +1180,10 @@ pub fn run() {
                             ) {
                                 if settings.load_on_startup && !model.is_empty() {
                                     should_wait = true;
-                                    let _ = splash_window.show();
-                                    let _ = splash_window.center();
+                                    if let Some(ref w) = splash_window {
+                                        let _ = w.show();
+                                        let _ = w.center();
+                                    }
 
                                     log::info!("[Startup] Awaiting Ollama model: {}", model);
                                     let client = reqwest::Client::builder()
@@ -1206,8 +1214,10 @@ pub fn run() {
                     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                 }
 
-                // 3. Close splash and show main window
-                let _ = splash_window.close();
+                // 3. Close splash (if present) and show main window
+                if let Some(splash) = splash_window {
+                    let _ = splash.close();
+                }
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
             });
