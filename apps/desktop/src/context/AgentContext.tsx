@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useApp } from "@/context/AppContext";
 import { CORE_IDENTITY, CORE_SOUL } from "@/addons/builtin.agent-support/index";
@@ -64,6 +64,11 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeDocs, setActiveDocs] = useState<string[]>([]);
   const [chatMode, _setChatMode] = useState<'agent' | 'planner' | 'ask'>('agent');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Monotonic counter used by `refreshAgentData` to discard late responses from
+  // previous refreshes. Every refresh claims a new id on entry and only writes
+  // state while it is still the most recent refresh in flight.
+  const refreshIdRef = useRef(0);
 
   const loadFile = useCallback(async (name: string) => {
     if (!rootPath) return "";
@@ -170,14 +175,19 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [rootPath]);
 
   const refreshAgentData = useCallback(async () => {
+    const myId = ++refreshIdRef.current;
+    const isStale = () => refreshIdRef.current !== myId;
+
     setIsLoading(true);
     try {
       const { trixtyStore } = await import("@/api/store");
       const globalUserContent = await trixtyStore.get<string>("trixty-agent-user-context", "");
+      if (isStale()) return;
       setUserContext(globalUserContent);
 
       // Migration and validation: normalize legacy/invalid persisted chat modes before using them.
       const rawMode = await trixtyStore.get<string>("trixty-chat-mode", "agent");
+      if (isStale()) return;
       const allowedModes = ["agent", "planner", "ask"] as const;
       const normalizedMode = rawMode === "planer" ? "planner" : rawMode;
       const savedMode: "agent" | "planner" | "ask" = allowedModes.includes(
@@ -187,6 +197,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         : "agent";
       if (rawMode !== savedMode) {
         await trixtyStore.set("trixty-chat-mode", savedMode);
+        if (isStale()) return;
       }
       _setChatMode(savedMode);
 
@@ -199,9 +210,14 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // Check if .agents directory exists first to avoid noisy console errors from safeInvoke
+      let agentsDirMissing = false;
       try {
         await invoke("read_directory", { path: `${rootPath}/.agents` }, { silent: true });
       } catch {
+        agentsDirMissing = true;
+      }
+      if (isStale()) return;
+      if (agentsDirMissing) {
         // .agents folder likely doesn't exist, clear local project state and exit
         setAgents("");
         setTools("");
@@ -218,7 +234,8 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         loadSkills(),
         loadDocs()
       ]);
-      
+      if (isStale()) return;
+
       setAgents(agentsContent);
       setTools(toolsContent);
       setMemory(memoryContent);
@@ -228,21 +245,26 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // Restore active states from project settings
       const settings = await loadProjectSettings();
-      
+      if (isStale()) return;
+
       // Update local state (filtering out IDs that might no longer exist)
       const validSkills = settings.activeSkills.filter((id: string) => discoveredSkills.some(s => s.id === id));
       const validDocs = settings.activeDocs.filter((id: string) => discoveredDocs.some(d => d.id === id));
-      
+
       setActiveSkills(validSkills);
       setActiveDocs(validDocs);
-      
+
       // Sync registry
       validSkills.forEach((id: string) => trixty.agent.registerSkill(id));
       validDocs.forEach((id: string) => trixty.agent.registerDoc(id));
     } catch (err) {
       logger.error("[AgentContext] Error refreshing agent data:", err);
     } finally {
-      setIsLoading(false);
+      // Only clear the loading flag if we're still the most recent refresh —
+      // otherwise the newer refresh will do it when it finishes.
+      if (!isStale()) {
+        setIsLoading(false);
+      }
     }
   }, [rootPath, loadFile, loadSkills, loadDocs, loadProjectSettings]);
 
