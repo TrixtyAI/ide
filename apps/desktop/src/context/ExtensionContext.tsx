@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useApp } from "./AppContext"; // For rootPath or generic alerts if needed
 
@@ -183,7 +183,9 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const fetchFile = async (entry: MarketplaceEntry, fileName: string) => {
+  // Memoized so MarketplaceView's DetailsView doesn't retrigger its README/CHANGELOG
+  // effect on every ExtensionContext re-render.
+  const fetchFile = useCallback(async (entry: MarketplaceEntry, fileName: string) => {
       try {
         const text = await invoke("fetch_extension_file", {
             repoUrl: entry.repository || entry.data?.replace("/ide/blob/main/extensions/example-addon/package.json", ".git") || "",
@@ -195,7 +197,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } catch (e) {
          return "";
       }
-  };
+  }, []);
 
   return (
     <ExtensionContext.Provider value={{
