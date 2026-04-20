@@ -1,0 +1,101 @@
+name: Quality Check Commenter
+on:
+  workflow_run:
+    workflows: ["Quality Checks"]
+    types:
+      - completed
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Download quality results
+        uses: actions/download-artifact@v4
+        with:
+          name: quality-results
+          path: logs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Post comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            if (!fs.existsSync('logs/pr_number.txt')) {
+              console.log('No PR number found, skipping comment.');
+              return;
+            }
+            
+            const issue_number = fs.readFileSync('logs/pr_number.txt', 'utf8').trim();
+            if (!issue_number) return;
+
+            const statusContent = fs.readFileSync('logs/status.env', 'utf8');
+            const status = {};
+            statusContent.split('\n').forEach(line => {
+              const [key, value] = line.split('=');
+              if (key && value) status[key.trim()] = value.trim();
+            });
+
+            const steps = [
+              { id: 'install', name: 'Dependencies', log: 'logs/install.log' },
+              { id: 'lint', name: 'Lint', log: 'logs/lint.log' },
+              { id: 'typecheck', name: 'Typecheck', log: 'logs/typecheck.log' },
+              { id: 'clippy', name: 'Clippy', log: 'logs/clippy.log' },
+              { id: 'fmt', name: 'Format', log: 'logs/fmt.log' }
+            ];
+
+            const isFailure = Object.values(status).includes('failure');
+            if (!isFailure) {
+                // Optional: success comment? User only asked for failure comment initially
+                // but usually it's good to keep it or just skip if success.
+                // The prompt said "si es que ocurre en alguno de los pasos".
+                return;
+            }
+
+            let body = '### ❌ Quality Checks Failed\n\n| Check | Status |\n| :--- | :--- |\n';
+            let failureLog = '';
+
+            steps.forEach(s => {
+              const outcome = status[s.id] || 'skipped';
+              let statusText = '⚪ Skipped';
+              if (outcome === 'success') statusText = '✅ Success';
+              if (outcome === 'failure') {
+                statusText = '❌ Failure';
+                
+                try {
+                  const logPath = s.log;
+                  if (fs.existsSync(logPath)) {
+                    let logContent = fs.readFileSync(logPath, 'utf8');
+                    // Strip ANSI codes
+                    logContent = logContent.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+                    
+                    const lines = logContent.split('\n');
+                    const preview = lines.slice(-40).join('\n');
+                    failureLog = `\n<details><summary><b>Log Preview (${s.name})</b></summary>\n\n\`\`\`text\n${preview}\n\`\`\`\n\n</details>`;
+                  }
+                } catch (e) {
+                  failureLog = `\n*(Could not read log file for ${s.name}: ${e.message})*`;
+                }
+              }
+              body += `| ${s.name} | ${statusText} |\n`;
+            });
+            
+            body += failureLog;
+            body += `\n\n[View full logs](${context.payload.server_url}/${context.repo.owner}/${context.repo.repo}/actions/runs/${github.event.workflow_run.id})`;
+
+            const { owner, repo } = context.repo;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: parseInt(issue_number),
+              body: body
+            });
