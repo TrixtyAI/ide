@@ -22,43 +22,45 @@ comments:
 labels:
   'bug':
     include:
-      - '\\[Bug\\]:'
-      - '\\[Fix\\]:'
-      - '\bbug[s]?\b'
+      - '(?i)\\[Bug\\]:'
+      - '(?i)\\[Fix\\]:'
+      - '(?i)\bbug[s]?\b'
+      - '(?i)\bfix(es)?\b'
     exclude: []
     branches:
       - 'master'
       - 'main'
   'enhancement':
     include:
-      - '\\[Feature\\]:'
-      - '\\[Improvement\\]:'
-      - '\bfeat\b'
-      - '\benhancement\b'
+      - '(?i)\\[Feature[s]?\\]:'
+      - '(?i)\\[Improvement[s]?\\]:'
+      - '(?i)\bfeat(ure)?[s]?\b'
+      - '(?i)\benhancement[s]?\b'
+      - '(?i)\bimprovement[s]?\b'
     exclude: []
   'dependencies':
     include:
-      - '\\[Deps\\]:'
-      - '\bdeps\b'
-      - '\bdependencies\b'
+      - '(?i)\\[Dep[s]?\\]:'
+      - '(?i)\bdep[s]?\b'
+      - '(?i)\bdependenc(y|ies)\b'
     exclude: []
   'documentation':
     include:
-      - '\\[Docs\\]:'
-      - '\bdocs?\b'
-      - '\bdocumentation\b'
+      - '(?i)\\[Doc[s]?\\]:'
+      - '(?i)\bdoc[s]?\b'
+      - '(?i)\bdocumentation\b'
     exclude: []
   'help wanted':
     include:
-      - '\bhelp( me)?\b'
+      - '(?i)\bhelp( me)?\b'
     exclude:
-      - '\b\[test(ing)?\]\b'
+      - '(?i)\b\[test(ing)?\]\b'
   'duplicate':
     include:
-      - '\bduplicate\b'
-      - '\bdupe\b'
+      - '(?i)\bduplicate\b'
+      - '(?i)\bdupe\b'
     exclude: []
   'question':
     include:
-      - '\bquestion\b'
+      - '(?i)\bquestion\b'
     exclude: []
