@@ -1252,9 +1252,34 @@ pub fn run() {
                                         "keep_alive": format!("{}m", settings.keep_alive)
                                     });
 
-                                    // Wait for Ollama response
-                                    let _ = client.post(&url).json(&body).send().await;
-                                    log::info!("[Startup] Ollama responded. Transitioning to IDE.");
+                                    // Run the preload on its own task so the splash can fall
+                                    // through after a short budget even when Ollama is slow or
+                                    // unreachable. The request keeps its 180s client timeout
+                                    // and its side effect (model cached in Ollama) still lands
+                                    // eventually, we just stop blocking the user on it.
+                                    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+                                    tauri::async_runtime::spawn(async move {
+                                        match client.post(&url).json(&body).send().await {
+                                            Ok(_) => log::info!("[Startup] Ollama preload completed."),
+                                            Err(e) => log::warn!("[Startup] Ollama preload failed: {}", e),
+                                        }
+                                        let _ = tx.send(());
+                                    });
+
+                                    match tokio::time::timeout(
+                                        std::time::Duration::from_secs(5),
+                                        rx,
+                                    )
+                                    .await
+                                    {
+                                        Ok(_) => log::info!(
+                                            "[Startup] Ollama ready before splash budget."
+                                        ),
+                                        Err(_) => log::warn!(
+                                            "[Startup] Ollama preload exceeded 5s splash budget; \
+                                             showing IDE while preload continues in background."
+                                        ),
+                                    }
                                 }
                             }
                         }
