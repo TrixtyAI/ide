@@ -1,0 +1,44 @@
+name: Quality Checks
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  quality:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: install frontend dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint (Desktop)
+        run: pnpm --filter @trixty/desktop lint --max-warnings 0
+
+      - name: Typecheck (Desktop)
+        run: pnpm --filter @trixty/desktop exec tsc --noEmit
+
+      - name: Cargo Clippy
+        run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
+
+      - name: Cargo Format Check
+        run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
