@@ -182,10 +182,16 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const globalUserContent = await trixtyStore.get<string>("trixty-agent-user-context", "");
       setUserContext(globalUserContent);
 
-      // Migration: the legacy "planer" value (typo) becomes "planner" and is rewritten to the store.
+      // Migration and validation: normalize legacy/invalid persisted chat modes before using them.
       const rawMode = await trixtyStore.get<string>("trixty-chat-mode", "agent");
-      const savedMode = (rawMode === 'planer' ? 'planner' : rawMode) as 'agent' | 'planner' | 'ask';
-      if (rawMode === 'planer') {
+      const allowedModes = ["agent", "planner", "ask"] as const;
+      const normalizedMode = rawMode === "planer" ? "planner" : rawMode;
+      const savedMode: "agent" | "planner" | "ask" = allowedModes.includes(
+        normalizedMode as (typeof allowedModes)[number]
+      )
+        ? (normalizedMode as "agent" | "planner" | "ask")
+        : "agent";
+      if (rawMode !== savedMode) {
         await trixtyStore.set("trixty-chat-mode", savedMode);
       }
       _setChatMode(savedMode);
