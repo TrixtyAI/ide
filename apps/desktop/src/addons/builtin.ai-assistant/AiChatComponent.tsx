@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
 import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -167,15 +168,7 @@ const AiChatComponent: React.FC = () => {
   }, [activeSession?.messages, isTyping]);
 
   // Close menus on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowModelMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  useClickOutside(menuRef, () => setShowModelMenu(false));
 
   const getModelFamilyIcon = (family: string) => {
     const f = family.toLowerCase();

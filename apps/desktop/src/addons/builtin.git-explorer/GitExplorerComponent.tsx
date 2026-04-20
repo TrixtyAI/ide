@@ -13,6 +13,7 @@ import { open, ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu, { ContextMenuItem } from "@/components/ui/ContextMenu";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import pm from "picomatch";
 
 interface FileEntry { name: string; path: string; is_dir: boolean; children?: FileEntry[]; }
@@ -75,14 +76,7 @@ const GitExplorerComponent: React.FC = () => {
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const commitMenuRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!commitMenuOpen) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (commitMenuRef.current && !commitMenuRef.current.contains(e.target as Node)) setCommitMenuOpen(false);
-    };
-    window.addEventListener("mousedown", onClickOutside);
-    return () => window.removeEventListener("mousedown", onClickOutside);
-  }, [commitMenuOpen]);
+  useClickOutside(commitMenuRef, () => setCommitMenuOpen(false), commitMenuOpen);
 
   const loadDirectory = useCallback(async (path: string, parentPath?: string) => {
     setLoading(true);
