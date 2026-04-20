@@ -10,12 +10,14 @@ env:
 jobs:
   quality:
     runs-on: windows-latest
-    permissions:
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - name: Create logs directory
         run: mkdir logs
+
+      - name: Save PR number
+        if: github.event_name == 'pull_request'
+        run: echo ${{ github.event.pull_request.number }} > logs/pr_number.txt
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -62,56 +64,19 @@ jobs:
           cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check 2>&1 | Tee-Object -FilePath logs/fmt.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Post comment on failure
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Generate status report
+        if: always()
+        run: |
+          echo "install=${{ steps.install.outcome }}" >> logs/status.env
+          echo "lint=${{ steps.lint.outcome }}" >> logs/status.env
+          echo "typecheck=${{ steps.typecheck.outcome }}" >> logs/status.env
+          echo "clippy=${{ steps.clippy.outcome }}" >> logs/status.env
+          echo "fmt=${{ steps.fmt.outcome }}" >> logs/status.env
+
+      - name: Upload quality results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-            
-            const steps = [
-              { id: 'install', name: 'Dependencies', outcome: '${{ steps.install.outcome }}', log: 'logs/install.log' },
-              { id: 'lint', name: 'Lint', outcome: '${{ steps.lint.outcome }}', log: 'logs/lint.log' },
-              { id: 'typecheck', name: 'Typecheck', outcome: '${{ steps.typecheck.outcome }}', log: 'logs/typecheck.log' },
-              { id: 'clippy', name: 'Clippy', outcome: '${{ steps.clippy.outcome }}', log: 'logs/clippy.log' },
-              { id: 'fmt', name: 'Format', outcome: '${{ steps.fmt.outcome }}', log: 'logs/fmt.log' }
-            ];
-
-            let body = '### ❌ Quality Checks Failed\n\n| Check | Status |\n| :--- | :--- |\n';
-            let failureLog = '';
-
-            steps.forEach(s => {
-              let status = '⚪ Skipped';
-              if (s.outcome === 'success') status = '✅ Success';
-              if (s.outcome === 'failure') {
-                status = '❌ Failure';
-                
-                try {
-                  if (fs.existsSync(s.log)) {
-                    let logContent = fs.readFileSync(s.log, 'utf8');
-                    // Remove ANSI escape codes
-                    logContent = logContent.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-                    
-                    const lines = logContent.split('\n');
-                    const preview = lines.slice(-40).join('\n');
-                    failureLog = `\n<details><summary><b>Log Preview (${s.name})</b></summary>\n\n\`\`\`text\n${preview}\n\`\`\`\n\n</details>`;
-                  }
-                } catch (e) {
-                  failureLog = `\n*(Could not read log file for ${s.name})*`;
-                }
-              }
-              body += `| ${s.name} | ${status} |\n`;
-            });
-            
-            body += failureLog;
-            body += `\n\n[View full logs](${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID})`;
-
-            github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number,
-              body: body
-            });
+          name: quality-results
+          path: logs/
+          retention-days: 1
