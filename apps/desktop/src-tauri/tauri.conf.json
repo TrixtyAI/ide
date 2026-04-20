@@ -40,9 +40,9 @@
         "url": "splashscreen.html"
       }
     ],
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost https://raw.githubusercontent.com; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http://localhost:11434; font-src 'self' data:;"
     }
   },
   "plugins": {
