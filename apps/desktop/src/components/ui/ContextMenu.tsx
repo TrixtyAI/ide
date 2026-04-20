@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 export interface ContextMenuItem {
   label?: string;
@@ -21,23 +22,18 @@ interface ContextMenuProps {
 const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
+  useClickOutside(menuRef, onClose);
+
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
     const handleScroll = () => onClose();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
     window.addEventListener("scroll", handleScroll, true);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("scroll", handleScroll, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
