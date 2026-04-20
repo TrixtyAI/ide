@@ -3,14 +3,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::OnceLock;
-use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-// Shared reqwest client for GitHub API calls. Built once on first use so that
-// connection pooling and keep-alive work across the many per-entry calls that
-// `fetch_extension_stars` makes during catalog refresh.
-static GITHUB_CLIENT: OnceLock<Option<reqwest::Client>> = OnceLock::new();
+use crate::http::{
+    read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryCatalog {
@@ -57,9 +54,15 @@ fn repo_to_raw_base(repo_url: &str, branch: &str, subpath: Option<&str>) -> Stri
 #[tauri::command]
 pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String> {
     if url.starts_with("http://") || url.starts_with("https://") {
-        let response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+        let response = shared_client()
+            .get(&url)
+            .timeout(DEFAULT_REQUEST_TIMEOUT)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
 
-        let catalog = response.json::<RegistryCatalog>().await.map_err(|e| {
+        let body = read_text_capped(response, MAX_RESPONSE_BYTES).await?;
+        let catalog: RegistryCatalog = serde_json::from_str(&body).map_err(|e| {
             let err = format!("Failed to parse registry JSON from {}: {}", url, e);
             error!("{}", err);
             err
@@ -100,7 +103,12 @@ pub async fn fetch_extension_manifest(
         )
     };
 
-    let response = reqwest::get(&fetch_url).await.map_err(|e| e.to_string())?;
+    let response = shared_client()
+        .get(&fetch_url)
+        .timeout(DEFAULT_REQUEST_TIMEOUT)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -110,10 +118,7 @@ pub async fn fetch_extension_manifest(
         ));
     }
 
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read HTTP body: {}", e))?;
+    let text = read_text_capped(response, MAX_RESPONSE_BYTES).await?;
 
     let json: Value = serde_json::from_str(&text)
         .map_err(|e| format!("JSON Parsing Failed: {}. Raw Response: {}", e, text))?;
@@ -144,21 +149,13 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
 
     // GitHub API requires a User-Agent header.
     // Failures (network, rate limit, parse) are logged and return None for fallback.
-    let client = match GITHUB_CLIENT
-        .get_or_init(|| {
-            reqwest::Client::builder()
-                .user_agent("TrixtyIDE")
-                .timeout(Duration::from_secs(10))
-                .build()
-                .ok()
-        })
-        .as_ref()
+    let response = match shared_client()
+        .get(&api_url)
+        .header(reqwest::header::USER_AGENT, "TrixtyIDE")
+        .timeout(DEFAULT_REQUEST_TIMEOUT)
+        .send()
+        .await
     {
-        Some(c) => c,
-        None => return Ok(None),
-    };
-
-    let response = match client.get(&api_url).send().await {
         Ok(r) => r,
         Err(e) => {
             warn!("Failed to fetch stars for {}: {}", repo_url, e);
@@ -175,7 +172,15 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
         return Ok(None);
     }
 
-    let body: serde_json::Value = match response.json().await {
+    let text = match read_text_capped(response, MAX_RESPONSE_BYTES).await {
+        Ok(t) => t,
+        Err(e) => {
+            warn!("Failed to read stars body for {}: {}", repo_url, e);
+            return Ok(None);
+        }
+    };
+
+    let body: serde_json::Value = match serde_json::from_str(&text) {
         Ok(b) => b,
         Err(e) => {
             warn!("Failed to parse stars JSON for {}: {}", repo_url, e);
@@ -201,14 +206,19 @@ pub async fn fetch_extension_file(
         repo_to_raw_base(&repo_url, &branch, path.as_deref()),
         file_name
     );
-    let response = reqwest::get(&fetch_url).await.map_err(|e| e.to_string())?;
+    let response = shared_client()
+        .get(&fetch_url)
+        .timeout(DEFAULT_REQUEST_TIMEOUT)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
         // Fallback or empty if no file
         return Ok(String::new());
     }
 
-    let text = response.text().await.map_err(|e| e.to_string())?;
+    let text = read_text_capped(response, MAX_RESPONSE_BYTES).await?;
 
     Ok(text)
 }
