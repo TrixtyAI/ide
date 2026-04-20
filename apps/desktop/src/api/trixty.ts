@@ -85,6 +85,8 @@ class L10nRegistry {
     private bundles = new Map<string, Record<string, string>>();
     private currentLocale = 'en';
     private listeners = new Set<() => void>();
+    private version = 0;
+    private snapshot = { locale: 'en', version: 0 };
 
     registerTranslations(locale: string, bundle: Record<string, string>) {
         const existing = this.bundles.get(locale) || {};
@@ -118,7 +120,13 @@ class L10nRegistry {
         return () => { this.listeners.delete(listener); };
     }
 
+    getSnapshot = () => {
+        return this.snapshot;
+    }
+
     private notify() {
+        this.version++;
+        this.snapshot = { locale: this.currentLocale, version: this.version };
         for (const listener of this.listeners) listener();
     }
 }
