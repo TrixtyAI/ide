@@ -26,6 +26,9 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ^2.5.0
         version: 2.5.0
+      '@tauri-apps/plugin-http':
+        specifier: ^2.5.8
+        version: 2.5.8
       '@tauri-apps/plugin-positioner':
         specifier: ^2.3.1
         version: 2.3.1
@@ -44,12 +47,6 @@ importers:
       '@xterm/addon-fit':
         specifier: ^0.11.0
         version: 0.11.0
-      '@xterm/addon-serialize':
-        specifier: ^0.14.0
-        version: 0.14.0
-      '@xterm/addon-web-links':
-        specifier: ^0.12.0
-        version: 0.12.0
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
@@ -670,6 +667,9 @@ packages:
   '@tauri-apps/plugin-fs@2.5.0':
     resolution: {integrity: sha512-c83kbz61AK+rKjhS+je9+stIO27nXj7p9cqeg36TwkIUtxpCFTttlHHtqon6h6FN54cXjyAjlMPOJcW3mwE5XQ==}
 
+  '@tauri-apps/plugin-http@2.5.8':
+    resolution: {integrity: sha512-oxd7oypzQeu8kAfFCrw534Kq7Cw+NzozcnCY21O4rz3A+veJiIiuSCMIprgGcZOcLAXFP9GmDhKUbhuKWcunRw==}
+
   '@tauri-apps/plugin-positioner@2.3.1':
     resolution: {integrity: sha512-9JiNO3tpHhz91VUG/sncGha4CL1qQHlftnfkwWJIquAR7rhLA9GUdW1oIdZLbNswNzkkd9qVywFmh658eFEL2Q==}
 
@@ -924,12 +924,6 @@ packages:
 
   '@xterm/addon-fit@0.11.0':
     resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
-
-  '@xterm/addon-serialize@0.14.0':
-    resolution: {integrity: sha512-uteyTU1EkrQa2Ux6P/uFl2fzmXI46jy5uoQMKEOM0fKTyiW7cSn0WrFenHm5vO5uEXX/GpwW/FgILvv3r0WbkA==}
-
-  '@xterm/addon-web-links@0.12.0':
-    resolution: {integrity: sha512-4Smom3RPyVp7ZMYOYDoC/9eGJJJqYhnPLGGqJ6wOBfB8VxPViJNSKdgRYb8NpaM6YSelEKbA2SStD7lGyqaobw==}
 
   '@xterm/xterm@6.0.0':
     resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
@@ -3066,6 +3060,10 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.10.1
 
+  '@tauri-apps/plugin-http@2.5.8':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+
   '@tauri-apps/plugin-positioner@2.3.1':
     dependencies:
       '@tauri-apps/api': 2.10.1
@@ -3307,10 +3305,6 @@ snapshots:
     optional: true
 
   '@xterm/addon-fit@0.11.0': {}
-
-  '@xterm/addon-serialize@0.14.0': {}
-
-  '@xterm/addon-web-links@0.12.0': {}
 
   '@xterm/xterm@6.0.0': {}
 
