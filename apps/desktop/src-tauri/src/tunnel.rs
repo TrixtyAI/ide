@@ -1,9 +1,9 @@
+use log::{error, warn};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime};
-use log::{error, warn};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 #[inline]
@@ -48,7 +48,7 @@ pub fn get_active_ports() -> Result<Vec<u16>, String> {
                 if parts.len() >= 2 {
                     let addr = parts[1];
                     // Example: 0.0.0.0:3000 or [::]:3000
-                    if let Some(port_str) = addr.split(':').last() {
+                    if let Some(port_str) = addr.split(':').next_back() {
                         if let Ok(port) = port_str.parse::<u16>() {
                             // Noise Reduction: Exclude well-known system ports (< 1024)
                             // and ensure it's bound locally (0.0.0.0, 127.0.0.1, [::], [::1])
@@ -162,7 +162,10 @@ pub async fn start_tunnel<R: Runtime>(
     }
 
     if url.is_empty() {
-        warn!("localtunnel output did not contain expected URL pattern for port {}", port);
+        warn!(
+            "localtunnel output did not contain expected URL pattern for port {}",
+            port
+        );
         let _ = child.kill();
         return Err("Failed to get tunnel URL from localtunnel".to_string());
     }

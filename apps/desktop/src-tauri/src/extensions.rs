@@ -1,3 +1,4 @@
+use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -5,7 +6,6 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
-use log::{error, warn, info};
 
 // Shared reqwest client for GitHub API calls. Built once on first use so that
 // connection pooling and keep-alive work across the many per-entry calls that
@@ -59,14 +59,11 @@ pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String
     if url.starts_with("http://") || url.starts_with("https://") {
         let response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
 
-        let catalog = response
-            .json::<RegistryCatalog>()
-            .await
-            .map_err(|e| {
-                let err = format!("Failed to parse registry JSON from {}: {}", url, e);
-                error!("{}", err);
-                err
-            })?;
+        let catalog = response.json::<RegistryCatalog>().await.map_err(|e| {
+            let err = format!("Failed to parse registry JSON from {}: {}", url, e);
+            error!("{}", err);
+            err
+        })?;
 
         return Ok(catalog);
     }
@@ -170,7 +167,11 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
     };
 
     if !response.status().is_success() {
-        warn!("GitHub API error {} for stars of {}", response.status(), repo_url);
+        warn!(
+            "GitHub API error {} for stars of {}",
+            response.status(),
+            repo_url
+        );
         return Ok(None);
     }
 
