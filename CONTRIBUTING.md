@@ -103,6 +103,34 @@ Before submitting, please ensure:
 
 ---
 
+## ➕ Adding a New Tauri Command
+
+Trixty's frontend talks to the Rust backend through Tauri's `invoke` bridge. Tauri automatically converts argument names between the two sides, so a consistent naming convention is required to keep builds working without runtime errors.
+
+**Naming convention**
+- Rust command handlers use `snake_case` parameters (e.g. `git_url`, `root_path`).
+- TypeScript entries in `apps/desktop/src/api/tauri.ts` use `camelCase` (e.g. `gitUrl`, `rootPath`).
+- Tauri converts between them automatically.
+
+**Steps**
+1. **Rust** — add a `#[tauri::command]` to the relevant module (e.g. `apps/desktop/src-tauri/src/lib.rs`):
+   ```rust
+   #[tauri::command]
+   async fn do_something(git_url: String) -> Result<String, String> {
+       // ...
+       Ok("ok".into())
+   }
+   ```
+2. **Register** it in `tauri::Builder::default().invoke_handler(generate_handler![...])`.
+3. **TypeScript** — add the signature to `TauriInvokeMap` in `apps/desktop/src/api/tauri.ts` using `camelCase`:
+   ```ts
+   "do_something": { args: { gitUrl: string }; return: string };
+   ```
+4. **Capability** — declare the command in `apps/desktop/src-tauri/capabilities/*.json` so the webview is allowed to call it.
+5. **Consume** via `safeInvoke("do_something", { gitUrl: "..." })` from the frontend.
+
+---
+
 <p align="center">
   <b>Thank you for helping make Trixty IDE better! ❤️</b>
 </p>
