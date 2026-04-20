@@ -46,12 +46,16 @@ export type OllamaRequest =
  *
  * When adding a new command:
  * 1. Define the Rust `#[tauri::command]` using `snake_case` parameters.
- * 2. Add an entry here with `camelCase` argument names matching the Rust parameters.
- * 3. Register the command in the capability file (`apps/desktop/src-tauri/capabilities/*.json`)
- *    so it is callable from the webview.
+ * 2. Register it in the `run()` builder via `tauri::generate_handler![...]` in `src-tauri/src/lib.rs`.
+ * 3. Add an entry here with `camelCase` argument names matching the Rust parameters.
  *
- * Example: a Rust handler `fn install_extension(id: String, git_url: String)` maps to
- * `"install_extension": { args: { id: string; gitUrl: string }; return: void }`.
+ * Tauri-injected parameters such as `AppHandle`, `State<T>` or `Window` are NOT part of the
+ * frontend call signature — they are resolved by the Tauri runtime and must be omitted from
+ * the TypeScript entry.
+ *
+ * Example: a Rust handler
+ * `async fn install_extension(app: AppHandle, id: String, git_url: String) -> Result<(), String>`
+ * maps to `"install_extension": { args: { id: string; gitUrl: string }; return: void }`.
  */
 export interface TauriInvokeMap {
   "get_installed_extensions": { args: undefined; return: string[] };

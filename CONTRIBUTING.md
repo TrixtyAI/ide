@@ -121,13 +121,15 @@ Trixty's frontend talks to the Rust backend through Tauri's `invoke` bridge. Tau
        Ok("ok".into())
    }
    ```
-2. **Register** it in `tauri::Builder::default().invoke_handler(generate_handler![...])`.
+2. **Register** it in the `run()` builder chain using `tauri::generate_handler![...]` (see `apps/desktop/src-tauri/src/lib.rs`).
 3. **TypeScript** — add the signature to `TauriInvokeMap` in `apps/desktop/src/api/tauri.ts` using `camelCase`:
    ```ts
    "do_something": { args: { gitUrl: string }; return: string };
    ```
-4. **Capability** — declare the command in `apps/desktop/src-tauri/capabilities/*.json` so the webview is allowed to call it.
-5. **Consume** via `safeInvoke("do_something", { gitUrl: "..." })` from the frontend.
+4. **Consume** via `safeInvoke("do_something", { gitUrl: "..." })` from the frontend.
+
+> [!NOTE]
+> Tauri-injected parameters such as `AppHandle`, `State<T>` or `Window` are resolved by the runtime and must be omitted from the TypeScript entry. Custom commands do not require per-command entries in `apps/desktop/src-tauri/capabilities/*.json` in this project — the capability files only declare plugin permissions. Only update them if you add new plugin permissions.
 
 ---
 
