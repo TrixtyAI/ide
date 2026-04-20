@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { trixtyStore } from "@/api/store";
+import { logger } from "@/lib/logger";
 
 export interface FileState {
   path: string;
@@ -230,11 +231,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load settings on mount
   useEffect(() => {
     const loadInitialState = async () => {
-      console.log("[AppContext] Starting to load initial state from store...");
+      logger.debug("[AppContext] Starting to load initial state from store...");
       try {
         // 1. Load AI Settings
         const savedSettings = await trixtyStore.get<AISettings | null>("trixty-ai-settings", null);
-        console.log("[AppContext] AI Settings loaded:", !!savedSettings);
+        logger.debug("[AppContext] AI Settings loaded:", !!savedSettings);
         if (savedSettings) {
           setAiSettings(prev => ({ ...prev, ...savedSettings }));
         } else {
@@ -245,7 +246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // 2. Load Chats
         const savedChats = await trixtyStore.get<ChatSession[] | null>("trixty-chats", null);
-        console.log("[AppContext] Chats loaded:", savedChats?.length || 0);
+        logger.debug("[AppContext] Chats loaded:", savedChats?.length || 0);
         if (savedChats && savedChats.length > 0) {
           setChatSessions(savedChats);
           setActiveSessionId(savedChats[0].id);
@@ -256,31 +257,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // 3. Load Locale
         const savedLocale = await trixtyStore.get<string | null>("trixty-locale", null);
-        console.log("[AppContext] Locale loaded:", savedLocale);
+        logger.debug("[AppContext] Locale loaded:", savedLocale);
         if (savedLocale) {
           setLocale(savedLocale);
         } else {
           // Detect system language
           const detectedLocale = getSystemDefaultLocale();
-          console.log("[AppContext] No saved locale found. Detected default:", detectedLocale);
+          logger.debug("[AppContext] No saved locale found. Detected default:", detectedLocale);
           setLocale(detectedLocale);
         }
          // 4. Load Editor Settings
         const savedEditorSettings = await trixtyStore.get<EditorSettings | null>("trixty-editor-settings", null);
-        console.log("[AppContext] Editor Settings loaded:", !!savedEditorSettings);
+        logger.debug("[AppContext] Editor Settings loaded:", !!savedEditorSettings);
         if (savedEditorSettings) {
           setEditorSettings(savedEditorSettings);
         }
 
         // 5. Load System Settings
         const savedSystemSettings = await trixtyStore.get<SystemSettings | null>("trixty-system-settings", null);
-        console.log("[AppContext] System Settings loaded:", !!savedSystemSettings);
+        logger.debug("[AppContext] System Settings loaded:", !!savedSystemSettings);
         if (savedSystemSettings) {
           setSystemSettings(prev => ({ ...prev, ...savedSystemSettings }));
         }
 
         setIsInitialLoadComplete(true);
-        console.log("[AppContext] Initial load complete.");
+        logger.debug("[AppContext] Initial load complete.");
       } catch (err) {
         console.error("[AppContext] Error loading initial state:", err);
         // Even on error, we should probably allow saving new changes

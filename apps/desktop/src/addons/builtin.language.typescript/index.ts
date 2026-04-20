@@ -1,5 +1,7 @@
+import { logger } from "@/lib/logger";
+
 export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
-  console.log("[builtin.language.typescript] Activating...");
+  logger.debug("[builtin.language.typescript] Activating...");
 
   // Register TypeScript/JavaScript languages
   trixty.languages.register({

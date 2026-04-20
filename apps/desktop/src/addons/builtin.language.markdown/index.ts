@@ -1,5 +1,7 @@
+import { logger } from "@/lib/logger";
+
 export const activate = (trixty: typeof import("@/api/trixty").trixty) => {
-  console.log("[builtin.language.markdown] Activating...");
+  logger.debug("[builtin.language.markdown] Activating...");
 
   const languageId = "markdown";
 

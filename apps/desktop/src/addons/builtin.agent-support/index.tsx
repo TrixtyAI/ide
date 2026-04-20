@@ -1,5 +1,6 @@
 import React from "react";
 import { trixty } from "@/api/trixty";
+import { logger } from "@/lib/logger";
 
 // Re-exporting core definitions for internal use
 export const CORE_IDENTITY = `**Name:** Trixty AI
@@ -45,6 +46,6 @@ You are **Trixty AI**, an expert technical programming assistant designed to int
 - **NPM Special Rule**: Be careful on NPM! The "latest tag" timestamp in the sidebar or meta-data often reflects when a tag was updated, not when the code was published. Always look at the version history table and report the actual publication date for the specific version number.`;
 
 export function activate() {
-    console.log("[AgentSupport] Activating logic...");
+    logger.debug("[AgentSupport] Activating logic...");
     // Future registration of commands if needed
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { loader, type Monaco } from "@monaco-editor/react";
 import type { languages } from "monaco-editor";
+import { logger } from "@/lib/logger";
 
 // Registry of all available commands in the IDE. 
 // Can be extended via Declaration Merging in other modules.
@@ -75,7 +76,7 @@ class WindowRegistry {
     }
 
     showInformationMessage(msg: string) {
-        console.log(`[Trixty Info] ${msg}`);
+        logger.debug(`[Trixty Info] ${msg}`);
         window.dispatchEvent(new CustomEvent('trixty-flash', { detail: msg }));
     }
 }
@@ -137,7 +138,7 @@ class LanguageRegistry {
         if (typeof window !== 'undefined') {
             loader.init().then(instance => {
                 this.monaco = instance;
-                console.log("[LanguageRegistry] Monaco instance initialized. Flushing buffer...");
+                logger.debug("[LanguageRegistry] Monaco instance initialized. Flushing buffer...");
                 this.flush();
             }).catch(console.error);
         }
@@ -160,12 +161,12 @@ class LanguageRegistry {
                 console.error("[LanguageRegistry] Error flushing buffered language item:", e);
             }
         }
-      console.log(`[LanguageRegistry] Flushed ${this.buffer.length} items to Monaco.`);
+      logger.debug(`[LanguageRegistry] Flushed ${this.buffer.length} items to Monaco.`);
       this.buffer = [];
     }
 
     register(language: languages.ILanguageExtensionPoint) {
-        console.log(`[LanguageRegistry] Registering language: ${language.id}`, language.extensions);
+        logger.debug(`[LanguageRegistry] Registering language: ${language.id}`, language.extensions);
         if (language.extensions) {
             language.extensions.forEach(ext => {
                 // Normalize extension (remove leading dot if present)
@@ -177,13 +178,13 @@ class LanguageRegistry {
         if (this.monaco) {
             this.monaco.languages.register(language);
         } else {
-            console.log(`[LanguageRegistry] Monaco not ready, buffering registration for ${language.id}`);
+            logger.debug(`[LanguageRegistry] Monaco not ready, buffering registration for ${language.id}`);
             this.buffer.push({ type: 'register', data: language });
         }
     }
 
   setMonarchTokens(id: string, rules: languages.IMonarchLanguage) {
-        console.log(`[LanguageRegistry] Setting Monarch tokens for: ${id}`);
+        logger.debug(`[LanguageRegistry] Setting Monarch tokens for: ${id}`);
         if (this.monaco) {
             this.monaco.languages.setMonarchTokensProvider(id, rules);
         } else {
