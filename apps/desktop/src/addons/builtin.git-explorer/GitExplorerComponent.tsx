@@ -152,6 +152,9 @@ const GitExplorerComponent: React.FC = () => {
         setExpandedDirs(newExpanded);
       }
     }
+    // Intentionally exclude `expandedDirs`: this effect updates it via `setExpandedDirs`,
+    // so including it would retrigger auto-reveal after every expansion change and cause
+    // repeated directory loading/re-expansion loops for the same selected file.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFile?.path, rootPath, loadDirectory]);
 
@@ -253,6 +256,10 @@ const GitExplorerComponent: React.FC = () => {
       setStashes([]);
       setHasConflicts(false);
     }
+    // Intentionally exclude `t`: re-creating `refreshGit` on every locale change would
+    // invalidate the `useEffect` that polls it and retrigger the whole git refresh on
+    // language switch. Error messages read via `t` only need to be current at the time
+    // the error surfaces, not at callback-creation time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootPath, logLimit]);
 

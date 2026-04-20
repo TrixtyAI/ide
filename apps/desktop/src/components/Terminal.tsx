@@ -147,6 +147,8 @@ const Terminal: React.FC = () => {
       isCanceled = true;
       if (unlisten) unlisten();
     };
+    // Intentionally depend only on path changes: including `t` would respawn the PTY
+    // on every locale update, but localization changes should only affect future error text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalPath, rootPath]);
 

@@ -292,8 +292,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     loadInitialState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createSession, setLocale]);
+  }, [createSession, setLocale, getSystemDefaultLocale]);
 
   // Global: Remove default context menu
   useEffect(() => {
