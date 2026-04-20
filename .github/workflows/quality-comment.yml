@@ -78,9 +78,10 @@ jobs:
                     // Strip ANSI codes
                     logContent = logContent.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
                     
-                    const lines = logContent.split('\n');
-                    const preview = lines.slice(-40).join('\n');
-                    failureLog = `\n<details><summary><b>Log Preview (${s.name})</b></summary>\n\n\`\`\`text\n${preview}\n\`\`\`\n\n</details>`;
+                    if (logContent.length > 50000) {
+                      logContent = logContent.slice(-50000) + '\n\n... (log truncated for length)';
+                    }
+                    failureLog = `\n<details><summary><b>Full Log (${s.name})</b></summary>\n\n\`\`\`text\n${logContent}\n\`\`\`\n\n</details>`;
                   }
                 } catch (e) {
                   failureLog = `\n*(Could not read log file for ${s.name}: ${e.message})*`;
