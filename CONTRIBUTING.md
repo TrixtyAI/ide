@@ -34,6 +34,9 @@ If you've found a bug or have a feature request:
     - **Bugs**: Include your OS, Trixty version, and clear steps to reproduce.
     - **Features**: Explain the *why* behind your request and how it benefits the community.
 
+> [!WARNING]
+> For **security vulnerabilities**, please do not open a public issue. Follow the [Security Policy](SECURITY.md) instead.
+
 ---
 
 ## 🛠️ Development Workflow
@@ -42,7 +45,7 @@ If you're ready to dive into the code, follow these steps:
 
 ### 1. Environment Setup
 Ensure you have the following installed:
-- **Node.js** (v24+) & **pnpm** (v9.15+)
+- **Node.js** (v24+) & **pnpm** (v9.15.0, pinned via `package.json#packageManager`)
 - **Rust** & **Cargo** & **Visual Studio Build Tools** (on Windows)
 - **Ollama** (for testing AI features)
 
@@ -72,7 +75,7 @@ git checkout -b fix/issue-123
 | --- | --- |
 | `pnpm desktop` | Runs the desktop app in development mode (syncs version first) |
 | `pnpm build` | Runs the Turborepo build pipeline |
-| `pnpm version:sync` | Propagates the root `package.json` version to `Cargo.toml` and `tauri.conf.json` |
+| `pnpm version:sync` | Propagates the `apps/desktop/package.json` version to `Cargo.toml` and `tauri.conf.json` |
 | `pnpm --filter @trixty/desktop lint` | Runs ESLint on the frontend |
 | `pnpm --filter @trixty/desktop exec tsc --noEmit` | Type-checks the frontend without emitting files |
 | `cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml` | Runs clippy on the Rust backend |

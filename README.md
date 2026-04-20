@@ -3,7 +3,7 @@
   <h1>Trixty IDE</h1>
   <p><strong>A modern, agentic, and highly extensible IDE built for the next generation of developers.</strong></p>
 
-  [![Version](https://img.shields.io/github/package-json/v/TrixtyAI/ide?style=flat-square&color=blue)](https://github.com/TrixtyAI/ide/releases)
+  [![Version](https://img.shields.io/github/package-json/v/TrixtyAI/ide?filename=apps%2Fdesktop%2Fpackage.json&style=flat-square&color=blue)](https://github.com/TrixtyAI/ide/releases)
   [![License](https://img.shields.io/badge/license-UPL--1.0-green?style=flat-square)](LICENSE)
   [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](#)
   [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-orange.svg?style=flat-square)](CONTRIBUTING.md)
@@ -42,7 +42,7 @@ Trixty leverages the latest technologies to ensure a smooth and robust developme
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v24+)
-- [pnpm](https://pnpm.io/) (v9.15+)
+- [pnpm](https://pnpm.io/) (v9.15.0; pinned via `package.json#packageManager`)
 - [Rust & Cargo](https://www.rust-lang.org/tools/install) (for desktop builds)
 - [Ollama](https://ollama.com/) (required for AI features)
 
@@ -88,6 +88,10 @@ Before you start, please read our [Contributing Guide](CONTRIBUTING.md) to learn
 Join our growing community to stay updated and get support:
 - [GitHub Discussions](https://github.com/TrixtyAI/ide/discussions) — Ask questions and share ideas.
 - [Issue Tracker](https://github.com/TrixtyAI/ide/issues) — Report bugs or request features.
+
+### 🔒 Security
+
+Found a security vulnerability? **Please do not open a public issue.** See our [Security Policy](SECURITY.md) for responsible disclosure instructions.
 
 ---
 
