@@ -10,8 +10,12 @@ env:
 jobs:
   quality:
     runs-on: windows-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
+      - name: Create logs directory
+        run: mkdir logs
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -29,16 +33,85 @@ jobs:
           components: clippy, rustfmt
 
       - name: install frontend dependencies
-        run: pnpm install --no-frozen-lockfile
+        id: install
+        run: |
+          pnpm install --no-frozen-lockfile 2>&1 | Tee-Object -FilePath logs/install.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Lint (Desktop)
-        run: pnpm --filter @trixty/desktop lint --max-warnings 0
+        id: lint
+        run: |
+          pnpm --filter @trixty/desktop lint --max-warnings 0 2>&1 | Tee-Object -FilePath logs/lint.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Typecheck (Desktop)
-        run: pnpm --filter @trixty/desktop exec tsc --noEmit
+        id: typecheck
+        run: |
+          pnpm --filter @trixty/desktop exec tsc --noEmit 2>&1 | Tee-Object -FilePath logs/typecheck.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Cargo Clippy
-        run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
+        id: clippy
+        run: |
+          cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings 2>&1 | Tee-Object -FilePath logs/clippy.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Cargo Format Check
-        run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+        id: fmt
+        run: |
+          cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check 2>&1 | Tee-Object -FilePath logs/fmt.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Post comment on failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            
+            const steps = [
+              { id: 'install', name: 'Dependencies', outcome: '${{ steps.install.outcome }}', log: 'logs/install.log' },
+              { id: 'lint', name: 'Lint', outcome: '${{ steps.lint.outcome }}', log: 'logs/lint.log' },
+              { id: 'typecheck', name: 'Typecheck', outcome: '${{ steps.typecheck.outcome }}', log: 'logs/typecheck.log' },
+              { id: 'clippy', name: 'Clippy', outcome: '${{ steps.clippy.outcome }}', log: 'logs/clippy.log' },
+              { id: 'fmt', name: 'Format', outcome: '${{ steps.fmt.outcome }}', log: 'logs/fmt.log' }
+            ];
+
+            let body = '### ❌ Quality Checks Failed\n\n| Check | Status |\n| :--- | :--- |\n';
+            let failureLog = '';
+
+            steps.forEach(s => {
+              let status = '⚪ Skipped';
+              if (s.outcome === 'success') status = '✅ Success';
+              if (s.outcome === 'failure') {
+                status = '❌ Failure';
+                
+                try {
+                  if (fs.existsSync(s.log)) {
+                    let logContent = fs.readFileSync(s.log, 'utf8');
+                    // Remove ANSI escape codes
+                    logContent = logContent.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+                    
+                    const lines = logContent.split('\n');
+                    const preview = lines.slice(-40).join('\n');
+                    failureLog = `\n<details><summary><b>Log Preview (${s.name})</b></summary>\n\n\`\`\`text\n${preview}\n\`\`\`\n\n</details>`;
+                  }
+                } catch (e) {
+                  failureLog = `\n*(Could not read log file for ${s.name})*`;
+                }
+              }
+              body += `| ${s.name} | ${status} |\n`;
+            });
+            
+            body += failureLog;
+            body += `\n\n[View full logs](${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID})`;
+
+            github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: body
+            });
