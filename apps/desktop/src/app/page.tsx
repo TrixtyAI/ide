@@ -11,6 +11,7 @@ import TitleBar from "@/components/TitleBar";
 import SettingsView from "@/components/SettingsView";
 import UpdaterDialog from "@/components/UpdaterDialog";
 import OnboardingWizard from "@/components/OnboardingWizard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
 import {
@@ -168,17 +169,21 @@ export default function Home() {
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           {/* Editor / Welcome — takes remaining space */}
           <div className="flex-1 overflow-hidden bg-[#111]">
-            {openFiles.length > 0 ? (
-              <EditorArea />
-            ) : (
-              <WelcomeScreen />
-            )}
+            <ErrorBoundary name="Editor Area">
+              {openFiles.length > 0 ? (
+                <EditorArea />
+              ) : (
+                <WelcomeScreen />
+              )}
+            </ErrorBoundary>
           </div>
 
           {/* Bottom Panel (Terminal / Ports) — fixed height at bottom */}
           {isBottomPanelOpen && (
             <div className="h-[300px] shrink-0">
-              <BottomPanel />
+              <ErrorBoundary name="Bottom Panel">
+                <BottomPanel />
+              </ErrorBoundary>
             </div>
           )}
         </div>
@@ -186,7 +191,9 @@ export default function Home() {
         {/* Right Panel (AI) */}
         {isRightPanelOpen && (
           <div className="w-[380px] shrink-0 h-full border-l border-[#1a1a1a]">
-            <RightPanelSlot />
+            <ErrorBoundary name="AI Panel">
+              <RightPanelSlot />
+            </ErrorBoundary>
           </div>
         )}
       </div>

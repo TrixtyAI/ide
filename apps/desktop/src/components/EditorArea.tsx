@@ -7,6 +7,7 @@ import { useApp } from "@/context/AppContext";
 import TabBar from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import MarketplaceView from "./MarketplaceView";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const EditorArea: React.FC = () => {
   const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();
@@ -183,7 +184,11 @@ const EditorArea: React.FC = () => {
   const renderVirtualView = () => {
     switch (currentFile?.path) {
       case "virtual://extensions":
-        return <MarketplaceView />;
+        return (
+          <ErrorBoundary name="Marketplace">
+            <MarketplaceView />
+          </ErrorBoundary>
+        );
       default:
         return (
           <div className="flex-1 flex items-center justify-center text-[#606060] text-sm">

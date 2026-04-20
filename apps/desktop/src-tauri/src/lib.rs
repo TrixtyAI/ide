@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
 use tunnel::{get_active_ports, start_tunnel, stop_tunnel, TunnelState};
+use log::{error, warn, info};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 /// On other platforms this is equivalent to `Command::new(program)`.
@@ -72,7 +73,10 @@ async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<Updat
     // Gracefully handle check errors (e.g. 404 when no release exists yet)
     let update = match updater.check().await {
         Ok(update) => update,
-        Err(_) => return Ok(None),
+        Err(e) => {
+            warn!("Update check failed (expected if no release): {}", e);
+            return Ok(None);
+        }
     };
 
     Ok(update.map(|u| UpdateInfo {
@@ -95,8 +99,16 @@ async fn install_update(
         .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
         .map_err(|e| e.to_string())?;
 
-    let updater = builder.build().map_err(|e| e.to_string())?;
-    let update = updater.check().await.map_err(|e| e.to_string())?;
+    let updater = builder.build().map_err(|e| {
+        let err = e.to_string();
+        error!("Update install - build failed: {}", err);
+        err
+    })?;
+    let update = updater.check().await.map_err(|e| {
+        let err = e.to_string();
+        error!("Update install - check failed: {}", err);
+        err
+    })?;
 
     if let Some(u) = update {
         u.download_and_install(
@@ -112,9 +124,14 @@ async fn install_update(
             || {},
         )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let err = e.to_string();
+            error!("Update download/install failed: {}", err);
+            err
+        })?;
         Ok(())
     } else {
+        error!("Install update called but no update found for URL: {}", url);
         Err("No update found at the provided URL".to_string())
     }
 }
@@ -133,8 +150,12 @@ pub struct FileEntry {
 
 #[tauri::command]
 fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
-    let entries = fs::read_dir(path)
-        .map_err(|e| e.to_string())?
+    let entries = fs::read_dir(&path)
+        .map_err(|e| {
+            let err = format!("Failed to read directory {}: {}", path, e);
+            error!("{}", err);
+            err
+        })?
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let metadata = entry.metadata().ok()?;
@@ -150,12 +171,20 @@ fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
-    fs::read_to_string(path).map_err(|e| e.to_string())
+    fs::read_to_string(&path).map_err(|e| {
+        let err = format!("Failed to read file {}: {}", path, e);
+        error!("{}", err);
+        err
+    })
 }
 
 #[tauri::command]
 fn write_file(path: String, content: String) -> Result<(), String> {
-    fs::write(path, content).map_err(|e| e.to_string())
+    fs::write(&path, content).map_err(|e| {
+        let err = format!("Failed to write file {}: {}", path, e);
+        error!("{}", err);
+        err
+    })
 }
 
 #[derive(serde::Serialize)]
@@ -723,7 +752,11 @@ async fn git_push(path: String) -> Result<String, String> {
         .arg("push")
         .current_dir(&path)
         .output()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let err = format!("Git push failed at {}: {}", path, e);
+            error!("{}", err);
+            err
+        })?;
 
     if output.status.success() {
         return Ok(String::from_utf8_lossy(&output.stdout).to_string());
@@ -1020,6 +1053,17 @@ fn create_directory(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn open_url(url: String) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+    // We'll initialize shell plugin in run() but we can also use this command
+    // as a fallback or if we want more control.
+    // However, the easiest way is to use the plugin directly from JS.
+    // I'll add this command just in case.
+    info!("Opening URL: {}", url);
+    Ok(())
+}
+
+#[tauri::command]
 fn reveal_path(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -1078,6 +1122,20 @@ pub fn run() {
                 )
                 .build()
         )
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log::LevelFilter::Info)
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("trixty".into()),
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .max_file_size(1_000_000) // 1MB
+                .build(),
+        )
         .manage(Arc::new(Mutex::new(None::<PtyState>)))
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
@@ -1120,6 +1178,7 @@ pub fn run() {
             git_push,
             get_git_diff,
             git_add_safe_directory,
+            open_url,
             get_registry_catalog,
             fetch_extension_manifest,
             fetch_extension_file,

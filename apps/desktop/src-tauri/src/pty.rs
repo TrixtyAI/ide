@@ -5,6 +5,7 @@ use std::{
     thread,
 };
 use tauri::{AppHandle, Emitter, Runtime};
+use log::{error, warn};
 
 pub struct PtyState {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
@@ -58,22 +59,42 @@ pub fn spawn_pty<R: Runtime>(
             pixel_width: 0,
             pixel_height: 0,
         })
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let err = e.to_string();
+            error!("Failed to open PTY: {}", err);
+            err
+        })?;
 
-    let _child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    let _child = pair.slave.spawn_command(cmd).map_err(|e| {
+        let err = e.to_string();
+        error!("Failed to spawn shell command in PTY: {}", err);
+        err
+    })?;
 
     // Drop slave to avoid leaks
     drop(pair.slave);
 
-    let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
-    let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+    let mut reader = pair.master.try_clone_reader().map_err(|e| {
+        let err = e.to_string();
+        error!("Failed to clone PTY reader: {}", err);
+        err
+    })?;
+    let writer = pair.master.take_writer().map_err(|e| {
+        let err = e.to_string();
+        error!("Failed to take PTY writer: {}", err);
+        err
+    })?;
 
     let pty_state = PtyState {
         writer: Arc::new(Mutex::new(writer)),
         master: pair.master,
     };
 
-    *state.lock().map_err(|e| e.to_string())? = Some(pty_state);
+    *state.lock().map_err(|e| {
+        let err = e.to_string();
+        error!("PTY state lock failed: {}", err);
+        err
+    })? = Some(pty_state);
 
     // Spawn a thread to read from the PTY and emit to the frontend
     thread::spawn(move || {
@@ -85,7 +106,10 @@ pub fn spawn_pty<R: Runtime>(
                     let data = String::from_utf8_lossy(&buffer[..n]).to_string();
                     let _ = app.emit("pty-output", data);
                 }
-                Err(_) => break,
+                Err(e) => {
+                    error!("PTY reader error: {}", e);
+                    break;
+                }
             }
         }
     });

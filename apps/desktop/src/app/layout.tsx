@@ -9,6 +9,7 @@ const inter = Inter({
 import { AppProvider } from "@/context/AppContext";
 import { ExtensionProvider } from "@/context/ExtensionContext";
 import { AgentProvider } from "@/context/AgentContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function RootLayout({
   children,
@@ -18,13 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className={`${inter.variable} font-sans min-h-full flex flex-col bg-[#1e1e1e] text-white`}>
-        <AppProvider>
-          <AgentProvider>
-            <ExtensionProvider>
-              {children}
-            </ExtensionProvider>
-          </AgentProvider>
-        </AppProvider>
+        <ErrorBoundary name="Root Layout">
+          <AppProvider>
+            <AgentProvider>
+              <ExtensionProvider>
+                {children}
+              </ExtensionProvider>
+            </AgentProvider>
+          </AppProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

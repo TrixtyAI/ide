@@ -5,6 +5,7 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
+use log::{error, warn, info};
 
 // Shared reqwest client for GitHub API calls. Built once on first use so that
 // connection pooling and keep-alive work across the many per-entry calls that
@@ -61,7 +62,11 @@ pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String
         let catalog = response
             .json::<RegistryCatalog>()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                let err = format!("Failed to parse registry JSON from {}: {}", url, e);
+                error!("{}", err);
+                err
+            })?;
 
         return Ok(catalog);
     }
@@ -140,8 +145,8 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
 
     let api_url = format!("https://api.github.com/repos/{}/{}", owner, repo);
 
-    // GitHub API requires a User-Agent header; any failure (network, 403 rate limit,
-    // 404, parse, timeout) silently degrades to None so the UI falls back to no-stars display.
+    // GitHub API requires a User-Agent header.
+    // Failures (network, rate limit, parse) are logged and return None for fallback.
     let client = match GITHUB_CLIENT
         .get_or_init(|| {
             reqwest::Client::builder()
@@ -158,16 +163,23 @@ pub async fn fetch_extension_stars(repo_url: String) -> Result<Option<u32>, Stri
 
     let response = match client.get(&api_url).send().await {
         Ok(r) => r,
-        Err(_) => return Ok(None),
+        Err(e) => {
+            warn!("Failed to fetch stars for {}: {}", repo_url, e);
+            return Ok(None);
+        }
     };
 
     if !response.status().is_success() {
+        warn!("GitHub API error {} for stars of {}", response.status(), repo_url);
         return Ok(None);
     }
 
     let body: serde_json::Value = match response.json().await {
         Ok(b) => b,
-        Err(_) => return Ok(None),
+        Err(e) => {
+            warn!("Failed to parse stars JSON for {}: {}", repo_url, e);
+            return Ok(None);
+        }
     };
 
     Ok(body

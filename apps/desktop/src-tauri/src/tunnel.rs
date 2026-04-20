@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime};
+use log::{error, warn};
 
 /// Creates a [`Command`] that will NOT show a console window on Windows.
 #[inline]
@@ -106,7 +107,11 @@ pub async fn start_tunnel<R: Runtime>(
 ) -> Result<String, String> {
     // Check if tunnel already exists
     {
-        let instances = state.instances.lock().map_err(|e| e.to_string())?;
+        let instances = state.instances.lock().map_err(|e| {
+            let err = e.to_string();
+            error!("Tunnel state lock failed: {}", err);
+            err
+        })?;
         if let Some(inst) = instances.get(&port) {
             return Ok(inst.url.clone());
         }
@@ -120,14 +125,22 @@ pub async fn start_tunnel<R: Runtime>(
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| e.to_string())?
+            .map_err(|e| {
+                let err = format!("Failed to spawn localtunnel (cmd): {}", e);
+                error!("{}", err);
+                err
+            })?
     } else {
         silent_command("pnpm")
             .args(["lt", "--port", &port.to_string()])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| e.to_string())?
+            .map_err(|e| {
+                let err = format!("Failed to spawn localtunnel (pnpm): {}", e);
+                error!("{}", err);
+                err
+            })?
     };
 
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
@@ -149,6 +162,7 @@ pub async fn start_tunnel<R: Runtime>(
     }
 
     if url.is_empty() {
+        warn!("localtunnel output did not contain expected URL pattern for port {}", port);
         let _ = child.kill();
         return Err("Failed to get tunnel URL from localtunnel".to_string());
     }
@@ -174,7 +188,11 @@ pub async fn start_tunnel<R: Runtime>(
 
 #[tauri::command]
 pub fn stop_tunnel(state: tauri::State<'_, TunnelState>, port: u16) -> Result<(), String> {
-    let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
+    let mut instances = state.instances.lock().map_err(|e| {
+        let err = e.to_string();
+        error!("Stop tunnel - state lock failed: {}", err);
+        err
+    })?;
     if let Some(mut inst) = instances.remove(&port) {
         // We need to take ownership to kill the child
         if let Some(inst_mut) = Arc::get_mut(&mut inst) {
