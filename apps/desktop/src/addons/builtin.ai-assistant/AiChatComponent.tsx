@@ -797,14 +797,14 @@ const AiChatComponent: React.FC = () => {
       <div className="px-4 py-2 flex gap-1 bg-[#0a0a0a] border-t border-[#1a1a1a]">
         {[
           { id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true },
-          { id: 'planer', icon: Sparkles, label: t('ai.mode.planer'), requiresFolder: true },
+          { id: 'planner', icon: Sparkles, label: t('ai.mode.planner'), requiresFolder: true },
           { id: 'ask', icon: MessageSquare, label: t('ai.mode.ask'), requiresFolder: false }
         ].map((mode) => {
           const isLocked = mode.requiresFolder && !rootPath;
           return (
             <button
               key={mode.id}
-              onClick={() => !isLocked && setChatMode(mode.id as 'agent' | 'planer' | 'ask')}
+              onClick={() => !isLocked && setChatMode(mode.id as 'agent' | 'planner' | 'ask')}
               disabled={isLocked}
               className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg transition-all duration-300 ${
                 chatMode === mode.id

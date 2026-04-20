@@ -49,8 +49,8 @@ interface AgentContextType {
   saveAgentFile: (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md', content: string) => Promise<void>;
   
   aggregatedPrompt: string;
-  chatMode: 'agent' | 'planer' | 'ask';
-  setChatMode: (mode: 'agent' | 'planer' | 'ask') => void;
+  chatMode: 'agent' | 'planner' | 'ask';
+  setChatMode: (mode: 'agent' | 'planner' | 'ask') => void;
   getSystemPrompt: () => string;
 }
 
@@ -68,7 +68,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [docs, setDocs] = useState<DocInfo[]>([]);
   const [activeDocs, setActiveDocs] = useState<string[]>([]);
-  const [chatMode, _setChatMode] = useState<'agent' | 'planer' | 'ask'>('agent');
+  const [chatMode, _setChatMode] = useState<'agent' | 'planner' | 'ask'>('agent');
   const [isLoading, setIsLoading] = useState(false);
 
   const loadFile = useCallback(async (name: string) => {
@@ -146,7 +146,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [rootPath]);
 
-  const setChatMode = useCallback((mode: 'agent' | 'planer' | 'ask') => {
+  const setChatMode = useCallback((mode: 'agent' | 'planner' | 'ask') => {
     _setChatMode(mode);
     import("@/api/store").then(({ trixtyStore }) => {
       trixtyStore.set("trixty-chat-mode", mode);
@@ -182,7 +182,18 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const globalUserContent = await trixtyStore.get<string>("trixty-agent-user-context", "");
       setUserContext(globalUserContent);
 
-      const savedMode = await trixtyStore.get<'agent' | 'planer' | 'ask'>("trixty-chat-mode", "agent");
+      // Migration and validation: normalize legacy/invalid persisted chat modes before using them.
+      const rawMode = await trixtyStore.get<string>("trixty-chat-mode", "agent");
+      const allowedModes = ["agent", "planner", "ask"] as const;
+      const normalizedMode = rawMode === "planer" ? "planner" : rawMode;
+      const savedMode: "agent" | "planner" | "ask" = allowedModes.includes(
+        normalizedMode as (typeof allowedModes)[number]
+      )
+        ? (normalizedMode as "agent" | "planner" | "ask")
+        : "agent";
+      if (rawMode !== savedMode) {
+        await trixtyStore.set("trixty-chat-mode", savedMode);
+      }
       _setChatMode(savedMode);
 
       if (!rootPath) {
@@ -243,7 +254,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Lock modes if no rootPath
   useEffect(() => {
-    if (!rootPath && (chatMode === 'agent' || chatMode === 'planer')) {
+    if (!rootPath && (chatMode === 'agent' || chatMode === 'planner')) {
       setChatMode('ask');
     }
   }, [rootPath, chatMode, setChatMode]);
@@ -373,7 +384,7 @@ ${activeDocContents}\n\n`;
   const getSystemPrompt = useCallback(() => {
     const base = aggregatedPrompt;
     
-    if (chatMode === 'planer') {
+    if (chatMode === 'planner') {
       return `${base}
 ### AGENT MODE: PLANNER (Architect)
 - STICKY RULE: You MUST NOT execute any tools. 
