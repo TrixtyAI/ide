@@ -106,7 +106,7 @@ pub async fn start_tunnel<R: Runtime>(
 ) -> Result<String, String> {
     // Check if tunnel already exists
     {
-        let instances = state.instances.lock().unwrap();
+        let instances = state.instances.lock().map_err(|e| e.to_string())?;
         if let Some(inst) = instances.get(&port) {
             return Ok(inst.url.clone());
         }
@@ -160,7 +160,11 @@ pub async fn start_tunnel<R: Runtime>(
         child,
     });
 
-    state.instances.lock().unwrap().insert(port, inst);
+    state
+        .instances
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(port, inst);
 
     // Emit event with the new URL
     let _ = app.emit("tunnel-ready", (port, url.clone()));
@@ -170,7 +174,7 @@ pub async fn start_tunnel<R: Runtime>(
 
 #[tauri::command]
 pub fn stop_tunnel(state: tauri::State<'_, TunnelState>, port: u16) -> Result<(), String> {
-    let mut instances = state.instances.lock().unwrap();
+    let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
     if let Some(mut inst) = instances.remove(&port) {
         // We need to take ownership to kill the child
         if let Some(inst_mut) = Arc::get_mut(&mut inst) {

@@ -73,7 +73,7 @@ pub fn spawn_pty<R: Runtime>(
         master: pair.master,
     };
 
-    *state.lock().unwrap() = Some(pty_state);
+    *state.lock().map_err(|e| e.to_string())? = Some(pty_state);
 
     // Spawn a thread to read from the PTY and emit to the frontend
     thread::spawn(move || {
@@ -98,8 +98,9 @@ pub fn write_to_pty(
     data: String,
     state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
 ) -> Result<(), String> {
-    if let Some(s) = state.lock().unwrap().as_ref() {
-        let mut writer = s.writer.lock().unwrap();
+    let guard = state.lock().map_err(|e| e.to_string())?;
+    if let Some(s) = guard.as_ref() {
+        let mut writer = s.writer.lock().map_err(|e| e.to_string())?;
         writer
             .write_all(data.as_bytes())
             .map_err(|e| e.to_string())?;
@@ -114,7 +115,8 @@ pub fn resize_pty(
     cols: u16,
     state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
 ) -> Result<(), String> {
-    if let Some(s) = state.lock().unwrap().as_ref() {
+    let guard = state.lock().map_err(|e| e.to_string())?;
+    if let Some(s) = guard.as_ref() {
         s.master
             .resize(PtySize {
                 rows,
