@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAgent } from "@/context/AgentContext";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
@@ -22,9 +22,29 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   } = useAgent();
   const { aiSettings, updateAISettings } = useApp();
   const { t } = useL10n();
-  const [localContent, setLocalContent] = useState("");
+
+  const getInitialContent = (tab: AgentSettingsProps['activeTab']) => {
+    switch (tab) {
+      case 'manual': return agents || '';
+      case 'design': return design || '';
+      case 'user': return userContext || '';
+      default: return '';
+    }
+  };
+
+  const [localContent, setLocalContent] = useState(() => getInitialContent(activeTab));
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Reset the editor buffer whenever the active tab changes so a pending edit
+  // in one tab cannot be written into another tab's file on the next save.
+  // Deliberately depends only on `activeTab` — we don't want incoming updates
+  // to `agents` / `design` / `userContext` from a background refresh to
+  // overwrite the user's in-progress edits.
+  useEffect(() => {
+    setLocalContent(getInitialContent(activeTab));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleSave = async (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md') => {
     setIsSaving(true);
@@ -111,8 +131,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={agents || t('agent.manual.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.manual.placeholder')}
@@ -136,8 +156,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={design || t('agent.design.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.design.placeholder')}
@@ -161,8 +181,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 {saveSuccess ? t('agent.common.saved') : (isSaving ? t('agent.common.saving') : t('agent.common.save'))}
               </button>
             </div>
-            <textarea 
-              defaultValue={userContext || t('agent.user.placeholder')}
+            <textarea
+              value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
               placeholder={t('agent.user.placeholder')}
