@@ -81,11 +81,16 @@ const AiChatComponent: React.FC = () => {
 
   useEffect(() => {
     // Load last used model from storage
+    let cancelled = false;
     const loadLastModel = async () => {
       const savedModel = await trixtyStore.get<string | null>("trixty_ai_last_model", null);
+      if (cancelled) return;
       if (savedModel) setSelectedModel(savedModel);
     };
     loadLastModel();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -152,7 +157,12 @@ const AiChatComponent: React.FC = () => {
             if (savedModel && exists) {
               setSelectedModel(savedModel);
             } else {
-              setSelectedModel((prev) => prev || models[0].name);
+              // Validate the current `prev` against the freshly fetched list too —
+              // switching endpoints (e.g. to a different Ollama instance) can leave
+              // `prev` pointing at a model that no longer exists.
+              setSelectedModel((prev) =>
+                prev && models.some((m) => m.name === prev) ? prev : models[0].name
+              );
             }
           }
         } else {
