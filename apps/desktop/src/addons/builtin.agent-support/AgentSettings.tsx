@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAgent } from "@/context/AgentContext";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
@@ -36,15 +36,29 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Reset the editor buffer whenever the active tab changes so a pending edit
-  // in one tab cannot be written into another tab's file on the next save.
-  // Deliberately depends only on `activeTab` — we don't want incoming updates
-  // to `agents` / `design` / `userContext` from a background refresh to
-  // overwrite the user's in-progress edits.
+  const lastSyncedContentRef = useRef(localContent);
+  const previousIsLoadingRef = useRef(isLoading);
+  const previousActiveTabRef = useRef(activeTab);
+
+  // Reset the editor buffer on tab change and hydrate once async agent data
+  // finishes loading, but only when the buffer still matches the last value
+  // we synced in — that way an in-progress edit is never clobbered by a
+  // background refresh completing.
   useEffect(() => {
-    setLocalContent(getInitialContent(activeTab));
+    const nextContent = getInitialContent(activeTab);
+    const tabChanged = previousActiveTabRef.current !== activeTab;
+    const finishedLoading = previousIsLoadingRef.current && !isLoading;
+    const isDirty = localContent !== lastSyncedContentRef.current;
+
+    if (!isLoading && (tabChanged || (finishedLoading && !isDirty))) {
+      setLocalContent(nextContent);
+      lastSyncedContentRef.current = nextContent;
+    }
+
+    previousIsLoadingRef.current = isLoading;
+    previousActiveTabRef.current = activeTab;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, isLoading, agents, design, userContext]);
 
   const handleSave = async (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md') => {
     setIsSaving(true);
