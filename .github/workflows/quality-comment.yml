@@ -38,6 +38,10 @@ jobs:
             const issue_number = fs.readFileSync('logs/pr_number.txt', 'utf8').trim();
             if (!issue_number) return;
 
+            const author = fs.existsSync('logs/author.txt') 
+              ? fs.readFileSync('logs/author.txt', 'utf8').trim() 
+              : '';
+
             const statusContent = fs.readFileSync('logs/status.env', 'utf8');
             const status = {};
             statusContent.split('\n').forEach(line => {
@@ -61,7 +65,7 @@ jobs:
                 return;
             }
 
-            let body = '### ❌ Quality Checks Failed\n\n| Check | Status |\n| :--- | :--- |\n';
+            let body = `Hi @${author}, the quality checks have failed.\n\n### ❌ Quality Checks Failed\n\n| Check | Status |\n| :--- | :--- |\n`;
             let failureLog = '';
 
             steps.forEach(s => {

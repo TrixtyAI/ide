@@ -15,9 +15,11 @@ jobs:
       - name: Create logs directory
         run: mkdir logs
 
-      - name: Save PR number
+      - name: Save Metadata
         if: github.event_name == 'pull_request'
-        run: echo ${{ github.event.pull_request.number }} | Out-File -FilePath logs/pr_number.txt -Encoding utf8
+        run: |
+          "${{ github.event.pull_request.number }}" | Out-File -FilePath logs/pr_number.txt -Encoding utf8
+          "${{ github.event.pull_request.user.login }}" | Out-File -FilePath logs/author.txt -Encoding utf8
 
       - name: setup node
         uses: actions/setup-node@v4
