@@ -1,5 +1,6 @@
 import { load, Store } from "@tauri-apps/plugin-store";
 import { isTauri } from "@/api/tauri";
+import { logger } from "@/lib/logger";
 
 /**
  * Global Store instance managed by tauri-plugin-store.
@@ -24,11 +25,11 @@ class TrixtyStore {
     }
 
     this.initPromise = (async () => {
-      console.log(`[Store] Initializing ${STORE_NAME}...`);
+      logger.debug(`[Store] Initializing ${STORE_NAME}...`);
       try {
         // Load (or create) the store file
         this.store = await load(STORE_NAME, { autoSave: true, defaults: {} });
-        console.log(`[Store] ${STORE_NAME} loaded successfully.`);
+        logger.debug(`[Store] ${STORE_NAME} loaded successfully.`);
         
         // Migration from localStorage
         await this.migrateFromLocalStorage();
@@ -62,7 +63,7 @@ class TrixtyStore {
         // Check if store already has this key to avoid overwriting newer data if migration already happened
         const existingValue = await this.store.get(key);
         if (existingValue === undefined) {
-          console.log(`[Store] Migrating ${key} from localStorage...`);
+          logger.debug(`[Store] Migrating ${key} from localStorage...`);
           try {
             // Try to parse if it looks like JSON, otherwise store as string
             const parsed = this.safeParse(localValue);
@@ -77,7 +78,7 @@ class TrixtyStore {
 
     if (migratedSomething) {
       await this.store!.save();
-      console.log("[Store] Migration complete. You may manually clear localStorage.");
+      logger.debug("[Store] Migration complete. You may manually clear localStorage.");
       // Optional: localStorage.clear() - keeping it for now for safety during early adoption
     }
   }

@@ -6,6 +6,7 @@ import { safeInvoke } from "@/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
+import { logger } from "@/lib/logger";
 
 type UpdaterState =
   | { phase: "idle" }
@@ -55,7 +56,7 @@ const UpdaterDialog: React.FC = () => {
           const asset = data.assets?.find((a: GitHubAsset) => a.name === "latest.json");
           if (asset?.browser_download_url) {
             endpointUrl = asset.browser_download_url;
-            console.log(`[Updater] Found latest release: ${data.name}`);
+            logger.debug(`[Updater] Found latest release: ${data.name}`);
           }
         }
       } catch (err) {

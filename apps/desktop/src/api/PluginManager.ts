@@ -6,6 +6,7 @@ import * as builtinLanguageRust from "@/addons/builtin.language.rust/index";
 import * as builtinLanguageHtml from "@/addons/builtin.language.html/index";
 import * as builtinLanguageMarkdown from "@/addons/builtin.language.markdown/index";
 import { registerBuiltinTranslations } from "./builtin.l10n";
+import { logger } from "@/lib/logger";
 
 export interface PluginExports {
     activate?: (trixty: typeof import("@/api/trixty").trixty) => void | Promise<void>;
@@ -20,21 +21,21 @@ export interface PluginModule {
 
 export class PluginManager {
     static async bootstrap() {
-        console.log("[PluginManager] Bootstrapping built-in extensions and localizations...");
+        logger.debug("[PluginManager] Bootstrapping built-in extensions and localizations...");
 
         // Load translations first
         registerBuiltinTranslations();
 
         try {
             builtinAiAssistant.activate();
-            console.log("[PluginManager] builtin.ai-assistant activated.");
+            logger.debug("[PluginManager] builtin.ai-assistant activated.");
         } catch (e) {
             console.error("Failed to activate AI assistant", e);
         }
 
         try {
             builtinGitExplorer.activate();
-            console.log("[PluginManager] builtin.git-explorer activated.");
+            logger.debug("[PluginManager] builtin.git-explorer activated.");
         } catch (e) {
             console.error("Failed to activate Git Explorer", e);
         }
@@ -47,7 +48,7 @@ export class PluginManager {
         builtinLanguageHtml.activate(window.trixty);
         builtinLanguageMarkdown.activate(window.trixty);
 
-        console.log("[PluginManager] Built-in language addons activated.");
+        logger.debug("[PluginManager] Built-in language addons activated.");
       } catch (e) {
         console.error("Failed to activate language addons", e);
       }
@@ -63,13 +64,13 @@ export class PluginManager {
     private static async loadExternalAddons() {
         const { safeInvoke: invoke } = await import('@/api/tauri');
 
-        console.log("[PluginManager] Scanning for installed third-party extensions...");
+        logger.debug("[PluginManager] Scanning for installed third-party extensions...");
         const installed = await invoke("get_installed_extensions");
 
         for (const ext_id of installed) {
             const isActive = await invoke("is_extension_active", { id: ext_id });
             if (isActive) {
-                console.log(`[PluginManager] Loading external addon: ${ext_id}`);
+                logger.debug(`[PluginManager] Loading external addon: ${ext_id}`);
                 try {
                     const scriptStr = await invoke("read_extension_script", { id: ext_id });
 
@@ -85,7 +86,7 @@ export class PluginManager {
                     const activate = moduleContext.exports.activate;
                     if (typeof activate === 'function') {
                         activate(window.trixty);
-                        console.log(`[PluginManager] Addon ${ext_id} activated successfully!`);
+                        logger.debug(`[PluginManager] Addon ${ext_id} activated successfully!`);
                     } else {
                         console.warn(`[PluginManager] Addon ${ext_id} executed but exported no 'activate' function.`);
                     }
@@ -93,7 +94,7 @@ export class PluginManager {
                     console.error(`[PluginManager] Error evaluating addon ${ext_id}:`, err);
                 }
             } else {
-                console.log(`[PluginManager] Skipping ${ext_id} (Disabled)`);
+                logger.debug(`[PluginManager] Skipping ${ext_id} (Disabled)`);
             }
         }
     }
