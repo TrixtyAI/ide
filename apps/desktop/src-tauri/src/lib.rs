@@ -60,15 +60,13 @@ struct InstallerProgress {
 }
 
 #[tauri::command]
-async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<UpdateInfo>, String> {
+async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
     use tauri_plugin_updater::UpdaterExt;
 
-    let builder = app
+    let updater = app
         .updater_builder()
-        .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
+        .build()
         .map_err(|e| e.to_string())?;
-
-    let updater = builder.build().map_err(|e| e.to_string())?;
 
     // Gracefully handle check errors (e.g. 404 when no release exists yet)
     let update = match updater.check().await {
@@ -89,21 +87,18 @@ async fn check_update(app: tauri::AppHandle, url: String) -> Result<Option<Updat
 async fn install_update(
     app: tauri::AppHandle,
     window: tauri::Window,
-    url: String,
 ) -> Result<(), String> {
     use tauri::Emitter;
     use tauri_plugin_updater::UpdaterExt;
 
-    let builder = app
+    let updater = app
         .updater_builder()
-        .endpoints(vec![url.parse().map_err(|e| format!("{}", e))?])
-        .map_err(|e| e.to_string())?;
-
-    let updater = builder.build().map_err(|e| {
-        let err = e.to_string();
-        error!("Update install - build failed: {}", err);
-        err
-    })?;
+        .build()
+        .map_err(|e| {
+            let err = e.to_string();
+            error!("Update install - build failed: {}", err);
+            err
+        })?;
     let update = updater.check().await.map_err(|e| {
         let err = e.to_string();
         error!("Update install - check failed: {}", err);
