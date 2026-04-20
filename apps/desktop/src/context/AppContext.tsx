@@ -231,7 +231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch (e) {
             // If the dialog or destroy pipeline fails, fall back to closing
             // rather than leaving the window stuck with the close prevented.
-            console.error("[AppContext] close-requested handler failed:", e);
+            logger.error("[AppContext] close-requested handler failed:", e);
             await win.destroy();
           }
         });
