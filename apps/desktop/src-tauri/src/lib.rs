@@ -150,12 +150,19 @@ pub struct FileEntry {
 
 #[tauri::command]
 fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
-    let entries = fs::read_dir(&path)
-        .map_err(|e| {
+    let dir_iter = match fs::read_dir(&path) {
+        Ok(iter) => iter,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(Vec::new());
+        }
+        Err(e) => {
             let err = format!("Failed to read directory {}: {}", path, e);
             error!("{}", err);
-            err
-        })?
+            return Err(err);
+        }
+    };
+
+    let entries = dir_iter
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let metadata = entry.metadata().ok()?;

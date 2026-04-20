@@ -1,8 +1,13 @@
 "use client";
 
 import React, { useRef } from "react";
-import MonacoEditor, { OnMount, Monaco } from "@monaco-editor/react";
+import MonacoEditor, { OnMount, Monaco, loader } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
+
+// Configure Monaco loader to use local assets
+if (typeof window !== "undefined") {
+  loader.config({ paths: { vs: "/vs" } });
+}
 import { useApp } from "@/context/AppContext";
 import TabBar from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
@@ -221,12 +226,14 @@ const EditorArea: React.FC = () => {
             onChange={handleEditorChange}
             path={currentFile.path}
             options={{
-              minimap: { enabled: true },
+              minimap: { enabled: editorSettings.minimapEnabled },
               fontSize: editorSettings.fontSize,
               fontFamily: editorSettings.fontFamily,
               fontLigatures: true,
               lineHeight: editorSettings.lineHeight,
               letterSpacing: 0.5,
+              largeFileOptimizations: true,
+              maxTokenizationLineLength: 20000,
               scrollbar: {
                 vertical: "visible",
                 horizontal: "visible",
@@ -244,8 +251,10 @@ const EditorArea: React.FC = () => {
               hideCursorInOverviewRuler: true,
               renderLineHighlight: "all",
               fixedOverflowWidgets: true,
-              bracketPairColorization: { enabled: true },
-              guides: { bracketPairs: true },
+              bracketPairColorization: { 
+                enabled: (currentFile.content?.length || 0) < 1024 * 1024 
+              },
+              guides: { bracketPairs: (currentFile.content?.length || 0) < 1024 * 1024 },
               suggestOnTriggerCharacters: true,
               acceptSuggestionOnEnter: "on",
               quickSuggestions: true,
