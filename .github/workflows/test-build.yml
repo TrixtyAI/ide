@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 env:
@@ -10,6 +11,7 @@ env:
 
 jobs:
   release:
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
     permissions:
       contents: write
     strategy:

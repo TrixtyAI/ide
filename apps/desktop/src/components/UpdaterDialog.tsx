@@ -29,7 +29,6 @@ interface GitHubRelease {
 }
 
 const UpdaterDialog: React.FC = () => {
-  const { systemSettings } = useApp();
   const { t } = useL10n();
   const [state, setState] = useState<UpdaterState>({ phase: "idle" });
   const [dismissed, setDismissed] = useState(false);
@@ -48,35 +47,15 @@ const UpdaterDialog: React.FC = () => {
 
       let endpointUrl = "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json";
       try {
-        const fetchUrl = systemSettings.updateChannel === "insiders" 
-          ? "https://api.github.com/repos/TrixtyAI/ide/releases" 
-          : "https://api.github.com/repos/TrixtyAI/ide/releases/latest";
-          
+        const fetchUrl = "https://api.github.com/repos/TrixtyAI/ide/releases/latest";
         const res = await fetch(fetchUrl, { headers });
         
-        if (res.status === 404) {
-          console.log("[Updater] No releases found (Resource not found).");
-          if (isManual) setState({ phase: "up-to-date" });
-          return;
-        }
-
         if (res.ok) {
           const data = await res.json();
-          const releases = Array.isArray(data) ? data : [data];
-          
-          for (const release of (releases as GitHubRelease[])) {
-            // If we are on stable channel, skip pre-releases (though /latest should already handle this)
-            if (systemSettings.updateChannel === "stable" && release.prerelease) continue;
-
-            const asset = release.assets?.find((a) => a.name === "latest.json");
-            if (asset?.browser_download_url) {
-              endpointUrl = asset.browser_download_url;
-              console.log(`[Updater] Found matching release: ${release.name}${release.prerelease ? ' (Pre-release)' : ''}`);
-              if (asset.digest) {
-                console.log(`[Updater] Verifying digest: ${asset.digest}`);
-              }
-              break;
-            }
+          const asset = data.assets?.find((a: GitHubAsset) => a.name === "latest.json");
+          if (asset?.browser_download_url) {
+            endpointUrl = asset.browser_download_url;
+            console.log(`[Updater] Found latest release: ${data.name}`);
           }
         }
       } catch (err) {
@@ -105,7 +84,7 @@ const UpdaterDialog: React.FC = () => {
       console.warn("[Updater] Check failed:", err);
       if (isManual) setState({ phase: "error", message: "Check failed. No release exists or network error." });
     }
-  }, [systemSettings.updateChannel]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(checkForUpdates, 4000);
@@ -118,7 +97,7 @@ const UpdaterDialog: React.FC = () => {
       clearTimeout(timer);
       window.removeEventListener("trixty-manual-update-check", manualCheck);
     };
-  }, [checkForUpdates, systemSettings.updateChannel]);
+  }, [checkForUpdates]);
 
   const handleInstall = async () => {
     try {
@@ -210,7 +189,7 @@ const UpdaterDialog: React.FC = () => {
             <div className="flex items-center gap-2 py-1">
               <RefreshCw size={14} className="text-[#888] animate-spin shrink-0" />
               <span className="text-[11px] text-[#888]">
-                {t('updater.checking', { channel: systemSettings.updateChannel })}
+                {t('updater.checking')}
               </span>
             </div>
           )}

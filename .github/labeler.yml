@@ -1,21 +1,48 @@
+# labeler "full" schema
+# enable labeler on issues, prs, or both.
+enable:
+  issues: true
+  prs: true
+
+# specific messages for issues and prs
+comments:
+  issues: |
+    Thanks for opening this issue! I'll review it as soon as possible.
+  prs: |
+    Thanks for the contribution! I'll review it as soon as possible. If you have still changes, please mark this PR as draft and all reviews will be cancelled. Tests reviews will be re-run only when the PR is marked as ready for review.
+
+# Labels is an object where:
+# - keys are labels
+# - values are objects of { include: [ pattern ], exclude: [ pattern ] }
+#    - pattern must be a valid regex, and is applied globally to
+#      title + description of issues and/or prs (see enabled config above)
+#    - 'include' patterns will associate a label if any of these patterns match
+#    - 'exclude' patterns will ignore this label if any of these patterns match
+#    - 'branches' is an optional array of branch names (or patterns) to limit labeling according to PR target branch
 labels:
-  - label: "bug"
-    pattern: "\\[Bug\\]:|bug|issue|err|fault|failure"
-  - label: "dependencies"
-    pattern: "\\[Deps\\]:|deps|dependencies|yarn|npm|pnpm"
-  - label: "documentation"
-    pattern: "\\[Docs\\]:|docs?|documentation|readme"
-  - label: "enhancement"
-    pattern: "\\[Feature\\]:|\\[Improvement\\]:|feat|feature|enhancement|improvement|new|add"
-  - label: "Feedback"
-    pattern: "\\[Feedback\\]:|feedback|thought|suggestion"
-  - label: "Fix"
-    pattern: "\\[Fix\\]:|fix|patch|repair"
-  - label: "github_actions"
-    pattern: "ci|workflow|action|github_actions"
-  - label: "question"
-    pattern: "question|help|how-to|\\?"
-  - label: "duplicate"
-    pattern: "duplicate|already"
-  - label: "wontfix"
-    pattern: "wontfix|not planned"
+  'bug':
+    include:
+      - '\bbug[s]?\b'
+    exclude: []
+    branches:
+      - 'master'
+      - 'main'
+  'help wanted':
+    include:
+      - '\bhelp( me)?\b'
+    exclude:
+      - '\b\[test(ing)?\]\b'
+  'duplicate':
+    include:
+      - '\bduplicate\b'
+      - '\bdupe\b'
+    exclude: []
+  'enhancement':
+    include:
+      - '\bfeat\b'
+      - '\benhancement\b'
+    exclude: []
+  'question':
+    include:
+      - '\bquestion\b'
+    exclude: []
