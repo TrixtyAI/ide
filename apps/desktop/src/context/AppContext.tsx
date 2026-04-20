@@ -460,10 +460,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         f.path === path ? { ...f, content, isModified: true } : f
       )
     );
-    if (currentFile?.path === path) {
-      setCurrentFile((prev) => (prev ? { ...prev, content, isModified: true } : null));
-    }
-  }, [currentFile]);
+    // Perform the path check inside the setter so debounced callers can't
+    // overwrite a tab that happens to be active now but wasn't when the edit
+    // was made. `updateFileContent` stays stable (no `currentFile` dep) so
+    // consumers don't see it change when the active tab changes.
+    setCurrentFile((prev) =>
+      prev && prev.path === path ? { ...prev, content, isModified: true } : prev
+    );
+  }, []);
 
   const saveCurrentFile = async () => {
     if (!currentFile) return;
