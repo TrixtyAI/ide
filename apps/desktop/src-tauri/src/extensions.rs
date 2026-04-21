@@ -71,11 +71,14 @@ pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String
     }
 
     // Fallback to local file reading for dev mode
-    let content = std::fs::read_to_string(&url)
-        .map_err(|e| format!("Failed to read local registry file {}: {}", url, e))?;
+    let content = std::fs::read_to_string(&url).map_err(|e| {
+        let err = format!("Failed to read local registry file {}: {}", url, e);
+        error!("{}", err);
+        redact_user_paths(&err)
+    })?;
 
-    let catalog: RegistryCatalog =
-        serde_json::from_str(&content).map_err(|e| format!("Invalid JSON in registry: {}", e))?;
+    let catalog: RegistryCatalog = serde_json::from_str(&content)
+        .map_err(|e| redact_user_paths(&format!("Invalid JSON in registry: {}", e)))?;
 
     Ok(catalog)
 }
@@ -244,13 +247,11 @@ pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> R
     }
 
     let output = Command::new("git")
-        .args([
-            "clone",
-            "--depth",
-            "1",
-            &git_url,
-            target_dir.to_str().unwrap(),
-        ])
+        .arg("clone")
+        .arg("--depth")
+        .arg("1")
+        .arg(&git_url)
+        .arg(&target_dir)
         .output()
         .map_err(|e| redact_user_paths(&e.to_string()))?;
 
