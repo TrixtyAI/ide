@@ -1,4 +1,5 @@
 mod about;
+mod http;
 mod pty;
 
 mod extensions;
@@ -896,14 +897,18 @@ struct ProxyResponse {
 }
 
 async fn fetch_url_internal(url: String) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build()
+    let response = http::shared_client()
+        .get(&url)
+        .header(
+            reqwest::header::USER_AGENT,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+        .timeout(http::DEFAULT_REQUEST_TIMEOUT)
+        .send()
+        .await
         .map_err(|e| e.to_string())?;
 
-    let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
-
-    let html = response.text().await.map_err(|e| e.to_string())?;
+    let html = http::read_text_capped(response, http::MAX_RESPONSE_BYTES).await?;
     let document = Html::parse_document(&html);
 
     // Extract metadata
@@ -974,19 +979,23 @@ async fn perform_web_search(query: String) -> Result<String, String> {
         return fetch_url_internal(url).await;
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build()
-        .map_err(|e| e.to_string())?;
-
     let url = format!(
         "https://lite.duckduckgo.com/lite/?q={}",
         urlencoding::encode(query_trimmed)
     );
 
-    let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    let response = http::shared_client()
+        .get(&url)
+        .header(
+            reqwest::header::USER_AGENT,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+        .timeout(http::DEFAULT_REQUEST_TIMEOUT)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let html_content = response.text().await.map_err(|e| e.to_string())?;
+    let html_content = http::read_text_capped(response, http::MAX_RESPONSE_BYTES).await?;
     let document = Html::parse_document(&html_content);
 
     // Select results
@@ -1026,7 +1035,7 @@ async fn ollama_proxy(
     url: String,
     body: Option<serde_json::Value>,
 ) -> Result<ProxyResponse, String> {
-    let client = reqwest::Client::new();
+    let client = http::shared_client();
     let mut request = match method.as_str() {
         "POST" => client.post(&url),
         "GET" => client.get(&url),
