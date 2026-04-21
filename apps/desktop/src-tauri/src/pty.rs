@@ -7,6 +7,25 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Runtime};
 
+/// Returns the length in bytes of the longest prefix of `buf` that is safe to
+/// decode right now. Callers are expected to emit `buf[..split]` and retain
+/// `buf[split..]` as leftover bytes to prepend to the next chunk.
+///
+/// Rules:
+/// - If the whole buffer is valid UTF-8, the whole buffer is emitted.
+/// - If the tail is a *truncated* multi-byte sequence (incomplete but still
+///   possibly valid), the truncated tail is held back for the next read.
+/// - If the tail is *actually invalid*, the invalid bytes are included in the
+///   emit so lossy decoding replaces them with U+FFFD — otherwise one bad byte
+///   would stall the stream forever.
+fn split_utf8_safely(buf: &[u8]) -> usize {
+    match std::str::from_utf8(buf) {
+        Ok(_) => buf.len(),
+        Err(e) if e.error_len().is_none() => e.valid_up_to(),
+        Err(e) => e.valid_up_to() + e.error_len().unwrap_or(1),
+    }
+}
+
 pub struct PtyState {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub master: Box<dyn portable_pty::MasterPty + Send>,
@@ -96,21 +115,47 @@ pub fn spawn_pty<R: Runtime>(
         err
     })? = Some(pty_state);
 
-    // Spawn a thread to read from the PTY and emit to the frontend
+    // Spawn a thread to read from the PTY and emit to the frontend.
+    //
+    // Why the leftover buffer: a single UTF-8 codepoint can span up to 4
+    // bytes, and we read in fixed 4 KiB chunks. When a multi-byte character
+    // straddles the chunk boundary, decoding each chunk independently with
+    // `from_utf8_lossy` produces U+FFFD replacement characters (showing up
+    // as `�` in the terminal) even though the byte stream itself is
+    // perfectly valid. We hold back the trailing truncated bytes and
+    // prepend them to the next read so codepoints are never split. See
+    // `split_utf8_safely` for the decoding rules.
     thread::spawn(move || {
         let mut buffer = [0u8; 4096];
+        // At most 3 bytes can be waiting for completion (4-byte UTF-8
+        // codepoints have 3 bytes after the lead), so capacity 4 is plenty.
+        let mut leftover: Vec<u8> = Vec::with_capacity(4);
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    let _ = app.emit("pty-output", data);
+                    let mut combined = std::mem::take(&mut leftover);
+                    combined.extend_from_slice(&buffer[..n]);
+
+                    let split = split_utf8_safely(&combined);
+                    if split > 0 {
+                        let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
+                        let _ = app.emit("pty-output", chunk);
+                    }
+                    leftover = combined[split..].to_vec();
                 }
                 Err(e) => {
                     error!("PTY reader error: {}", e);
                     break;
                 }
             }
+        }
+        // Flush any trailing truncated bytes the child never completed so
+        // users still see the final prompt/output byte-for-byte (lossy at
+        // worst on a deliberately malformed tail).
+        if !leftover.is_empty() {
+            let tail = String::from_utf8_lossy(&leftover).into_owned();
+            let _ = app.emit("pty-output", tail);
         }
     });
 
@@ -160,4 +205,103 @@ pub fn kill_pty(state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>) -> Result
     let mut guard = state.lock().map_err(|e| e.to_string())?;
     *guard = None; // Drops PtyState — closes master PTY and terminates child
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_utf8_safely;
+
+    /// Walks `bytes` in fixed `chunk` sized reads, feeding each slice through
+    /// the same leftover-aware decoder the PTY thread uses, and returns the
+    /// concatenated emitted string. Mirrors the reader loop so tests exercise
+    /// the full assembly path, not just the split helper in isolation.
+    fn drain(bytes: &[u8], chunk: usize) -> String {
+        let mut out = String::new();
+        let mut leftover: Vec<u8> = Vec::new();
+        for window in bytes.chunks(chunk) {
+            let mut combined = std::mem::take(&mut leftover);
+            combined.extend_from_slice(window);
+            let split = split_utf8_safely(&combined);
+            if split > 0 {
+                out.push_str(&String::from_utf8_lossy(&combined[..split]));
+            }
+            leftover = combined[split..].to_vec();
+        }
+        if !leftover.is_empty() {
+            out.push_str(&String::from_utf8_lossy(&leftover));
+        }
+        out
+    }
+
+    #[test]
+    fn pure_ascii_passes_through_any_chunking() {
+        let input = b"hello world from the pty";
+        for chunk in 1..=input.len() {
+            assert_eq!(drain(input, chunk), "hello world from the pty");
+        }
+    }
+
+    #[test]
+    fn four_byte_codepoint_split_across_reads() {
+        // U+1F600 "😀" encodes to F0 9F 98 80 — a four-byte sequence.
+        let smiley = "😀";
+        let bytes = smiley.as_bytes();
+        assert_eq!(bytes.len(), 4);
+
+        // Any split 1..=3 would have been substituted with U+FFFD by the
+        // previous naive `from_utf8_lossy(&buffer[..n])` call.
+        for boundary in 1..=3 {
+            let mut input = b"pre-".to_vec();
+            input.extend_from_slice(&bytes[..boundary]);
+            // Simulate the read coming back in two chunks exactly at `boundary`
+            // inside the codepoint.
+            input.extend_from_slice(&bytes[boundary..]);
+            input.extend_from_slice(b"-post");
+
+            // Feed at a chunk size that guarantees the boundary lands inside
+            // the emoji.
+            let chunk = "pre-".len() + boundary;
+            assert_eq!(drain(&input, chunk), "pre-😀-post");
+        }
+    }
+
+    #[test]
+    fn multiple_multibyte_codepoints_split_repeatedly() {
+        // Mix 2-, 3- and 4-byte sequences, and force 1-byte reads so every
+        // boundary is mid-codepoint.
+        let input = "café — 日本語 — 😀🚀".as_bytes();
+        assert_eq!(drain(input, 1), "café — 日本語 — 😀🚀");
+    }
+
+    #[test]
+    fn invalid_bytes_become_replacement_and_do_not_stall() {
+        // 0xFF is never legal in UTF-8. We want the decoder to replace it
+        // with U+FFFD and keep making forward progress instead of holding
+        // it back as "maybe the next read completes it".
+        let mut input = b"ok-".to_vec();
+        input.push(0xFF);
+        input.extend_from_slice(b"-more");
+        let out = drain(&input, 4);
+        assert!(out.starts_with("ok-"));
+        assert!(out.ends_with("-more"));
+        assert!(out.contains('\u{FFFD}'));
+    }
+
+    #[test]
+    fn empty_input_emits_nothing() {
+        assert_eq!(drain(b"", 1), "");
+        assert_eq!(drain(b"", 4096), "");
+    }
+
+    #[test]
+    fn truncated_tail_is_flushed_on_close() {
+        // Stream ends mid-codepoint (the child crashed or we hit EOF). The
+        // incomplete bytes should still surface, just lossily — better than
+        // silently swallowing the tail.
+        let mut input = b"done ".to_vec();
+        input.extend_from_slice(&"😀".as_bytes()[..2]);
+        let out = drain(&input, 8);
+        assert!(out.starts_with("done "));
+        assert!(out.contains('\u{FFFD}'));
+    }
 }
