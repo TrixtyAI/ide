@@ -25,7 +25,6 @@
     "@xterm/xterm": "^6.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
-    "localtunnel": "^2.0.2",
     "lucide-react": "^1.8.0",
     "monaco-editor": "^0.55.1",
     "next": "16.2.3",
