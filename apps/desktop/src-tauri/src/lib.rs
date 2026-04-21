@@ -164,8 +164,33 @@ fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
     Ok(entries)
 }
 
+/// Upper bound for `read_file`. The Monaco editor, the AI-chat context window
+/// and the IPC serialization path all struggle with multi-hundred-MB strings,
+/// so anything above 10 MiB is rejected with a clear error instead of being
+/// buffered into a `String` and marshaled across the Tauri bridge. Consumers
+/// that genuinely need large files (future streaming viewer, log tailer) are
+/// expected to use a separate chunked command rather than lifting this cap.
+const READ_FILE_MAX_BYTES: u64 = 10 * 1024 * 1024;
+
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
+    let metadata = fs::metadata(&path).map_err(|e| {
+        let err = format!("Failed to stat file {}: {}", path, e);
+        error!("{}", err);
+        err
+    })?;
+
+    if metadata.len() > READ_FILE_MAX_BYTES {
+        let err = format!(
+            "File {} is {} bytes, which exceeds the {}-byte read_file limit; use a streaming reader for files this large",
+            path,
+            metadata.len(),
+            READ_FILE_MAX_BYTES
+        );
+        error!("{}", err);
+        return Err(err);
+    }
+
     fs::read_to_string(&path).map_err(|e| {
         let err = format!("Failed to read file {}: {}", path, e);
         error!("{}", err);
