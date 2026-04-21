@@ -346,10 +346,49 @@ fn validate_git_clone_url(url: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Reject extension ids that would escape `ext_dir` on join, contain
+/// path separators, parent-directory components, or anything other than
+/// the safe marketplace-style slug characters. Required because a
+/// compromised catalog could supply `id = "../../../Windows/foo"` and
+/// `ext_dir.join(id)` on Windows happily resolves that outside the
+/// extensions directory — `git clone` would then write to the escaped
+/// location instead of the sandboxed app-data subfolder.
+fn validate_extension_id(id: &str) -> Result<(), String> {
+    if id.is_empty() {
+        return Err("extension id is empty".to_string());
+    }
+    if id == "." || id == ".." {
+        return Err(format!(
+            "extension id `{}` is not a valid directory name",
+            id
+        ));
+    }
+    if id.contains('/') || id.contains('\\') || id.contains("..") {
+        return Err(format!(
+            "extension id `{}` cannot contain path separators or `..`",
+            id
+        ));
+    }
+    if id.starts_with('-') {
+        return Err(format!("extension id `{}` cannot start with `-`", id));
+    }
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+    {
+        return Err(format!(
+            "extension id `{}` contains disallowed characters (allowed: ASCII alphanumeric, `-`, `_`, `.`)",
+            id
+        ));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> Result<(), String> {
-    // Validate before we even build the target directory, so a bad URL never
-    // reaches `git clone`.
+    // Validate id and git_url before we even build the target directory so a
+    // bad input never reaches `git clone` or the filesystem.
+    validate_extension_id(&id)?;
     validate_git_clone_url(&git_url)?;
 
     let ext_dir = get_extensions_dir(&app)?;
@@ -390,6 +429,7 @@ pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> R
 
 #[tauri::command]
 pub async fn uninstall_extension(app: AppHandle, id: String) -> Result<(), String> {
+    validate_extension_id(&id)?;
     let ext_dir = get_extensions_dir(&app)?;
     let target_dir = ext_dir.join(&id);
 
@@ -402,6 +442,7 @@ pub async fn uninstall_extension(app: AppHandle, id: String) -> Result<(), Strin
 
 #[tauri::command]
 pub async fn update_extension(app: AppHandle, id: String) -> Result<(), String> {
+    validate_extension_id(&id)?;
     let ext_dir = get_extensions_dir(&app)?;
     let target_dir = ext_dir.join(&id);
 
@@ -448,6 +489,7 @@ pub async fn get_installed_extensions(app: AppHandle) -> Result<Vec<String>, Str
 
 #[tauri::command]
 pub async fn is_extension_active(app: AppHandle, id: String) -> Result<bool, String> {
+    validate_extension_id(&id)?;
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let disabled_file = app_data.join("disabled_extensions.json");
 
@@ -467,6 +509,7 @@ pub async fn toggle_extension_state(
     id: String,
     is_active: bool,
 ) -> Result<(), String> {
+    validate_extension_id(&id)?;
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let disabled_file = app_data.join("disabled_extensions.json");
 
@@ -491,6 +534,7 @@ pub async fn toggle_extension_state(
 
 #[tauri::command]
 pub async fn read_extension_script(app: AppHandle, id: String) -> Result<String, String> {
+    validate_extension_id(&id)?;
     let ext_dir = get_extensions_dir(&app)?;
     let target_dir = ext_dir.join(&id);
     let index_file = target_dir.join("index.js");
@@ -570,5 +614,44 @@ mod git_url_validation_tests {
     fn rejects_whitespace_and_control_chars() {
         assert!(validate_git_clone_url("https://github.com/a/b .git").is_err());
         assert!(validate_git_clone_url("https://github.com/a/b\n.git").is_err());
+    }
+}
+
+#[cfg(test)]
+mod extension_id_validation_tests {
+    use super::validate_extension_id;
+
+    #[test]
+    fn accepts_plain_slug() {
+        assert!(validate_extension_id("trixty.example-addon").is_ok());
+        assert!(validate_extension_id("my_ext_01").is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_or_dot_segments() {
+        assert!(validate_extension_id("").is_err());
+        assert!(validate_extension_id(".").is_err());
+        assert!(validate_extension_id("..").is_err());
+    }
+
+    #[test]
+    fn rejects_path_separators_and_parent_references() {
+        assert!(validate_extension_id("a/b").is_err());
+        assert!(validate_extension_id("a\\b").is_err());
+        assert!(validate_extension_id("../evil").is_err());
+        assert!(validate_extension_id("..\\..\\Windows").is_err());
+        assert!(validate_extension_id("foo..bar").is_err());
+    }
+
+    #[test]
+    fn rejects_leading_dash() {
+        assert!(validate_extension_id("-flagish").is_err());
+    }
+
+    #[test]
+    fn rejects_non_ascii_and_special_chars() {
+        assert!(validate_extension_id("ext ension").is_err());
+        assert!(validate_extension_id("ext%20").is_err());
+        assert!(validate_extension_id("exté").is_err());
     }
 }
