@@ -1231,7 +1231,8 @@ pub fn run() {
                                 serde_json::from_value::<String>(m_val),
                             ) {
                                 if settings.load_on_startup && !model.is_empty() {
-                                    should_wait = true;
+                                    let has_splash = splash_window.is_some();
+                                    should_wait = has_splash;
                                     if let Some(ref w) = splash_window {
                                         let _ = w.show();
                                         let _ = w.center();
@@ -1252,9 +1253,59 @@ pub fn run() {
                                         "keep_alive": format!("{}m", settings.keep_alive)
                                     });
 
-                                    // Wait for Ollama response
-                                    let _ = client.post(&url).json(&body).send().await;
-                                    log::info!("[Startup] Ollama responded. Transitioning to IDE.");
+                                    // Run the preload on its own task so the splash can fall
+                                    // through after a short budget even when Ollama is slow or
+                                    // unreachable. The request keeps its 180s client timeout
+                                    // and its side effect (model cached in Ollama) still lands
+                                    // eventually, we just stop blocking the user on it.
+                                    //
+                                    // Send a `Result` across the channel so we can distinguish
+                                    // "Ollama responded in time" from "request failed fast"
+                                    // (connection refused, DNS error) — the latter shouldn't
+                                    // masquerade as "ready" in logs.
+                                    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+                                    tauri::async_runtime::spawn(async move {
+                                        let outcome = match client.post(&url).json(&body).send().await {
+                                            Ok(_) => {
+                                                log::info!("[Startup] Ollama preload completed.");
+                                                Ok(())
+                                            }
+                                            Err(e) => {
+                                                let msg = e.to_string();
+                                                log::warn!("[Startup] Ollama preload failed: {}", msg);
+                                                Err(msg)
+                                            }
+                                        };
+                                        let _ = tx.send(outcome);
+                                    });
+
+                                    // Only honor the 5s splash budget when a splash window is
+                                    // actually on screen. Without one there is nothing for the
+                                    // user to stare at, so we drop straight to the main window
+                                    // and let the preload task finish whenever it finishes.
+                                    if has_splash {
+                                        match tokio::time::timeout(
+                                            std::time::Duration::from_secs(5),
+                                            rx,
+                                        )
+                                        .await
+                                        {
+                                            Ok(Ok(Ok(()))) => log::info!(
+                                                "[Startup] Ollama ready before splash budget."
+                                            ),
+                                            Ok(Ok(Err(e))) => log::warn!(
+                                                "[Startup] Ollama preload finished with error: {}",
+                                                e
+                                            ),
+                                            Ok(Err(_)) => log::warn!(
+                                                "[Startup] Ollama preload task dropped before reporting."
+                                            ),
+                                            Err(_) => log::warn!(
+                                                "[Startup] Ollama preload exceeded 5s splash budget; \
+                                                 showing IDE while preload continues in background."
+                                            ),
+                                        }
+                                    }
                                 }
                             }
                         }
