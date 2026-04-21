@@ -914,6 +914,7 @@ const AiChatComponent: React.FC = () => {
               }
             }}
             disabled={isTyping}
+            aria-label={t('ai.input_placeholder')}
             placeholder={isTyping ? t('ai.waiting_ollama') : t('ai.input_placeholder')}
             className="w-full bg-[#111] text-white text-[13px] rounded-xl p-3 pb-12 border border-[#222] focus:outline-none focus:border-[#444] resize-none min-h-[100px] transition-all hover:border-[#333]"
           />

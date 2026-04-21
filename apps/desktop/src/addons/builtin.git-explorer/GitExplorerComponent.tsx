@@ -634,6 +634,7 @@ const GitExplorerComponent: React.FC = () => {
                                 if (ev.key === "Escape") setNewEntry(null);
                               }}
                               onBlur={handleCreateEntry}
+                              aria-label={newEntry.type === "file" ? t('git.explorer.new_file') : t('git.explorer.new_folder')}
                               className="bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white/20 w-full mr-2"
                             />
                           </div>
@@ -657,6 +658,7 @@ const GitExplorerComponent: React.FC = () => {
                           if (ev.key === "Escape") setNewEntry(null);
                         }}
                         onBlur={handleCreateEntry}
+                        aria-label={newEntry.type === "file" ? t('git.explorer.new_file') : t('git.explorer.new_folder')}
                         className="bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white/20 w-32"
                       />
                     </div>
@@ -714,6 +716,7 @@ const GitExplorerComponent: React.FC = () => {
             <div className="p-3 border-b border-[#1a1a1a]">
               <div className="relative">
                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  aria-label={t('search.title')}
                   className="w-full bg-[#141414] border border-[#222] rounded-lg h-8 pl-8 pr-3 text-[12px] text-white placeholder-[#444] focus:border-[#444] focus:outline-none transition-colors" placeholder={t('search.placeholder')} />
                 <Search size={13} className="absolute left-2.5 top-[9px] text-[#444]" />
               </div>
@@ -811,6 +814,7 @@ const GitExplorerComponent: React.FC = () => {
                   {branches.length > 6 && (
                     <div className="px-2 pt-2">
                       <input value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
+                        aria-label={t('git.filter.branches')}
                         placeholder={t('git.filter.branches')}
                         className="w-full bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
                     </div>
@@ -839,6 +843,7 @@ const GitExplorerComponent: React.FC = () => {
                   <div className="border-t border-[#222] p-2 flex gap-1">
                     <input value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCreateBranch(); }}
+                      aria-label={t('git.action.create_branch')}
                       placeholder={t('git.new_branch')}
                       className="flex-1 bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
                     <button onClick={handleCreateBranch} disabled={!newBranchName.trim() || gitLoading}
@@ -852,6 +857,7 @@ const GitExplorerComponent: React.FC = () => {
             {/* Commit */}
             <div className="px-3 py-3 border-b border-[#1a1a1a]">
               <textarea value={commitMessage} onChange={(e) => setCommitMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && e.ctrlKey) handleCommit(); }}
+                aria-label={t('git.commit_button')}
                 placeholder={amendMode ? `${t('git.commit_placeholder')} (${t('git.action.amend')})` : t('git.commit_placeholder')}
                 className="w-full bg-[#141414] border border-[#222] rounded-xl p-2.5 text-[12px] text-white placeholder-[#444] focus:outline-none focus:border-[#444] resize-y min-h-[80px] max-h-[240px] transition-colors" />
               <div className="flex gap-1.5 mt-2">
@@ -966,6 +972,7 @@ const GitExplorerComponent: React.FC = () => {
                     <div className="px-3 pb-2 flex gap-1">
                       <input value={stashMessage} onChange={(e) => setStashMessage(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleStash(); }}
+                        aria-label={t('git.action.stash')}
                         placeholder={t('git.stash.placeholder')}
                         className="flex-1 bg-[#141414] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
                       <button onClick={handleStash} disabled={gitLoading} title={t('git.action.stash')}

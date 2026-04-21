@@ -129,8 +129,9 @@ Node.js: ${systemInfo.node_version}
               </h3>
               <div className="space-y-4 max-w-md">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.font_family')}</label>
+                  <label htmlFor="settings-editor-font-family" className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.font_family')}</label>
                   <input
+                    id="settings-editor-font-family"
                     type="text"
                     value={editorSettings.fontFamily}
                     onChange={(e) => updateEditorSettings({ fontFamily: e.target.value })}
@@ -139,8 +140,9 @@ Node.js: ${systemInfo.node_version}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.font_size')}</label>
+                    <label htmlFor="settings-editor-font-size" className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.font_size')}</label>
                     <input
+                      id="settings-editor-font-size"
                       type="number"
                       value={editorSettings.fontSize}
                       onChange={(e) => updateEditorSettings({ fontSize: parseInt(e.target.value) })}
@@ -148,8 +150,9 @@ Node.js: ${systemInfo.node_version}
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.line_height')}</label>
+                    <label htmlFor="settings-editor-line-height" className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.editor.line_height')}</label>
                     <input
+                      id="settings-editor-line-height"
                       type="number"
                       value={editorSettings.lineHeight}
                       onChange={(e) => updateEditorSettings({ lineHeight: parseInt(e.target.value) })}
@@ -158,18 +161,19 @@ Node.js: ${systemInfo.node_version}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 pt-2">
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label htmlFor="settings-editor-minimap" className="relative inline-flex items-center cursor-pointer">
                     <input
+                      id="settings-editor-minimap"
                       type="checkbox"
                       checked={!!editorSettings.minimapEnabled}
                       onChange={(e) => updateEditorSettings({ minimapEnabled: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                    <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
                   </label>
-                  <span className="text-[13px] text-[#aaa]">
+                  <label htmlFor="settings-editor-minimap" className="text-[13px] text-[#aaa] cursor-pointer">
                     {t('settings.editor.minimap')}
-                  </span>
+                  </label>
                 </div>
               </div>
             </section>
@@ -212,6 +216,7 @@ Node.js: ${systemInfo.node_version}
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <input
+                        id="settings-files-exclude-pattern"
                         type="text"
                         value={newPattern}
                         onChange={(e) => setNewPattern(e.target.value)}
@@ -224,6 +229,7 @@ Node.js: ${systemInfo.node_version}
                           }
                         }}
                         placeholder={t('settings.general.exclude_placeholder')}
+                        aria-label={t('settings.general.exclude_title')}
                         className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                       />
                     </div>
@@ -255,8 +261,9 @@ Node.js: ${systemInfo.node_version}
               </h3>
               <div className="space-y-4 max-w-sm">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.application.display_language')}</label>
+                  <label htmlFor="settings-app-locale" className="text-[11px] text-[#888] uppercase tracking-wider">{t('settings.application.display_language')}</label>
                   <select
+                    id="settings-app-locale"
                     value={locale}
                     onChange={(e) => setLocale(e.target.value)}
                     className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors appearance-none"

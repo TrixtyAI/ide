@@ -291,6 +291,7 @@ const MarketplaceView: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('marketplace.search_placeholder')}
+              aria-label={t('marketplace.search_placeholder')}
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-9 pr-4 text-[13px] text-white placeholder-[#555] focus:outline-none focus:border-[#555] transition-colors"
             />
             <Search size={14} className="absolute left-3 top-[10px] text-[#555]" />
@@ -298,6 +299,7 @@ const MarketplaceView: React.FC = () => {
           <select
             value={filter}
             onChange={e => setFilter(e.target.value)}
+            aria-label={t('marketplace.title')}
             className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 text-[12px] text-[#aaa] focus:outline-none cursor-pointer"
           >
             <option value="all">{t('marketplace.filter_all', { count: catalog.length.toString() })}</option>
