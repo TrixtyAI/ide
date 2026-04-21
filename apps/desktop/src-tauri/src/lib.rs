@@ -1076,10 +1076,34 @@ async fn open_url(url: String) -> Result<(), String> {
 
 #[tauri::command]
 fn reveal_path(path: String) -> Result<(), String> {
+    // Resolve the caller-supplied string against the filesystem before
+    // handing it to a shell helper. `canonicalize` fails if the target
+    // doesn't exist, so a non-existent or partial path can't be used to
+    // probe the filesystem by spawning explorer/open/xdg-open with garbage.
+    let canonical = std::path::Path::new(&path)
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve path for reveal: {}", e))?;
+
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+
+        // `Path::canonicalize` on Windows returns the `\\?\C:\...` verbatim
+        // prefix, which Explorer treats as an unknown target. Strip it so
+        // `/select,` receives a normal drive-letter path.
+        let as_str = canonical.to_string_lossy();
+        let clean = as_str.strip_prefix(r"\\?\").unwrap_or(&as_str);
+
+        // Build `/select,"<path>"` and hand Explorer the raw command line.
+        // `Command::arg` would wrap the whole value in outer quotes, which
+        // Explorer parses as one opaque token and falls back to the home
+        // folder. `raw_arg` skips that wrapping. The inner quotes also
+        // defend against paths that contain commas — without them
+        // `/select,C:\foo,bar\file` is split into three Explorer arguments
+        // and an attacker-controlled filename can piggy-back extra ones.
+        let raw = format!("/select,\"{}\"", clean);
         silent_command("explorer")
-            .arg(format!("/select,{}", path))
+            .raw_arg(raw)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
@@ -1087,15 +1111,13 @@ fn reveal_path(path: String) -> Result<(), String> {
     {
         silent_command("open")
             .arg("-R")
-            .arg(path)
+            .arg(&canonical)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "linux")]
     {
-        let parent = std::path::Path::new(&path)
-            .parent()
-            .unwrap_or(std::path::Path::new(&path));
+        let parent = canonical.parent().unwrap_or(&canonical);
         silent_command("xdg-open")
             .arg(parent)
             .spawn()
