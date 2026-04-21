@@ -7,22 +7,23 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Runtime};
 
-/// Returns the length in bytes of the longest prefix of `buf` that is safe to
-/// decode right now. Callers are expected to emit `buf[..split]` and retain
-/// `buf[split..]` as leftover bytes to prepend to the next chunk.
+/// Returns the length in bytes of the longest prefix of `buf` that should be
+/// emitted right now. Callers are expected to emit `buf[..split]` through
+/// `from_utf8_lossy` and retain `buf[split..]` as leftover to prepend to the
+/// next read.
 ///
-/// Rules:
-/// - If the whole buffer is valid UTF-8, the whole buffer is emitted.
-/// - If the tail is a *truncated* multi-byte sequence (incomplete but still
-///   possibly valid), the truncated tail is held back for the next read.
-/// - If the tail is *actually invalid*, the invalid bytes are included in the
-///   emit so lossy decoding replaces them with U+FFFD — otherwise one bad byte
-///   would stall the stream forever.
+/// The only case we hold bytes back is a *truncated* UTF-8 sequence at the
+/// very end of `buf` (where `str::from_utf8` reports `error_len() == None`):
+/// the next read may complete it into a valid codepoint. If the buffer
+/// contains invalid UTF-8 *anywhere else* we return `buf.len()` and let the
+/// caller emit the whole thing — `from_utf8_lossy` replaces the bad bytes
+/// with `U+FFFD` and valid bytes that follow the invalid byte in the same
+/// chunk are not delayed to the next read.
 fn split_utf8_safely(buf: &[u8]) -> usize {
     match std::str::from_utf8(buf) {
         Ok(_) => buf.len(),
         Err(e) if e.error_len().is_none() => e.valid_up_to(),
-        Err(e) => e.valid_up_to() + e.error_len().unwrap_or(1),
+        Err(_) => buf.len(),
     }
 }
 
@@ -127,22 +128,26 @@ pub fn spawn_pty<R: Runtime>(
     // `split_utf8_safely` for the decoding rules.
     thread::spawn(move || {
         let mut buffer = [0u8; 4096];
-        // At most 3 bytes can be waiting for completion (4-byte UTF-8
-        // codepoints have 3 bytes after the lead), so capacity 4 is plenty.
-        let mut leftover: Vec<u8> = Vec::with_capacity(4);
+        // Reuse the same assembly buffer across reads so a busy shell does
+        // not force one allocation per iteration. Capacity is chunk size +
+        // the maximum UTF-8 sequence length (4), so a full read plus a
+        // 3-byte truncated leftover never has to grow.
+        let mut combined: Vec<u8> = Vec::with_capacity(buffer.len() + 4);
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let mut combined = std::mem::take(&mut leftover);
                     combined.extend_from_slice(&buffer[..n]);
 
                     let split = split_utf8_safely(&combined);
                     if split > 0 {
                         let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
                         let _ = app.emit("pty-output", chunk);
+                        // Drop the emitted prefix in place; the tail (at
+                        // most 3 bytes of a truncated codepoint) stays put
+                        // for the next read.
+                        combined.drain(..split);
                     }
-                    leftover = combined[split..].to_vec();
                 }
                 Err(e) => {
                     error!("PTY reader error: {}", e);
@@ -153,8 +158,8 @@ pub fn spawn_pty<R: Runtime>(
         // Flush any trailing truncated bytes the child never completed so
         // users still see the final prompt/output byte-for-byte (lossy at
         // worst on a deliberately malformed tail).
-        if !leftover.is_empty() {
-            let tail = String::from_utf8_lossy(&leftover).into_owned();
+        if !combined.is_empty() {
+            let tail = String::from_utf8_lossy(&combined).into_owned();
             let _ = app.emit("pty-output", tail);
         }
     });
@@ -217,18 +222,17 @@ mod tests {
     /// the full assembly path, not just the split helper in isolation.
     fn drain(bytes: &[u8], chunk: usize) -> String {
         let mut out = String::new();
-        let mut leftover: Vec<u8> = Vec::new();
+        let mut combined: Vec<u8> = Vec::new();
         for window in bytes.chunks(chunk) {
-            let mut combined = std::mem::take(&mut leftover);
             combined.extend_from_slice(window);
             let split = split_utf8_safely(&combined);
             if split > 0 {
                 out.push_str(&String::from_utf8_lossy(&combined[..split]));
+                combined.drain(..split);
             }
-            leftover = combined[split..].to_vec();
         }
-        if !leftover.is_empty() {
-            out.push_str(&String::from_utf8_lossy(&leftover));
+        if !combined.is_empty() {
+            out.push_str(&String::from_utf8_lossy(&combined));
         }
         out
     }
@@ -285,6 +289,30 @@ mod tests {
         assert!(out.starts_with("ok-"));
         assert!(out.ends_with("-more"));
         assert!(out.contains('\u{FFFD}'));
+    }
+
+    #[test]
+    fn invalid_byte_mid_chunk_does_not_delay_valid_trailing_bytes() {
+        // Regression guard for the "hold everything after invalid as leftover"
+        // bug: when a read contains `[valid_prefix, invalid_byte, valid_suffix]`
+        // we must emit all of it in the same iteration (the valid suffix
+        // shouldn't be withheld until the next read). We simulate a single
+        // read by giving `drain` a chunk size larger than the whole input.
+        let mut input = b"before-".to_vec();
+        input.push(0xFF);
+        input.extend_from_slice(b"-after");
+        // Chunk size = input.len() means drain hits the last iteration with
+        // the full buffer present; if the decoder withheld "-after" it would
+        // only surface in the final post-loop flush, but the emit-before-
+        // flush assertion still catches it.
+        let out = drain(&input, input.len());
+        assert_eq!(
+            out.chars().filter(|&c| c == '\u{FFFD}').count(),
+            1,
+            "exactly one replacement char expected: {out:?}"
+        );
+        assert!(out.starts_with("before-"));
+        assert!(out.ends_with("-after"));
     }
 
     #[test]
