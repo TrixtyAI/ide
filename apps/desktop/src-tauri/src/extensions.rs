@@ -527,7 +527,7 @@ pub async fn toggle_extension_state(
     }
 
     let json = serde_json::to_string_pretty(&disabled).map_err(|e| e.to_string())?;
-    std::fs::write(disabled_file, json).map_err(|e| e.to_string())?;
+    crate::fs_atomic::write_atomic(&disabled_file, json.as_bytes()).map_err(|e| e.to_string())?;
 
     Ok(())
 }
