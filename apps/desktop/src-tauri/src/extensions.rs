@@ -266,8 +266,92 @@ fn get_extensions_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(ext_dir)
 }
 
+/// Hosts we allow `git clone` to target from the extension marketplace. Every
+/// legitimate entry today points at one of these, and the constraint blocks
+/// the bulk of the attack surface: `file://`, Windows UNC, `ssh://`,
+/// `git://`, and `ext::` transports can't reach this point because the host
+/// won't match, and typo-squatted domains have nowhere to land.
+const ALLOWED_GIT_HOSTS: &[&str] = &["github.com", "gitlab.com", "bitbucket.org"];
+
+/// Enforces the URL shape that `git clone` will accept: strict `https://`,
+/// allow-listed host, exactly `owner/repo[.git]`, ASCII-safe segments, no
+/// credentials, no transport-helper syntax. Everything coming out of
+/// `resolveGitRepoUrl` on the frontend already looks like this, so the
+/// check is free for legitimate catalog entries and hard-stops a compromised
+/// registry.
+fn validate_git_clone_url(url: &str) -> Result<(), String> {
+    // Reject control characters and whitespace up front — these should never
+    // appear in a real clone URL and catching them here keeps downstream
+    // argv/process parsers honest.
+    if url.chars().any(|c| c.is_control() || c == ' ') {
+        return Err("git_url must not contain control characters or whitespace".to_string());
+    }
+
+    // Block the `ext::` transport-helper syntax that lets git run arbitrary
+    // helper binaries. The https:// strip below would catch this too, but
+    // the explicit message helps when debugging a compromised catalog.
+    if url.contains("::") {
+        return Err("git_url must not contain transport-helper syntax (`::`)".to_string());
+    }
+
+    let after_scheme = url
+        .strip_prefix("https://")
+        .ok_or_else(|| format!("git_url must begin with https:// (got `{}`)", url))?;
+
+    // `user@host/...` shapes shift the host parser and let an attacker embed
+    // credentials or, worse, alternate hosts. No legitimate marketplace
+    // entry uses them.
+    if after_scheme.contains('@') {
+        return Err("git_url must not contain `@` (credentials/alternate host)".to_string());
+    }
+
+    let (host, path) = after_scheme
+        .split_once('/')
+        .ok_or_else(|| format!("git_url is missing a repository path: `{}`", url))?;
+
+    if !ALLOWED_GIT_HOSTS.contains(&host) {
+        return Err(format!(
+            "git_url host `{}` is not in the allowlist ({})",
+            host,
+            ALLOWED_GIT_HOSTS.join(", ")
+        ));
+    }
+
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    if segments.len() != 2 {
+        return Err(format!(
+            "git_url path must be `<owner>/<repo>` or `<owner>/<repo>.git`; got `{}`",
+            path
+        ));
+    }
+
+    for seg in &segments {
+        if seg.starts_with('-') {
+            return Err(format!(
+                "git_url path segment `{}` cannot start with `-`",
+                seg
+            ));
+        }
+        if !seg
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        {
+            return Err(format!(
+                "git_url path segment `{}` contains disallowed characters",
+                seg
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> Result<(), String> {
+    // Validate before we even build the target directory, so a bad URL never
+    // reaches `git clone`.
+    validate_git_clone_url(&git_url)?;
+
     let ext_dir = get_extensions_dir(&app)?;
     let target_dir = ext_dir.join(&id);
 
@@ -275,7 +359,18 @@ pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> R
         return Err("Extension is already installed".into());
     }
 
+    // Belt-and-suspenders: even though `validate_git_clone_url` already
+    // enforces an https:// allow-listed host, turn off the protocols that are
+    // most commonly abused for arbitrary command execution during clone. If
+    // anything ever gets past the URL check, git itself will still refuse
+    // `ext::`, `file://`, and raw `git://`.
     let output = Command::new("git")
+        .arg("-c")
+        .arg("protocol.ext.allow=never")
+        .arg("-c")
+        .arg("protocol.file.allow=never")
+        .arg("-c")
+        .arg("protocol.git.allow=never")
         .arg("clone")
         .arg("--depth")
         .arg("1")
@@ -406,4 +501,74 @@ pub async fn read_extension_script(app: AppHandle, id: String) -> Result<String,
 
     let content = std::fs::read_to_string(&index_file).map_err(|e| e.to_string())?;
     Ok(content)
+}
+
+#[cfg(test)]
+mod git_url_validation_tests {
+    use super::validate_git_clone_url;
+
+    #[test]
+    fn accepts_github_https_with_git_suffix() {
+        assert!(validate_git_clone_url("https://github.com/owner/repo.git").is_ok());
+    }
+
+    #[test]
+    fn accepts_github_https_without_git_suffix() {
+        assert!(validate_git_clone_url("https://github.com/owner/repo").is_ok());
+    }
+
+    #[test]
+    fn accepts_gitlab_and_bitbucket() {
+        assert!(validate_git_clone_url("https://gitlab.com/g/r.git").is_ok());
+        assert!(validate_git_clone_url("https://bitbucket.org/g/r.git").is_ok());
+    }
+
+    #[test]
+    fn rejects_plain_http() {
+        assert!(validate_git_clone_url("http://github.com/owner/repo.git").is_err());
+    }
+
+    #[test]
+    fn rejects_file_scheme() {
+        assert!(validate_git_clone_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn rejects_ssh_and_git_schemes() {
+        assert!(validate_git_clone_url("ssh://git@github.com/owner/repo.git").is_err());
+        assert!(validate_git_clone_url("git://github.com/owner/repo.git").is_err());
+    }
+
+    #[test]
+    fn rejects_ext_transport_helpers() {
+        assert!(validate_git_clone_url("ext::curl https://evil.example").is_err());
+    }
+
+    #[test]
+    fn rejects_non_allowlisted_host() {
+        assert!(validate_git_clone_url("https://evil.example.com/a/b.git").is_err());
+    }
+
+    #[test]
+    fn rejects_authentication_or_alternate_host() {
+        assert!(validate_git_clone_url("https://user@github.com/a/b.git").is_err());
+        assert!(validate_git_clone_url("https://github.com@evil.example/a/b.git").is_err());
+    }
+
+    #[test]
+    fn rejects_extra_path_segments() {
+        assert!(validate_git_clone_url("https://github.com/a/b/c.git").is_err());
+        assert!(validate_git_clone_url("https://github.com/only").is_err());
+    }
+
+    #[test]
+    fn rejects_flag_like_segments() {
+        assert!(validate_git_clone_url("https://github.com/-upload-pack/r.git").is_err());
+    }
+
+    #[test]
+    fn rejects_whitespace_and_control_chars() {
+        assert!(validate_git_clone_url("https://github.com/a/b .git").is_err());
+        assert!(validate_git_clone_url("https://github.com/a/b\n.git").is_err());
+    }
 }
