@@ -458,7 +458,17 @@ const AiChatComponent: React.FC = () => {
           for (const toolCall of message.tool_calls) {
             const toolName = toolCall.function.name;
             const toolArgs = toolCall.function.arguments;
-            const callId = toolCall.id || Math.random().toString(36).substr(2, 9);
+            // Prefer the provider-supplied id; otherwise mint a collision-
+            // resistant one. `Math.random().substr(2, 9)` (the previous shape)
+            // has narrow entropy and could theoretically collide with a
+            // still-pending entry in the resolver Map, which would silently
+            // overwrite the earlier resolver and reintroduce the dangling-
+            // Promise bug this whole path is trying to fix.
+            const generatedId =
+              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID()
+                : `cid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+            const callId = toolCall.id || generatedId;
 
             let result;
             if (aiSettings.alwaysAllowTools) {
@@ -474,6 +484,11 @@ const AiChatComponent: React.FC = () => {
                     pendingResolversRef.current.delete(oldId);
                   }
                 }
+                // Defense against a callId collision (e.g. provider reusing an
+                // id): resolve the prior resolver as denied before replacing,
+                // so no awaiter is left dangling.
+                const existing = pendingResolversRef.current.get(callId);
+                if (existing) existing(false);
                 pendingResolversRef.current.set(callId, resolve);
                 setPendingTool({ id: callId, name: toolName, args: toolArgs });
               });
@@ -787,10 +802,19 @@ const AiChatComponent: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      const resolver = pendingResolversRef.current.get(pendingTool.id);
-                      pendingResolversRef.current.delete(pendingTool.id);
-                      setPendingTool(null);
-                      resolver?.(true);
+                      // Capture the id at click time and only clear state if
+                      // the dialog is still showing *this* id. A faster
+                      // follow-up prompt may have already replaced
+                      // `pendingTool`; if we cleared unconditionally we'd
+                      // hide the newer dialog and strand its Promise.
+                      const clickedId = pendingTool.id;
+                      const resolver = pendingResolversRef.current.get(clickedId);
+                      if (!resolver) return;
+                      pendingResolversRef.current.delete(clickedId);
+                      setPendingTool((current) =>
+                        current && current.id === clickedId ? null : current
+                      );
+                      resolver(true);
                     }}
                     className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
                   >
@@ -798,10 +822,14 @@ const AiChatComponent: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      const resolver = pendingResolversRef.current.get(pendingTool.id);
-                      pendingResolversRef.current.delete(pendingTool.id);
-                      setPendingTool(null);
-                      resolver?.(false);
+                      const clickedId = pendingTool.id;
+                      const resolver = pendingResolversRef.current.get(clickedId);
+                      if (!resolver) return;
+                      pendingResolversRef.current.delete(clickedId);
+                      setPendingTool((current) =>
+                        current && current.id === clickedId ? null : current
+                      );
+                      resolver(false);
                     }}
                     className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
                   >
