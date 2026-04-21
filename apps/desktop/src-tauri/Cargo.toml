@@ -34,12 +34,12 @@ portable-pty = "0.9.0"
 tokio-util = "0.7.18"
 walkdir = "2.5"
 dirs = "5"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots", "http2", "charset", "gzip", "brotli"] }
 tokio = { version = "1", features = ["time", "rt-multi-thread"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 urlencoding = "2"
-sysinfo = "0.36.1"
+sysinfo = { version = "0.36.1", default-features = false, features = ["system"] }
 scraper = "0.19"
 html2text = "0.12"
 tauri-plugin-http = "2"
