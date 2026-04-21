@@ -134,10 +134,10 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h4 className="text-sm font-semibold text-white">AGENTS.md</h4>
-                <p className="text-[11px] text-[#555]">{t('agent.manual.desc')}</p>
+                <h4 id="agent-manual-title" className="text-sm font-semibold text-white">AGENTS.md</h4>
+                <p id="agent-manual-desc" className="text-[11px] text-[#555]">{t('agent.manual.desc')}</p>
               </div>
-              <button 
+              <button
                 onClick={() => handleSave('AGENTS.md')}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
@@ -147,6 +147,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
               </button>
             </div>
             <textarea
+              aria-labelledby="agent-manual-title"
+              aria-describedby="agent-manual-desc"
               value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
@@ -159,10 +161,10 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h4 className="text-sm font-semibold text-white">DESIGN.md</h4>
-                <p className="text-[11px] text-[#555]">{t('agent.design.desc')}</p>
+                <h4 id="agent-design-title" className="text-sm font-semibold text-white">DESIGN.md</h4>
+                <p id="agent-design-desc" className="text-[11px] text-[#555]">{t('agent.design.desc')}</p>
               </div>
-              <button 
+              <button
                 onClick={() => handleSave('DESIGN.md')}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
@@ -172,6 +174,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
               </button>
             </div>
             <textarea
+              aria-labelledby="agent-design-title"
+              aria-describedby="agent-design-desc"
               value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
@@ -184,10 +188,10 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h4 className="text-sm font-semibold text-white">USER.md</h4>
-                <p className="text-[11px] text-[#555]">{t('agent.user.desc')}</p>
+                <h4 id="agent-user-title" className="text-sm font-semibold text-white">USER.md</h4>
+                <p id="agent-user-desc" className="text-[11px] text-[#555]">{t('agent.user.desc')}</p>
               </div>
-              <button 
+              <button
                 onClick={() => handleSave('USER.md')}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 transition-all disabled:opacity-50"
@@ -197,6 +201,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
               </button>
             </div>
             <textarea
+              aria-labelledby="agent-user-title"
+              aria-describedby="agent-user-desc"
               value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#ccc] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none"
@@ -301,26 +307,29 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
               {/* Keep Alive Setting */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#888] uppercase tracking-wider">{t('agent.configuration.keepalive_label')}</label>
+                  <label htmlFor="agent-config-keepalive" className="text-[11px] font-bold text-[#888] uppercase tracking-wider">{t('agent.configuration.keepalive_label')}</label>
                   <span className="text-[11px] font-mono text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
                     {aiSettings.keepAlive || 5} {t('agent.configuration.keepalive_unit')}
                   </span>
                 </div>
                 <input
+                  id="agent-config-keepalive"
                   type="range"
                   min="5"
                   max="1440"
                   step="5"
                   value={aiSettings.keepAlive || 5}
                   onChange={(e) => updateAISettings({ keepAlive: parseInt(e.target.value) })}
+                  aria-describedby="agent-config-keepalive-desc"
+                  aria-valuetext={`${aiSettings.keepAlive || 5} ${t('agent.configuration.keepalive_unit')}`}
                   className="w-full h-1.5 bg-[#1a1a1a] rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
-                <div className="flex justify-between text-[10px] text-[#444] font-mono">
+                <div aria-hidden="true" className="flex justify-between text-[10px] text-[#444] font-mono">
                   <span>5m</span>
                   <span>12h</span>
                   <span>24h</span>
                 </div>
-                <p className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
+                <p id="agent-config-keepalive-desc" className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
                 
                 <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex gap-3">
                    <AlertCircle size={16} strokeWidth={1.5} className="text-amber-500 shrink-0 mt-0.5" />
@@ -371,11 +380,13 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h4 className="text-sm font-semibold text-white">MEMORY.md</h4>
-                <p className="text-[11px] text-[#555]">{t('agent.memory.desc')}</p>
+                <h4 id="agent-memory-title" className="text-sm font-semibold text-white">MEMORY.md</h4>
+                <p id="agent-memory-desc" className="text-[11px] text-[#555]">{t('agent.memory.desc')}</p>
               </div>
             </div>
-            <textarea 
+            <textarea
+              aria-labelledby="agent-memory-title"
+              aria-describedby="agent-memory-desc"
               value={memory || ""}
               readOnly
               className="w-full h-[400px] bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-4 text-[13px] text-[#555] font-mono focus:border-blue-500/50 outline-none scrollbar-thin resize-none cursor-default"
