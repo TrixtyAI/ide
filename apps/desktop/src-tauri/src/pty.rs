@@ -41,14 +41,16 @@ pub struct PtyState {
 /// smuggle data through DCS/APC/PM/SOS payloads, or spoof link targets
 /// via OSC 8.
 ///
-/// Stripped, starting at either `ESC` (0x1B) + introducer or the 7-bit C1
-/// byte, and consuming everything up to a String Terminator (`ST` = 0x9C
-/// or `ESC \\`, plus the BEL shorthand 0x07 for OSC):
-/// - OSC (`ESC ]` / 0x9D)
-/// - DCS (`ESC P` / 0x90)
-/// - SOS (`ESC X` / 0x98)
-/// - PM  (`ESC ^` / 0x9E)
-/// - APC (`ESC _` / 0x9F)
+/// Stripped, starting at either the 7-bit `ESC` (0x1B) + introducer form
+/// or the corresponding single-character C1 control code point in the
+/// input `&str` (for example, OSC as `U+009D`, encoded in UTF-8 as
+/// `0xC2 0x9D`), and consuming everything up to a String Terminator
+/// (`ST` = `U+009C` or `ESC \\`, plus the BEL shorthand `U+0007` for OSC):
+/// - OSC (`ESC ]` / `U+009D`)
+/// - DCS (`ESC P` / `U+0090`)
+/// - SOS (`ESC X` / `U+0098`)
+/// - PM  (`ESC ^` / `U+009E`)
+/// - APC (`ESC _` / `U+009F`)
 ///
 /// Unterminated sequences are dropped through end-of-input so half a
 /// payload cannot sneak through a later `write_to_pty` call.
@@ -71,11 +73,11 @@ fn sanitize_pty_input(input: &str) -> String {
                 }
             }
         }
-        // 7-bit C1 codepoint equivalents of OSC/DCS/SOS/PM/APC. Iterating
-        // by `char` (not bytes) is essential: U+0098 appears as the byte
-        // sequence `0xC2 0x98` in UTF-8, but individual UTF-8 continuation
-        // bytes inside legitimate codepoints (e.g. `😀` contains 0x98) must
-        // not be mistaken for a C1 introducer.
+        // C1 control code points for OSC/DCS/SOS/PM/APC. Iterating by
+        // `char` (not bytes) is essential: `U+0098` appears as the UTF-8
+        // byte sequence `0xC2 0x98`, but UTF-8 continuation bytes inside
+        // legitimate code points (e.g. `😀` contains 0x98) must not be
+        // mistaken for a C1 introducer.
         if matches!(c, '\u{90}' | '\u{98}' | '\u{9d}' | '\u{9e}' | '\u{9f}') {
             skip_to_string_terminator(&mut chars, c == '\u{9d}');
             continue;
