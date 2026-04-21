@@ -289,7 +289,6 @@ declare global {
     trixty: typeof trixty;
     React: typeof React;
     LucideIcons: typeof import("lucide-react");
-    resolveTool?: (allowed: boolean) => void;
     __TAURI_INTERNALS__?: unknown;
   }
 }

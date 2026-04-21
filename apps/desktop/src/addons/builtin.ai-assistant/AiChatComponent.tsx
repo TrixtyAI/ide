@@ -77,6 +77,21 @@ const AiChatComponent: React.FC = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Per-call permission resolvers. Previously a single `window.resolveTool`
+  // held the in-flight resolver globally, which meant two concurrent
+  // permission prompts (two chat submissions racing, or a tool-call loop
+  // overlapping with a retry) would silently overwrite the first resolver
+  // and leave the first Promise dangling forever. A Map keyed by call id
+  // keeps each prompt independent; on unmount we resolve everything as
+  // denied so pending awaiters don't leak past the component's lifetime.
+  const pendingResolversRef = useRef<Map<string, (allowed: boolean) => void>>(new Map());
+  useEffect(() => {
+    const resolvers = pendingResolversRef.current;
+    return () => {
+      for (const resolver of resolvers.values()) resolver(false);
+      resolvers.clear();
+    };
+  }, []);
 
   useEffect(() => {
     // Load last used model from storage
@@ -449,13 +464,18 @@ const AiChatComponent: React.FC = () => {
             if (aiSettings.alwaysAllowTools) {
               result = await executeToolInternal(toolName, toolArgs);
             } else {
-              // Manual permission needed
+              // Manual permission needed. The dialog UI has a single slot, so
+              // any older unresolved prompt is already invisible to the user;
+              // we deny them here instead of letting their Promises dangle.
               const permissionPromise = new Promise<boolean>((resolve) => {
+                for (const [oldId, oldResolver] of pendingResolversRef.current) {
+                  if (oldId !== callId) {
+                    oldResolver(false);
+                    pendingResolversRef.current.delete(oldId);
+                  }
+                }
+                pendingResolversRef.current.set(callId, resolve);
                 setPendingTool({ id: callId, name: toolName, args: toolArgs });
-                window.resolveTool = (allowed: boolean) => {
-                  setPendingTool(null);
-                  resolve(allowed);
-                };
               });
 
               const allowed = await permissionPromise;
@@ -766,13 +786,23 @@ const AiChatComponent: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => window.resolveTool?.(true)}
+                    onClick={() => {
+                      const resolver = pendingResolversRef.current.get(pendingTool.id);
+                      pendingResolversRef.current.delete(pendingTool.id);
+                      setPendingTool(null);
+                      resolver?.(true);
+                    }}
                     className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
                   >
                     {t('ai.tool_allow')}
                   </button>
                   <button
-                    onClick={() => window.resolveTool?.(false)}
+                    onClick={() => {
+                      const resolver = pendingResolversRef.current.get(pendingTool.id);
+                      pendingResolversRef.current.delete(pendingTool.id);
+                      setPendingTool(null);
+                      resolver?.(false);
+                    }}
                     className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
                   >
                     {t('ai.tool_deny')}
