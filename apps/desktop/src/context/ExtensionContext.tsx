@@ -59,6 +59,39 @@ interface ExtensionContextType {
   fetchFile: (entry: MarketplaceEntry, fileName: string) => Promise<string>;
 }
 
+/**
+ * Resolve a marketplace entry to a clone-/raw-friendly GitHub repo URL.
+ *
+ * Prefers the explicit `repository` field. When only `data` is provided,
+ * parses the GitHub URL (`github.com/<owner>/<repo>/blob/...` or the matching
+ * `raw.githubusercontent.com/<owner>/<repo>/...` form) and rebuilds
+ * `https://github.com/<owner>/<repo>.git`. Returns null if the entry has no
+ * resolvable GitHub origin so callers can surface a clear error instead of
+ * silently passing the original `data` URL to `git clone`.
+ */
+export function resolveGitRepoUrl(entry: MarketplaceEntry): string | null {
+  if (entry.repository) return entry.repository;
+  if (!entry.data) return null;
+
+  try {
+    const u = new URL(entry.data);
+    if (u.hostname !== "github.com" && u.hostname !== "raw.githubusercontent.com") {
+      return null;
+    }
+    const segments = u.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+    const [owner, rawRepo] = segments;
+    // Strip an existing `.git` so catalog entries that already point at a
+    // `...repo.git/...` path don't end up producing `.git.git` and failing
+    // `git clone`.
+    const repo = rawRepo.endsWith(".git") ? rawRepo.slice(0, -4) : rawRepo;
+    if (!repo) return null;
+    return `https://github.com/${owner}/${repo}.git`;
+  } catch {
+    return null;
+  }
+}
+
 const ExtensionContext = createContext<ExtensionContextType | undefined>(undefined);
 
 export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,6 +130,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // failure (e.g. GitHub rate limit on stars) doesn't drop the other data.
       const enrichedEntries = await Promise.all(
         entries.map(async (entry) => {
+          const resolvedRepoUrl = resolveGitRepoUrl(entry) || "";
           const [manifestResult, starsResult] = await Promise.allSettled([
             invoke("fetch_extension_manifest", {
               repoUrl: entry.repository || "",
@@ -104,7 +138,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               dataUrl: entry.data,
               path: entry.path
             }),
-            invoke("fetch_extension_stars", { repoUrl: entry.repository || "" })
+            invoke("fetch_extension_stars", { repoUrl: resolvedRepoUrl })
           ]);
 
           const manifest = manifestResult.status === "fulfilled" ? manifestResult.value : undefined;
@@ -143,11 +177,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const installExtension = async (entry: MarketplaceEntry) => {
-    // If it's a repo-based, we pass the repo url. If they define "data" url only,
-    // we could deduce repo URL or just fallback. We assume git clone for now,
-    // so `repository` should exist. However, the user provided 'data' in marketplace.json.
-    // Let's deduce repository if not explicitly set:
-    const gitUrl = entry.repository || entry.data?.replace("/ide/blob/main/extensions/example-addon/package.json", ".git");
+    const gitUrl = resolveGitRepoUrl(entry);
 
     if (!gitUrl) {
       setError("Cannot install: No repository URL defined.");
@@ -155,7 +185,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     try {
-      await invoke("install_extension", { id: entry.id, gitUrl: gitUrl });
+      await invoke("install_extension", { id: entry.id, gitUrl });
       await refreshCatalog();
     } catch (e) {
       throw new Error("Install failed: " + String(e));
@@ -193,12 +223,14 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Memoized so MarketplaceView's DetailsView doesn't retrigger its README/CHANGELOG
   // effect on every ExtensionContext re-render.
   const fetchFile = useCallback(async (entry: MarketplaceEntry, fileName: string) => {
+      const repoUrl = resolveGitRepoUrl(entry);
+      if (!repoUrl) return "";
       try {
         const text = await invoke("fetch_extension_file", {
-            repoUrl: entry.repository || entry.data?.replace("/ide/blob/main/extensions/example-addon/package.json", ".git") || "",
+            repoUrl,
             branch: entry.branch || "main",
             path: entry.path,
-            fileName: fileName
+            fileName,
         });
         return text;
       } catch {
