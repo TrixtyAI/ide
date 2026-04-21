@@ -2,8 +2,11 @@ use log::error;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::{
     io::{Read, Write},
-    sync::{Arc, Mutex},
-    thread,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread::{self, JoinHandle},
 };
 use tauri::{AppHandle, Emitter, Runtime};
 
@@ -30,6 +33,44 @@ fn split_utf8_safely(buf: &[u8]) -> usize {
 pub struct PtyState {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub master: Box<dyn portable_pty::MasterPty + Send>,
+    /// Set by `kill_pty` (or the `Drop` impl) to tell the reader thread it
+    /// must stop emitting events. The thread checks this flag between
+    /// reads so bytes still in flight from a previous shell cannot land in
+    /// the tab of the next one.
+    shutdown: Arc<AtomicBool>,
+    /// Owned handle to the reader thread. Held in an `Option` so
+    /// `shutdown_and_join` can take it out (joining consumes the handle)
+    /// without needing `&mut self`.
+    thread_handle: Option<JoinHandle<()>>,
+}
+
+impl PtyState {
+    /// Flags the reader for shutdown and waits for it to finish. Called
+    /// explicitly by `spawn_pty` (when replacing an old session) and
+    /// `kill_pty` (when the user closes the terminal) so the next session
+    /// cannot receive stale `pty-output` events from the old reader.
+    ///
+    /// Both callers always go through this path; there is no implicit
+    /// `Drop`-based teardown, because `Drop` would have to run on
+    /// `&mut self` and could not drop `master` before `handle.join()`,
+    /// which would deadlock (the reader is blocked inside `read`, and
+    /// only dropping the master wakes it up).
+    fn shutdown_and_join(self) {
+        self.shutdown.store(true, Ordering::Release);
+        // Destructure so we can drop `master` *before* joining. Dropping
+        // the master closes the native PTY handle and unblocks the
+        // reader's pending `read` call with `Ok(0)` / `Err` on all
+        // supported platforms; the join then returns promptly.
+        let PtyState {
+            master,
+            thread_handle,
+            ..
+        } = self;
+        drop(master);
+        if let Some(handle) = thread_handle {
+            let _ = handle.join();
+        }
+    }
 }
 
 /// Strips ANSI escape sequences that have no legitimate reason to travel
@@ -120,7 +161,18 @@ pub fn spawn_pty<R: Runtime>(
     rows: Option<u16>,
     cols: Option<u16>,
 ) -> Result<(), String> {
-    // If session exists, it will be replaced (dropping old resources kills the previous PTY)
+    // Take any previous session out of the mutex *before* tearing it down.
+    // Holding the lock across `shutdown_and_join` would serialize the join
+    // with every other PTY command and could deadlock if the reader was
+    // trying to re-enter (e.g. via `emit`). Dropping `old` here flushes
+    // the old thread to completion with the lock released.
+    let old = {
+        let mut guard = state.lock().map_err(|e| e.to_string())?;
+        guard.take()
+    };
+    if let Some(old_state) = old {
+        old_state.shutdown_and_join();
+    }
 
     let pty_system = native_pty_system();
 
@@ -185,16 +237,8 @@ pub fn spawn_pty<R: Runtime>(
         err
     })?;
 
-    let pty_state = PtyState {
-        writer: Arc::new(Mutex::new(writer)),
-        master: pair.master,
-    };
-
-    *state.lock().map_err(|e| {
-        let err = e.to_string();
-        error!("PTY state lock failed: {}", err);
-        err
-    })? = Some(pty_state);
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let shutdown_for_thread = shutdown.clone();
 
     // Spawn a thread to read from the PTY and emit to the frontend.
     //
@@ -206,7 +250,12 @@ pub fn spawn_pty<R: Runtime>(
     // perfectly valid. We hold back the trailing truncated bytes and
     // prepend them to the next read so codepoints are never split. See
     // `split_utf8_safely` for the decoding rules.
-    thread::spawn(move || {
+    //
+    // The `JoinHandle` is kept so `shutdown_and_join` can wait for the
+    // thread to exit before the next session starts. Dropping the master
+    // closes the native reader and unblocks a pending `read`, which lets
+    // the join return promptly.
+    let handle = thread::spawn(move || {
         let mut buffer = [0u8; 4096];
         // Reuse the same assembly buffer across reads so a busy shell does
         // not force one allocation per iteration. Capacity is chunk size +
@@ -221,6 +270,12 @@ pub fn spawn_pty<R: Runtime>(
 
                     let split = split_utf8_safely(&combined);
                     if split > 0 {
+                        // Observe the shutdown flag *before* emitting so
+                        // bytes read from a shell the user already killed
+                        // cannot surface inside a new session's tab.
+                        if shutdown_for_thread.load(Ordering::Acquire) {
+                            break;
+                        }
                         let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
                         let _ = app.emit("pty-output", chunk);
                         // Drop the emitted prefix in place; the tail (at
@@ -237,12 +292,27 @@ pub fn spawn_pty<R: Runtime>(
         }
         // Flush any trailing truncated bytes the child never completed so
         // users still see the final prompt/output byte-for-byte (lossy at
-        // worst on a deliberately malformed tail).
-        if !combined.is_empty() {
+        // worst on a deliberately malformed tail). Skip the flush when
+        // the session was explicitly shut down — same reason the main
+        // emit is gated.
+        if !combined.is_empty() && !shutdown_for_thread.load(Ordering::Acquire) {
             let tail = String::from_utf8_lossy(&combined).into_owned();
             let _ = app.emit("pty-output", tail);
         }
     });
+
+    let pty_state = PtyState {
+        writer: Arc::new(Mutex::new(writer)),
+        master: pair.master,
+        shutdown,
+        thread_handle: Some(handle),
+    };
+
+    *state.lock().map_err(|e| {
+        let err = e.to_string();
+        error!("PTY state lock failed: {}", err);
+        err
+    })? = Some(pty_state);
 
     Ok(())
 }
@@ -284,12 +354,21 @@ pub fn resize_pty(
     Ok(())
 }
 
-/// Kills the currently active PTY session (if any).
-/// Dropping the PtyState closes the master PTY handle which signals the shell to exit.
+/// Kills the currently active PTY session (if any). Flags the reader
+/// thread for shutdown, drops the master to unblock it, and joins the
+/// thread before returning so `spawn_pty` can safely reuse the slot.
 #[tauri::command]
 pub fn kill_pty(state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>) -> Result<(), String> {
-    let mut guard = state.lock().map_err(|e| e.to_string())?;
-    *guard = None; // Drops PtyState — closes master PTY and terminates child
+    // Take the state out of the mutex *before* tearing it down. Joining
+    // inside the lock would block every other PTY command and could
+    // deadlock on a reader that re-enters via `emit`.
+    let taken = {
+        let mut guard = state.lock().map_err(|e| e.to_string())?;
+        guard.take()
+    };
+    if let Some(old_state) = taken {
+        old_state.shutdown_and_join();
+    }
     Ok(())
 }
 
