@@ -85,9 +85,6 @@ export interface TauriInvokeMap {
   "write_to_pty": { args: { data: string }; return: void };
   "resize_pty": { args: { rows: number; cols: number }; return: void };
   "kill_pty": { args: undefined; return: void };
-  "stop_tunnel": { args: { port: number }; return: void };
-  "start_tunnel": { args: { port: number }; return: string };
-  "get_active_ports": { args: undefined; return: number[] };
   "git_add": { args: { path: string; files: string[] }; return: void };
   "git_unstage": { args: { path: string; files: string[] }; return: void };
   "git_add_safe_directory": { args: { path: string }; return: void };
