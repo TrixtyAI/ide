@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
 
@@ -106,7 +106,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // caller can also invoke the function from multiple code paths.
   const inFlightRef = useRef(false);
 
-  const refreshCatalog = async () => {
+  const refreshCatalog = useCallback(async () => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setLoading(true);
@@ -174,9 +174,9 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       inFlightRef.current = false;
       setLoading(false);
     }
-  };
+  }, []);
 
-  const installExtension = async (entry: MarketplaceEntry) => {
+  const installExtension = useCallback(async (entry: MarketplaceEntry) => {
     const gitUrl = resolveGitRepoUrl(entry);
 
     if (!gitUrl) {
@@ -190,26 +190,26 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch (e) {
       throw new Error("Install failed: " + String(e));
     }
-  };
+  }, [refreshCatalog]);
 
-  const uninstallExtension = async (id: string) => {
+  const uninstallExtension = useCallback(async (id: string) => {
     try {
       await invoke("uninstall_extension", { id });
       await refreshCatalog();
     } catch (e) {
       throw new Error("Uninstall failed: " + String(e));
     }
-  };
+  }, [refreshCatalog]);
 
-  const updateExtension = async (id: string) => {
+  const updateExtension = useCallback(async (id: string) => {
     try {
       await invoke("update_extension", { id });
     } catch (e) {
       throw new Error("Update failed: " + String(e));
     }
-  };
+  }, []);
 
-  const toggleActive = async (id: string, active: boolean) => {
+  const toggleActive = useCallback(async (id: string, active: boolean) => {
     try {
       await invoke("toggle_extension_state", { id, isActive: active });
       setActiveIds((prev) =>
@@ -218,7 +218,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch (e) {
       throw new Error("Toggle state failed: " + String(e));
     }
-  };
+  }, []);
 
   // Memoized so MarketplaceView's DetailsView doesn't retrigger its README/CHANGELOG
   // effect on every ExtensionContext re-render.
@@ -238,21 +238,36 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
   }, []);
 
+  const value = useMemo(() => ({
+    catalog,
+    installedIds,
+    activeIds,
+    loading,
+    hasAttemptedCatalogLoad,
+    error,
+    refreshCatalog,
+    installExtension,
+    uninstallExtension,
+    updateExtension,
+    toggleActive,
+    fetchFile,
+  }), [
+    catalog,
+    installedIds,
+    activeIds,
+    loading,
+    hasAttemptedCatalogLoad,
+    error,
+    refreshCatalog,
+    installExtension,
+    uninstallExtension,
+    updateExtension,
+    toggleActive,
+    fetchFile,
+  ]);
+
   return (
-    <ExtensionContext.Provider value={{
-      catalog,
-      installedIds,
-      activeIds,
-      loading,
-      hasAttemptedCatalogLoad,
-      error,
-      refreshCatalog,
-      installExtension,
-      uninstallExtension,
-      updateExtension,
-      toggleActive,
-      fetchFile
-    }}>
+    <ExtensionContext.Provider value={value}>
       {children}
     </ExtensionContext.Provider>
   );

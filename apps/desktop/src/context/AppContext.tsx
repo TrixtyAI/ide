@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { trixtyStore } from "@/api/store";
 import { logger } from "@/lib/logger";
 import { isTauri } from "@/api/tauri";
@@ -529,7 +529,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, []);
 
-  const saveCurrentFile = async () => {
+  const saveCurrentFile = useCallback(async () => {
     if (!currentFile) return;
     // Only real file tabs are writable. Virtual tabs have no on-disk path,
     // and binary tabs carry an empty content string that would overwrite the file.
@@ -547,7 +547,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       logger.error("Failed to save file:", error);
     }
-  };
+  }, [currentFile]);
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -606,53 +606,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 100);
   }, [getSystemDefaultLocale, setLocale]);
 
+  // Memoize the context value so unrelated provider re-renders (for example
+  // an `isSettingsOpen` toggle or an `aiSettings` update) don't ship a fresh
+  // reference to every `useApp()` consumer. Writes that actually touch
+  // `openFiles`/`currentFile` — e.g. a keystroke through `updateFileContent`
+  // — still notify consumers; React context has no selector granularity, so
+  // splitting the provider is the follow-up for that finer case.
+  const value = useMemo(() => ({
+    openFiles,
+    currentFile,
+    activeSidebarTab,
+    isSidebarOpen,
+    isRightPanelOpen,
+    isBottomPanelOpen,
+    rootPath,
+    openFile,
+    closeFile,
+    closeOthers,
+    closeToTheRight,
+    closeSaved,
+    closeAll,
+    setCurrentFile,
+    updateFileContent,
+    saveCurrentFile,
+    setRightPanelOpen: setIsRightPanelOpen,
+    setActiveSidebarTab,
+    setSidebarOpen: setIsSidebarOpen,
+    setBottomPanelOpen: setIsBottomPanelOpen,
+    setRootPath,
+    handleOpenFolder,
+    openTerminal,
+    terminalPath,
+    chatSessions,
+    activeSessionId,
+    createSession,
+    deleteSession,
+    switchSession,
+    addMessageToSession,
+    isSettingsOpen,
+    setSettingsOpen: setIsSettingsOpen,
+    aiSettings,
+    updateAISettings,
+    editorSettings,
+    updateEditorSettings,
+    systemSettings,
+    updateSystemSettings,
+    locale,
+    setLocale,
+    isInitialLoadComplete,
+    resetApp,
+  }), [
+    openFiles,
+    currentFile,
+    activeSidebarTab,
+    isSidebarOpen,
+    isRightPanelOpen,
+    isBottomPanelOpen,
+    rootPath,
+    openFile,
+    closeFile,
+    closeOthers,
+    closeToTheRight,
+    closeSaved,
+    closeAll,
+    updateFileContent,
+    saveCurrentFile,
+    handleOpenFolder,
+    openTerminal,
+    terminalPath,
+    chatSessions,
+    activeSessionId,
+    createSession,
+    deleteSession,
+    switchSession,
+    addMessageToSession,
+    isSettingsOpen,
+    aiSettings,
+    updateAISettings,
+    editorSettings,
+    updateEditorSettings,
+    systemSettings,
+    updateSystemSettings,
+    locale,
+    setLocale,
+    isInitialLoadComplete,
+    resetApp,
+  ]);
+
   return (
-    <AppContext.Provider
-      value={{
-        openFiles,
-        currentFile,
-        activeSidebarTab,
-        isSidebarOpen,
-        isRightPanelOpen,
-        isBottomPanelOpen,
-        rootPath,
-        openFile,
-        closeFile,
-        closeOthers,
-        closeToTheRight,
-        closeSaved,
-        closeAll,
-        setCurrentFile,
-        updateFileContent,
-        saveCurrentFile,
-        setRightPanelOpen: setIsRightPanelOpen,
-        setActiveSidebarTab,
-        setSidebarOpen: setIsSidebarOpen,
-        setBottomPanelOpen: setIsBottomPanelOpen,
-        setRootPath,
-        handleOpenFolder,
-        openTerminal,
-        terminalPath,
-        chatSessions,
-        activeSessionId,
-        createSession,
-        deleteSession,
-        switchSession,
-        addMessageToSession,
-        isSettingsOpen,
-        setSettingsOpen: setIsSettingsOpen,
-        aiSettings,
-        updateAISettings,
-        editorSettings,
-        updateEditorSettings,
-        systemSettings,
-        updateSystemSettings,
-        locale,
-        setLocale,
-        isInitialLoadComplete,
-        resetApp,
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

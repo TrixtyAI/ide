@@ -431,29 +431,52 @@ ${localDocContext}
 - COMPLEXITY RULE: If a task seems too large or architectural, suggest switching to Planner mode before executing.`;
   }, [aggregatedPrompt, chatMode, localDocContext, userContext]);
 
+  // Memoize the context value so consumers don't re-render on every parent
+  // render — notably during per-keystroke edits bubbling through AppContext.
+  const value = useMemo(() => ({
+    identity: CORE_IDENTITY,
+    soul: CORE_SOUL,
+    agents,
+    userContext,
+    tools,
+    memory,
+    design,
+    skills,
+    activeSkills,
+    docs,
+    activeDocs,
+    isLoading,
+    refreshAgentData,
+    toggleSkill,
+    toggleDoc,
+    saveAgentFile,
+    aggregatedPrompt,
+    chatMode,
+    setChatMode,
+    getSystemPrompt,
+  }), [
+    agents,
+    userContext,
+    tools,
+    memory,
+    design,
+    skills,
+    activeSkills,
+    docs,
+    activeDocs,
+    isLoading,
+    refreshAgentData,
+    toggleSkill,
+    toggleDoc,
+    saveAgentFile,
+    aggregatedPrompt,
+    chatMode,
+    setChatMode,
+    getSystemPrompt,
+  ]);
+
   return (
-    <AgentContext.Provider value={{
-      identity: CORE_IDENTITY,
-      soul: CORE_SOUL,
-      agents,
-      userContext,
-      tools,
-      memory,
-      design,
-      skills,
-      activeSkills,
-      docs,
-      activeDocs,
-      isLoading,
-      refreshAgentData,
-      toggleSkill,
-      toggleDoc,
-      saveAgentFile,
-      aggregatedPrompt,
-      chatMode,
-      setChatMode,
-      getSystemPrompt
-    }}>
+    <AgentContext.Provider value={value}>
       {children}
     </AgentContext.Provider>
   );
