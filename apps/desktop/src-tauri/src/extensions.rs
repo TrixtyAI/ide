@@ -52,24 +52,43 @@ fn repo_to_raw_base(repo_url: &str, branch: &str, subpath: Option<&str>) -> Stri
 
 #[tauri::command]
 pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String> {
-    // Plain `http://` is rejected outright: a MITM on the catalog can inject
-    // arbitrary `repository`/`data` entries that `install_extension` will then
-    // pass to `git clone`, escalating a network attack into code execution.
-    if url.starts_with("http://") {
+    // Trim and lower-case the scheme before matching so inputs like
+    // `  HTTP://…` or `Https://…` still hit the intended branch instead of
+    // falling through to the local-file fallback with a confusing error.
+    let trimmed = url.trim();
+    let scheme_prefix: String = trimmed.chars().take_while(|c| *c != ':').collect();
+    let scheme_lc = scheme_prefix.to_ascii_lowercase();
+
+    // Plain `http://` (any casing/whitespace) is rejected outright: a MITM on
+    // the catalog can inject arbitrary `repository`/`data` entries that
+    // `install_extension` will then pass to `git clone`, escalating a network
+    // attack into code execution.
+    if scheme_lc == "http" {
         return Err("Registry URL must use https://; plain HTTP is rejected to prevent MITM tampering of the catalog".to_string());
     }
 
-    if url.starts_with("https://") {
+    if scheme_lc == "https" {
         let response = shared_client()
-            .get(&url)
+            .get(trimmed)
             .timeout(DEFAULT_REQUEST_TIMEOUT)
             .send()
             .await
             .map_err(|e| e.to_string())?;
 
+        // Surface the HTTP failure explicitly, otherwise a 404/500 HTML body
+        // turns into a "Failed to parse registry JSON" error that hides the
+        // real problem (typo'd URL, registry missing, proxy blocking, …).
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!(
+                "Failed to fetch registry from {}: HTTP {}",
+                trimmed, status
+            ));
+        }
+
         let body = read_text_capped(response, MAX_RESPONSE_BYTES).await?;
         let catalog: RegistryCatalog = serde_json::from_str(&body).map_err(|e| {
-            let err = format!("Failed to parse registry JSON from {}: {}", url, e);
+            let err = format!("Failed to parse registry JSON from {}: {}", trimmed, e);
             error!("{}", err);
             redact_user_paths(&err)
         })?;
@@ -77,7 +96,10 @@ pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String
         return Ok(catalog);
     }
 
-    // Fallback to local file reading for dev mode
+    // Fallback to local file reading for dev mode. Only reachable when the
+    // caller supplied something without an http/https scheme, so we pass the
+    // original (untrimmed) value through to keep error messages pointing at
+    // what the caller actually sent.
     let content = std::fs::read_to_string(&url).map_err(|e| {
         let err = format!("Failed to read local registry file {}: {}", url, e);
         error!("{}", err);
