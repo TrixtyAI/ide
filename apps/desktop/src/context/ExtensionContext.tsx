@@ -114,11 +114,9 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setError(null);
     try {
       // The Tauri process CWD is usually apps/desktop/src-tauri, so the repo root is ../../../
-      const registryUrl = "http://raw.githubusercontent.com/TrixtyAI/ide/main/registry/marketplace.json";
+      const registryUrl = "https://raw.githubusercontent.com/TrixtyAI/ide/main/registry/marketplace.json";
       const devRegistryUrl = "../../../registry/marketplace.json";
 
-      // We will try devRegistryUrl, if it fails because it's a prod build, fallback to HTTP or viceversa.
-      // But for local test, let's just pass devRegistryUrl directly.
       const targetUrl = process.env.NODE_ENV === "development" ? devRegistryUrl : registryUrl;
 
       // 1. Fetch remote catalog raw list
