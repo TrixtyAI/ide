@@ -1,3 +1,4 @@
+use log::warn;
 use reqwest::Client;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -38,12 +39,16 @@ pub fn shared_client() -> &'static Client {
 /// Drains a `reqwest::Response` into a `Vec<u8>` while enforcing a hard cap.
 /// Trips early if `Content-Length` already exceeds the cap, otherwise
 /// streams chunks and aborts as soon as the running total would breach it.
+///
+/// The `Content-Length` comparison is done in `u64` space so a large
+/// advertised length can't be silently truncated to `usize` on a 32-bit
+/// build and bypass the cap.
 pub async fn read_body_capped(
     mut resp: reqwest::Response,
     max_bytes: usize,
 ) -> Result<Vec<u8>, String> {
     if let Some(len) = resp.content_length() {
-        if len as usize > max_bytes {
+        if len > max_bytes as u64 {
             return Err(format!(
                 "Response Content-Length {} exceeds {} byte cap",
                 len, max_bytes
@@ -53,22 +58,31 @@ pub async fn read_body_capped(
     let mut acc: Vec<u8> = Vec::with_capacity(8 * 1024);
     while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
         if acc.len() + chunk.len() > max_bytes {
-            return Err(format!(
-                "Response body exceeded {} byte cap",
-                max_bytes
-            ));
+            return Err(format!("Response body exceeded {} byte cap", max_bytes));
         }
         acc.extend_from_slice(&chunk);
     }
     Ok(acc)
 }
 
-/// UTF-8 specialization of [`read_body_capped`] for the common case where the
-/// caller wants a `String` (HTML, JSON text, README).
-pub async fn read_text_capped(
-    resp: reqwest::Response,
-    max_bytes: usize,
-) -> Result<String, String> {
+/// String specialization of [`read_body_capped`].
+///
+/// Tries strict UTF-8 first (the case for ~every endpoint we hit — GitHub
+/// raw, GitHub API, Ollama, DuckDuckGo Lite). If the bytes aren't valid
+/// UTF-8 we fall back to `String::from_utf8_lossy` and log a warning,
+/// mirroring `reqwest::Response::text()`'s "best effort decode" behavior so
+/// a stray Latin-1 or Shift-JIS page doesn't fail the whole call. The cap
+/// from `read_body_capped` still applies.
+pub async fn read_text_capped(resp: reqwest::Response, max_bytes: usize) -> Result<String, String> {
     let bytes = read_body_capped(resp, max_bytes).await?;
-    String::from_utf8(bytes).map_err(|e| format!("Response body was not valid UTF-8: {}", e))
+    match String::from_utf8(bytes) {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            warn!(
+                "Response body was not valid UTF-8 ({} byte(s) before failure); decoding lossy",
+                e.utf8_error().valid_up_to()
+            );
+            Ok(String::from_utf8_lossy(e.as_bytes()).into_owned())
+        }
+    }
 }

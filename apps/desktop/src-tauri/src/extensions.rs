@@ -5,9 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
-use crate::http::{
-    read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES,
-};
+use crate::http::{read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryCatalog {
