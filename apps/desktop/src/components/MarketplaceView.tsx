@@ -235,7 +235,7 @@ const DetailsView: React.FC<{
 };
 
 const MarketplaceView: React.FC = () => {
-  const { catalog, installedIds, loading, error, refreshCatalog } = useExtensions();
+  const { catalog, installedIds, loading, hasAttemptedCatalogLoad, error, refreshCatalog } = useExtensions();
   const { t } = useL10n();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -244,8 +244,13 @@ const MarketplaceView: React.FC = () => {
   // Load the remote catalog lazily: the marketplace used to fetch registry +
   // per-entry manifests + GitHub stars on every boot even when the user never
   // opened it. We now defer that work to the first mount of this view.
+  //
+  // `refreshCatalog` self-dedupes via an internal in-flight ref, so React 18
+  // StrictMode's double-invoke and any remount-after-failure both collapse to
+  // a single fetch. We deliberately do not guard on `!error` here — that
+  // would leave users stuck on the error state with no retry path.
   useEffect(() => {
-    if (catalog.length === 0 && !loading && !error) {
+    if (catalog.length === 0) {
       refreshCatalog();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,6 +259,10 @@ const MarketplaceView: React.FC = () => {
   if (selectedEntry) {
     return <DetailsView entry={selectedEntry} onBack={() => setSelectedEntry(null)} />;
   }
+
+  // Treat the pre-attempt window as "still loading" so we don't flash the
+  // empty-state UI before the deferred fetch starts.
+  const showLoading = loading || !hasAttemptedCatalogLoad;
 
   const displayedCatalog = catalog.filter(ext => {
     const matchesSearch = (ext.manifest?.name || ext.id).toLowerCase().includes(search.toLowerCase());
@@ -297,7 +306,7 @@ const MarketplaceView: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
+      {showLoading ? (
         <div className="flex-1 flex items-center justify-center py-20 text-[13px] text-[#666]">{t('marketplace.loading_catalog')}</div>
       ) : error ? (
         <div className="flex-1 flex items-center justify-center py-20 text-[13px] text-red-500">{t('common.error', { message: error })}</div>

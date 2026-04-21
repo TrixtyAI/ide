@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
 
@@ -46,6 +46,10 @@ interface ExtensionContextType {
   installedIds: string[];
   activeIds: string[];
   loading: boolean;
+  /** Flips true the first time `refreshCatalog` begins. Lets consumers tell
+   * "nothing tried yet" apart from "tried and got an empty catalog" without
+   * flashing the empty-state UI before the deferred fetch kicks in. */
+  hasAttemptedCatalogLoad: boolean;
   error: string | null;
   refreshCatalog: () => Promise<void>;
   installExtension: (entry: MarketplaceEntry) => Promise<void>;
@@ -62,10 +66,18 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [installedIds, setInstalledIds] = useState<string[]>([]);
   const [activeIds, setActiveIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasAttemptedCatalogLoad, setHasAttemptedCatalogLoad] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Guards against concurrent `refreshCatalog` calls. Needed because React 18
+  // StrictMode remounts the marketplace view twice in development, and any
+  // caller can also invoke the function from multiple code paths.
+  const inFlightRef = useRef(false);
 
   const refreshCatalog = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
+    setHasAttemptedCatalogLoad(true);
     setError(null);
     try {
       // The Tauri process CWD is usually apps/desktop/src-tauri, so the repo root is ../../../
@@ -125,6 +137,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setError(String(e));
       logger.error("Failed to load extensions", e);
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -199,6 +212,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       installedIds,
       activeIds,
       loading,
+      hasAttemptedCatalogLoad,
       error,
       refreshCatalog,
       installExtension,
