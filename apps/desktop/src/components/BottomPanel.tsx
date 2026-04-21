@@ -23,7 +23,8 @@ const BottomPanel: React.FC = () => {
         <div className="flex items-center gap-1 text-[#555]">
           <button
             onClick={() => setBottomPanelOpen(false)}
-            className="hover:text-white p-1 rounded hover:bg-white/5 transition-colors"
+            aria-label={t('panel.bottom.close', { defaultValue: 'Close bottom panel' })}
+            className="hover:text-white p-1 rounded hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             <X size={16} strokeWidth={1.5} />
           </button>

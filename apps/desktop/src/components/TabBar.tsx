@@ -72,36 +72,51 @@ const TabBar: React.FC = () => {
   if (openFiles.length === 0) return null;
 
   return (
-    <div className="flex bg-[#0f0f0f] h-[36px] overflow-x-auto scrollbar-none border-b border-[#1a1a1a] shrink-0">
+    <div
+      role="tablist"
+      aria-label={t('tabbar.label')}
+      className="flex bg-[#0f0f0f] h-[36px] overflow-x-auto scrollbar-none border-b border-[#1a1a1a] shrink-0"
+    >
       {openFiles.map((file) => {
         const isActive = currentFile?.path === file.path;
         return (
           <div
             key={file.path}
+            role="tab"
+            aria-selected={isActive}
+            aria-label={file.isModified ? `${file.name} (${t('tab.modified', { defaultValue: 'unsaved' })})` : file.name}
+            tabIndex={0}
             onClick={() => setCurrentFile(file)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setCurrentFile(file);
+              }
+            }}
             onContextMenu={(e) => handleContextMenu(e, file.path)}
-            className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-[#1a1a1a] group ${
+            className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-[#1a1a1a] group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 ${
               isActive
-                ? "bg-[#141414] text-white" 
+                ? "bg-[#141414] text-white"
                 : "text-[#666] hover:text-[#999] hover:bg-[#111]"
             }`}
           >
-            {isActive && <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/40" />}
-            
-            <div className="shrink-0">{getFileIcon(file)}</div>
-            
+            {isActive && <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-[1px] bg-white/40" />}
+
+            <div aria-hidden="true" className="shrink-0">{getFileIcon(file)}</div>
+
             <span className="text-[11px] truncate flex-1">
               {file.name}
             </span>
 
             {file.isModified && (
-              <div className="w-[6px] h-[6px] rounded-full bg-white/40 shrink-0" />
+              <div aria-hidden="true" className="w-[6px] h-[6px] rounded-full bg-white/40 shrink-0" />
             )}
 
             <button
               onClick={(e) => { e.stopPropagation(); closeFile(file.path); }}
-              className={`p-0.5 rounded hover:bg-white/10 transition-opacity shrink-0 ${
-                isActive ? "opacity-60 hover:opacity-100" : "opacity-0 group-hover:opacity-60 hover:!opacity-100"
+              aria-label={t('tab.close_aria', { file: file.name })}
+              className={`p-0.5 rounded hover:bg-white/10 transition-opacity shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                isActive ? "opacity-60 hover:opacity-100" : "opacity-0 group-hover:opacity-60 hover:!opacity-100 focus-visible:opacity-100"
               }`}
             >
               <X size={12} />
