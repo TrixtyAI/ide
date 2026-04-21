@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
+use crate::error::redact_user_paths;
 use crate::http::{read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,18 +64,21 @@ pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String
         let catalog: RegistryCatalog = serde_json::from_str(&body).map_err(|e| {
             let err = format!("Failed to parse registry JSON from {}: {}", url, e);
             error!("{}", err);
-            err
+            redact_user_paths(&err)
         })?;
 
         return Ok(catalog);
     }
 
     // Fallback to local file reading for dev mode
-    let content = std::fs::read_to_string(&url)
-        .map_err(|e| format!("Failed to read local registry file {}: {}", url, e))?;
+    let content = std::fs::read_to_string(&url).map_err(|e| {
+        let err = format!("Failed to read local registry file {}: {}", url, e);
+        error!("{}", err);
+        redact_user_paths(&err)
+    })?;
 
-    let catalog: RegistryCatalog =
-        serde_json::from_str(&content).map_err(|e| format!("Invalid JSON in registry: {}", e))?;
+    let catalog: RegistryCatalog = serde_json::from_str(&content)
+        .map_err(|e| redact_user_paths(&format!("Invalid JSON in registry: {}", e)))?;
 
     Ok(catalog)
 }
@@ -222,10 +226,13 @@ pub async fn fetch_extension_file(
 }
 
 fn get_extensions_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| redact_user_paths(&e.to_string()))?;
     let ext_dir = app_data.join("extensions");
     if !ext_dir.exists() {
-        std::fs::create_dir_all(&ext_dir).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(&ext_dir).map_err(|e| redact_user_paths(&e.to_string()))?;
     }
     Ok(ext_dir)
 }
@@ -240,18 +247,18 @@ pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> R
     }
 
     let output = Command::new("git")
-        .args([
-            "clone",
-            "--depth",
-            "1",
-            &git_url,
-            target_dir.to_str().unwrap(),
-        ])
+        .arg("clone")
+        .arg("--depth")
+        .arg("1")
+        .arg(&git_url)
+        .arg(&target_dir)
         .output()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| redact_user_paths(&e.to_string()))?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        error!("git clone failed for {}: {}", id, stderr);
+        return Err(redact_user_paths(&stderr));
     }
 
     Ok(())
@@ -263,7 +270,7 @@ pub async fn uninstall_extension(app: AppHandle, id: String) -> Result<(), Strin
     let target_dir = ext_dir.join(&id);
 
     if target_dir.exists() {
-        std::fs::remove_dir_all(&target_dir).map_err(|e| e.to_string())?;
+        std::fs::remove_dir_all(&target_dir).map_err(|e| redact_user_paths(&e.to_string()))?;
     }
 
     Ok(())
@@ -282,10 +289,12 @@ pub async fn update_extension(app: AppHandle, id: String) -> Result<(), String> 
         .args(["pull"])
         .current_dir(&target_dir)
         .output()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| redact_user_paths(&e.to_string()))?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        error!("git pull failed for {}: {}", id, stderr);
+        return Err(redact_user_paths(&stderr));
     }
 
     Ok(())

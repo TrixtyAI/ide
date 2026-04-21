@@ -1,6 +1,9 @@
 mod about;
+mod error;
 mod http;
 mod pty;
+
+use error::redact_user_paths;
 
 mod extensions;
 use extensions::*;
@@ -143,7 +146,7 @@ fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
         Err(e) => {
             let err = format!("Failed to read directory {}: {}", path, e);
             error!("{}", err);
-            return Err(err);
+            return Err(redact_user_paths(&err));
         }
     };
 
@@ -166,7 +169,7 @@ fn read_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| {
         let err = format!("Failed to read file {}: {}", path, e);
         error!("{}", err);
-        err
+        redact_user_paths(&err)
     })
 }
 
@@ -175,7 +178,7 @@ fn write_file(path: String, content: String) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| {
         let err = format!("Failed to write file {}: {}", path, e);
         error!("{}", err);
-        err
+        redact_user_paths(&err)
     })
 }
 
@@ -754,7 +757,7 @@ async fn git_push(path: String) -> Result<String, String> {
         .map_err(|e| {
             let err = format!("Git push failed at {}: {}", path, e);
             error!("{}", err);
-            err
+            redact_user_paths(&err)
         })?;
 
     if output.status.success() {
