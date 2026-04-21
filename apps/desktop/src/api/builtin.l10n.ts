@@ -258,6 +258,7 @@ export function registerBuiltinTranslations() {
         'ai.status.badge.ready': 'Ready',
         'ai.status.badge.busy': 'Busy',
         'ai.disclaimer': 'Trixty AI can make mistakes. Check important info.',
+        'ai.chat_log_label': 'AI chat transcript',
 
         'terminal.error_connect': 'Error connecting to terminal: ',
         'editor.empty_desc': 'Select a file from the explorer to begin',
@@ -635,6 +636,7 @@ export function registerBuiltinTranslations() {
         'ai.status.badge.ready': 'Listo',
         'ai.status.badge.busy': 'Ocupado',
         'ai.disclaimer': 'Trixty AI puede cometer errores. Verifica info importante.',
+        'ai.chat_log_label': 'Transcripción del chat de IA',
 
         'terminal.error_connect': 'Error al conectar con la terminal: ',
         'editor.empty_desc': 'Selecciona un archivo del explorador para comenzar',

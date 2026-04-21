@@ -112,8 +112,34 @@ const UpdaterDialog: React.FC = () => {
     }
   };
 
+  // Build the string AT should announce for the current phase. Progress
+  // percentage is intentionally omitted because `updater-progress` fires
+  // on every chunk and would flood screen readers if it lived inside a
+  // live region.
+  const getAnnouncement = (): string => {
+    switch (state.phase) {
+      case "checking": return t('updater.checking');
+      case "up-to-date": return `${getDialogTitle()}. ${t('updater.uptodate')}`;
+      case "available": return `${getDialogTitle()}. ${t('updater.new_version')} ${state.version}`;
+      case "downloading": return t('updater.downloading');
+      case "ready": return `${getDialogTitle()}. ${t('updater.relaunching')}`;
+      case "error": return `${getDialogTitle()}. ${state.message}`;
+      default: return getDialogTitle();
+    }
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-4 fade-in duration-300">
+      {/* Dedicated live region so only the phase text is announced — not
+          the whole toast with buttons, and not every frame of the
+          `updater-progress` stream. Role escalates to `alert` on error. */}
+      <span
+        role={state.phase === "error" ? "alert" : "status"}
+        aria-live={state.phase === "error" ? "assertive" : "polite"}
+        className="sr-only"
+      >
+        {getAnnouncement()}
+      </span>
       <div className="w-[340px] bg-[#111] border border-[#262626] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden">
 
         {/* Header */}

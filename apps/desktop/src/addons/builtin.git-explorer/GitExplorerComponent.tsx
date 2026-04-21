@@ -768,13 +768,26 @@ const GitExplorerComponent: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col h-full">
-            {gitFeedback && (
-              <div className="px-3 py-2 bg-white/[0.03] border-b border-[#1a1a1a] border-l-2 border-l-white/40 text-[11px] text-white/80 flex items-center gap-2">
-                <span className="truncate">{gitFeedback}</span>
-              </div>
-            )}
+            {/* Live regions must stay mounted so screen readers can observe
+                text changes; conditional mounting would hide the update. */}
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={
+                gitFeedback
+                  ? "px-3 py-2 bg-white/[0.03] border-b border-[#1a1a1a] border-l-2 border-l-white/40 text-[11px] text-white/80 flex items-center gap-2"
+                  : "sr-only"
+              }
+            >
+              <span className="truncate">{gitFeedback}</span>
+            </div>
             {hasConflicts && (
-              <div className="px-3 py-2 bg-red-500/10 border-b border-red-500/20 border-l-2 border-l-red-400 text-[11px] text-red-200 flex items-center gap-2">
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="px-3 py-2 bg-red-500/10 border-b border-red-500/20 border-l-2 border-l-red-400 text-[11px] text-red-200 flex items-center gap-2"
+              >
                 <AlertTriangle size={12} className="shrink-0 text-red-400" />
                 <span>{t('git.conflicts.banner')}</span>
               </div>

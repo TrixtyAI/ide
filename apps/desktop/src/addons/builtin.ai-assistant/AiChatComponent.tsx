@@ -713,7 +713,15 @@ const AiChatComponent: React.FC = () => {
         )}
 
         {/* Chat messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-[#0e0e0e]">
+        <div
+          ref={scrollRef}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-busy={isTyping}
+          aria-label={t('ai.chat_log_label')}
+          className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-[#0e0e0e]"
+        >
           {activeSession?.messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
