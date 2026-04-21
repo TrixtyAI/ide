@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
 
@@ -46,6 +46,10 @@ interface ExtensionContextType {
   installedIds: string[];
   activeIds: string[];
   loading: boolean;
+  /** Flips true the first time `refreshCatalog` begins. Lets consumers tell
+   * "nothing tried yet" apart from "tried and got an empty catalog" without
+   * flashing the empty-state UI before the deferred fetch kicks in. */
+  hasAttemptedCatalogLoad: boolean;
   error: string | null;
   refreshCatalog: () => Promise<void>;
   installExtension: (entry: MarketplaceEntry) => Promise<void>;
@@ -61,11 +65,19 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [catalog, setCatalog] = useState<MarketplaceEntry[]>([]);
   const [installedIds, setInstalledIds] = useState<string[]>([]);
   const [activeIds, setActiveIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasAttemptedCatalogLoad, setHasAttemptedCatalogLoad] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Guards against concurrent `refreshCatalog` calls. Needed because React 18
+  // StrictMode remounts the marketplace view twice in development, and any
+  // caller can also invoke the function from multiple code paths.
+  const inFlightRef = useRef(false);
 
   const refreshCatalog = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
+    setHasAttemptedCatalogLoad(true);
     setError(null);
     try {
       // The Tauri process CWD is usually apps/desktop/src-tauri, so the repo root is ../../../
@@ -114,25 +126,21 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const installed = await invoke("get_installed_extensions");
       setInstalledIds(installed);
 
-      // 4. Check active states
-      const active: string[] = [];
-      for (const id of installed) {
-        const isAct = await invoke("is_extension_active", { id });
-        if (isAct) active.push(id);
-      }
-      setActiveIds(active);
+      // 4. Check active states in parallel so N installed extensions cost one
+      // round-trip window instead of N serial awaits.
+      const activeFlags = await Promise.all(
+        installed.map((id) => invoke("is_extension_active", { id }))
+      );
+      setActiveIds(installed.filter((_, i) => activeFlags[i]));
 
     } catch (e) {
       setError(String(e));
       logger.error("Failed to load extensions", e);
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    refreshCatalog();
-  }, []);
 
   const installExtension = async (entry: MarketplaceEntry) => {
     // If it's a repo-based, we pass the repo url. If they define "data" url only,
@@ -204,6 +212,7 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       installedIds,
       activeIds,
       loading,
+      hasAttemptedCatalogLoad,
       error,
       refreshCatalog,
       installExtension,
