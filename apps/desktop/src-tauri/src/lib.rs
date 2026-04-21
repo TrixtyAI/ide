@@ -882,8 +882,51 @@ async fn get_recursive_file_list(root_path: String) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 async fn git_add_safe_directory(path: String) -> Result<String, String> {
+    // `git config --global --add safe.directory <value>` permanently whitelists
+    // the value for any future git invocation on this machine. If the frontend
+    // can be tricked into supplying `*` or an unrelated directory, the entry
+    // lands in the user's global config and auto-executes hooks in every repo
+    // opened from that point on. So we validate before touching `git`.
+
+    // Reject the wildcard and any obvious git option syntax up front — these
+    // never correspond to a real directory on disk and exist only to bypass
+    // safe.directory's repo-ownership check globally.
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("safe.directory path is empty".to_string());
+    }
+    if trimmed == "*" {
+        return Err(
+            "Refusing to add `*` to safe.directory; that disables git ownership checks for every repository".to_string(),
+        );
+    }
+    if trimmed.starts_with('-') {
+        return Err(
+            "safe.directory path cannot start with `-` (would be parsed as a git flag)".to_string(),
+        );
+    }
+
+    // Canonicalize so the caller can only whitelist a real directory on disk.
+    // Also collapses `..`/symlinks into a single absolute form before we hand
+    // it to `git config`, so the entry written to the user's config file is
+    // the one they actually saw in the UI confirmation dialog.
+    let canonical = std::path::Path::new(trimmed)
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve safe.directory path: {}", e))?;
+
+    if !canonical.is_dir() {
+        return Err("safe.directory target must be a directory".to_string());
+    }
+
+    // Strip the `\\?\` verbatim prefix on Windows; git stores entries in
+    // forward-slash form and doesn't recognize the UNC-verbatim variant.
+    let canonical_str = canonical.to_string_lossy();
+    let cleaned = canonical_str
+        .strip_prefix(r"\\?\")
+        .unwrap_or(&canonical_str);
+
     let output = silent_command("git")
-        .args(["config", "--global", "--add", "safe.directory", &path])
+        .args(["config", "--global", "--add", "safe.directory", cleaned])
         .output()
         .map_err(|e| e.to_string())?;
 
