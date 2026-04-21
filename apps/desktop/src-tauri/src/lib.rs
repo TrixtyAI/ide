@@ -1,5 +1,6 @@
 mod about;
 mod error;
+mod fs_atomic;
 mod http;
 mod pty;
 
@@ -200,7 +201,7 @@ fn read_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 fn write_file(path: String, content: String) -> Result<(), String> {
-    fs::write(&path, content).map_err(|e| {
+    fs_atomic::write_atomic(std::path::Path::new(&path), content.as_bytes()).map_err(|e| {
         let err = format!("Failed to write file {}: {}", path, e);
         error!("{}", err);
         redact_user_paths(&err)
