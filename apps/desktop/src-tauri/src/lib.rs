@@ -1076,10 +1076,50 @@ async fn open_url(url: String) -> Result<(), String> {
 
 #[tauri::command]
 fn reveal_path(path: String) -> Result<(), String> {
+    // Resolve the caller-supplied string against the filesystem before
+    // handing it to a shell helper. `canonicalize` fails if the target
+    // doesn't exist, so a non-existent or partial path can't be used to
+    // probe the filesystem by spawning explorer/open/xdg-open with garbage.
+    let canonical = std::path::Path::new(&path)
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve path for reveal: {}", e))?;
+
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+
+        // `Path::canonicalize` on Windows returns verbatim paths: `\\?\C:\…`
+        // for drive-letter targets and `\\?\UNC\server\share\…` for UNC
+        // shares. Explorer doesn't understand the verbatim prefix on either
+        // form, and naïvely stripping only `\\?\` on a UNC path leaves
+        // `UNC\server\share\…`, which is not a valid Windows path at all.
+        // Map the two verbatim shapes back to the forms Explorer navigates.
+        let as_str = canonical.to_string_lossy();
+        let clean = if let Some(unc) = as_str.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{}", unc)
+        } else if let Some(drive) = as_str.strip_prefix(r"\\?\") {
+            drive.to_string()
+        } else {
+            as_str.into_owned()
+        };
+
+        // Trim any trailing backslashes before building the quoted argument.
+        // With `raw_arg` we hand Explorer the literal bytes we write, so
+        // `/select,"C:\"` ends with `\"` — the backslash escapes the closing
+        // quote and the argument becomes malformed. Explorer happily selects
+        // the directory without the trailing separator, so stripping is safe.
+        let clean_trimmed = clean.trim_end_matches('\\');
+
+        // Build `/select,"<path>"` and hand Explorer the raw command line.
+        // `Command::arg` would wrap the whole value in outer quotes, which
+        // Explorer parses as one opaque token and falls back to the home
+        // folder. `raw_arg` skips that wrapping. The inner quotes also
+        // defend against paths that contain commas — without them
+        // `/select,C:\foo,bar\file` is split into three Explorer arguments
+        // and an attacker-controlled filename can piggy-back extra ones.
+        let raw = format!("/select,\"{}\"", clean_trimmed);
         silent_command("explorer")
-            .arg(format!("/select,{}", path))
+            .raw_arg(raw)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
@@ -1087,15 +1127,13 @@ fn reveal_path(path: String) -> Result<(), String> {
     {
         silent_command("open")
             .arg("-R")
-            .arg(path)
+            .arg(&canonical)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "linux")]
     {
-        let parent = std::path::Path::new(&path)
-            .parent()
-            .unwrap_or(std::path::Path::new(&path));
+        let parent = canonical.parent().unwrap_or(&canonical);
         silent_command("xdg-open")
             .arg(parent)
             .spawn()
