@@ -77,6 +77,21 @@ const AiChatComponent: React.FC = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Per-call permission resolvers. Previously a single `window.resolveTool`
+  // held the in-flight resolver globally, which meant two concurrent
+  // permission prompts (two chat submissions racing, or a tool-call loop
+  // overlapping with a retry) would silently overwrite the first resolver
+  // and leave the first Promise dangling forever. A Map keyed by call id
+  // keeps each prompt independent; on unmount we resolve everything as
+  // denied so pending awaiters don't leak past the component's lifetime.
+  const pendingResolversRef = useRef<Map<string, (allowed: boolean) => void>>(new Map());
+  useEffect(() => {
+    const resolvers = pendingResolversRef.current;
+    return () => {
+      for (const resolver of resolvers.values()) resolver(false);
+      resolvers.clear();
+    };
+  }, []);
 
   useEffect(() => {
     // Load last used model from storage
@@ -443,19 +458,39 @@ const AiChatComponent: React.FC = () => {
           for (const toolCall of message.tool_calls) {
             const toolName = toolCall.function.name;
             const toolArgs = toolCall.function.arguments;
-            const callId = toolCall.id || Math.random().toString(36).substr(2, 9);
+            // Prefer the provider-supplied id; otherwise mint a collision-
+            // resistant one. `Math.random().substr(2, 9)` (the previous shape)
+            // has narrow entropy and could theoretically collide with a
+            // still-pending entry in the resolver Map, which would silently
+            // overwrite the earlier resolver and reintroduce the dangling-
+            // Promise bug this whole path is trying to fix.
+            const generatedId =
+              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID()
+                : `cid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+            const callId = toolCall.id || generatedId;
 
             let result;
             if (aiSettings.alwaysAllowTools) {
               result = await executeToolInternal(toolName, toolArgs);
             } else {
-              // Manual permission needed
+              // Manual permission needed. The dialog UI has a single slot, so
+              // any older unresolved prompt is already invisible to the user;
+              // we deny them here instead of letting their Promises dangle.
               const permissionPromise = new Promise<boolean>((resolve) => {
+                for (const [oldId, oldResolver] of pendingResolversRef.current) {
+                  if (oldId !== callId) {
+                    oldResolver(false);
+                    pendingResolversRef.current.delete(oldId);
+                  }
+                }
+                // Defense against a callId collision (e.g. provider reusing an
+                // id): resolve the prior resolver as denied before replacing,
+                // so no awaiter is left dangling.
+                const existing = pendingResolversRef.current.get(callId);
+                if (existing) existing(false);
+                pendingResolversRef.current.set(callId, resolve);
                 setPendingTool({ id: callId, name: toolName, args: toolArgs });
-                window.resolveTool = (allowed: boolean) => {
-                  setPendingTool(null);
-                  resolve(allowed);
-                };
               });
 
               const allowed = await permissionPromise;
@@ -766,13 +801,36 @@ const AiChatComponent: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => window.resolveTool?.(true)}
+                    onClick={() => {
+                      // Capture the id at click time and only clear state if
+                      // the dialog is still showing *this* id. A faster
+                      // follow-up prompt may have already replaced
+                      // `pendingTool`; if we cleared unconditionally we'd
+                      // hide the newer dialog and strand its Promise.
+                      const clickedId = pendingTool.id;
+                      const resolver = pendingResolversRef.current.get(clickedId);
+                      if (!resolver) return;
+                      pendingResolversRef.current.delete(clickedId);
+                      setPendingTool((current) =>
+                        current && current.id === clickedId ? null : current
+                      );
+                      resolver(true);
+                    }}
                     className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
                   >
                     {t('ai.tool_allow')}
                   </button>
                   <button
-                    onClick={() => window.resolveTool?.(false)}
+                    onClick={() => {
+                      const clickedId = pendingTool.id;
+                      const resolver = pendingResolversRef.current.get(clickedId);
+                      if (!resolver) return;
+                      pendingResolversRef.current.delete(clickedId);
+                      setPendingTool((current) =>
+                        current && current.id === clickedId ? null : current
+                      );
+                      resolver(false);
+                    }}
                     className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
                   >
                     {t('ai.tool_deny')}
