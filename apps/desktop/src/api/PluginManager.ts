@@ -1,10 +1,3 @@
-import * as builtinAiAssistant from "@/addons/builtin.ai-assistant/index";
-import * as builtinGitExplorer from "@/addons/builtin.git-explorer/index";
-import * as builtinLanguageTypescript from "@/addons/builtin.language.typescript/index";
-import * as builtinLanguagePython from "@/addons/builtin.language.python/index";
-import * as builtinLanguageRust from "@/addons/builtin.language.rust/index";
-import * as builtinLanguageHtml from "@/addons/builtin.language.html/index";
-import * as builtinLanguageMarkdown from "@/addons/builtin.language.markdown/index";
 import { registerBuiltinTranslations } from "./builtin.l10n";
 import { logger } from "@/lib/logger";
 
@@ -26,32 +19,47 @@ export class PluginManager {
         // Load translations first
         registerBuiltinTranslations();
 
+        // Built-in addons are imported dynamically so they become their own
+        // chunks instead of riding in the initial bundle. AiChatComponent in
+        // particular pulls react-markdown + remark-gfm and GitExplorer pulls
+        // picomatch + git dialogs, so defer both until the user is past the
+        // first paint.
         try {
-            builtinAiAssistant.activate();
+            const mod = await import("@/addons/builtin.ai-assistant/index");
+            mod.activate();
             logger.debug("[PluginManager] builtin.ai-assistant activated.");
         } catch (e) {
             logger.error("Failed to activate AI assistant", e);
         }
 
         try {
-            builtinGitExplorer.activate();
+            const mod = await import("@/addons/builtin.git-explorer/index");
+            mod.activate();
             logger.debug("[PluginManager] builtin.git-explorer activated.");
         } catch (e) {
             logger.error("Failed to activate Git Explorer", e);
         }
 
-      // Language Addons
-      try {
-        builtinLanguageTypescript.activate(window.trixty);
-        builtinLanguagePython.activate(window.trixty);
-        builtinLanguageRust.activate(window.trixty);
-        builtinLanguageHtml.activate(window.trixty);
-        builtinLanguageMarkdown.activate(window.trixty);
+        // Language Addons — registered in parallel so one slow import doesn't
+        // block the rest of the bootstrap chain.
+        try {
+            const [ts, py, rs, html, md] = await Promise.all([
+                import("@/addons/builtin.language.typescript/index"),
+                import("@/addons/builtin.language.python/index"),
+                import("@/addons/builtin.language.rust/index"),
+                import("@/addons/builtin.language.html/index"),
+                import("@/addons/builtin.language.markdown/index"),
+            ]);
+            ts.activate(window.trixty);
+            py.activate(window.trixty);
+            rs.activate(window.trixty);
+            html.activate(window.trixty);
+            md.activate(window.trixty);
 
-        logger.debug("[PluginManager] Built-in language addons activated.");
-      } catch (e) {
-        logger.error("Failed to activate language addons", e);
-      }
+            logger.debug("[PluginManager] Built-in language addons activated.");
+        } catch (e) {
+            logger.error("Failed to activate language addons", e);
+        }
 
         // Dynamically load external scripts from Tauri File System
         try {
