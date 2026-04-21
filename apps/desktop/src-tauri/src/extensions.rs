@@ -52,7 +52,14 @@ fn repo_to_raw_base(repo_url: &str, branch: &str, subpath: Option<&str>) -> Stri
 
 #[tauri::command]
 pub async fn get_registry_catalog(url: String) -> Result<RegistryCatalog, String> {
-    if url.starts_with("http://") || url.starts_with("https://") {
+    // Plain `http://` is rejected outright: a MITM on the catalog can inject
+    // arbitrary `repository`/`data` entries that `install_extension` will then
+    // pass to `git clone`, escalating a network attack into code execution.
+    if url.starts_with("http://") {
+        return Err("Registry URL must use https://; plain HTTP is rejected to prevent MITM tampering of the catalog".to_string());
+    }
+
+    if url.starts_with("https://") {
         let response = shared_client()
             .get(&url)
             .timeout(DEFAULT_REQUEST_TIMEOUT)
