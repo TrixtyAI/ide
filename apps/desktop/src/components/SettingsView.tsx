@@ -229,7 +229,7 @@ Node.js: ${systemInfo.node_version}
                           }
                         }}
                         placeholder={t('settings.general.exclude_placeholder')}
-                        aria-label={t('settings.general.exclude_title')}
+                        aria-label={t('settings.general.exclude_aria_label')}
                         className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                       />
                     </div>

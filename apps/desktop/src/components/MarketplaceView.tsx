@@ -299,7 +299,7 @@ const MarketplaceView: React.FC = () => {
           <select
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            aria-label={t('marketplace.title')}
+            aria-label={t('marketplace.filter_aria_label')}
             className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 text-[12px] text-[#aaa] focus:outline-none cursor-pointer"
           >
             <option value="all">{t('marketplace.filter_all', { count: catalog.length.toString() })}</option>
