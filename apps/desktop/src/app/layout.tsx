@@ -1,10 +1,4 @@
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 import { AppProvider } from "@/context/AppContext";
 import { ExtensionProvider } from "@/context/ExtensionContext";
@@ -18,7 +12,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className={`${inter.variable} font-sans min-h-full flex flex-col bg-[#1e1e1e] text-white`}>
+      <body className="font-sans min-h-full flex flex-col bg-[#1e1e1e] text-white">
         <ErrorBoundary name="Root Layout">
           <AppProvider>
             <AgentProvider>
