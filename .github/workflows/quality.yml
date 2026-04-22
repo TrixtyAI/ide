@@ -66,6 +66,18 @@ jobs:
           cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check 2>&1 | Tee-Object -FilePath logs/fmt.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Vitest (Desktop)
+        id: vitest
+        run: |
+          pnpm --filter @trixty/desktop test 2>&1 | Tee-Object -FilePath logs/vitest.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Cargo Test
+        id: cargo_test
+        run: |
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib 2>&1 | Tee-Object -FilePath logs/cargo-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Generate status report
         if: always()
         run: |
@@ -74,6 +86,8 @@ jobs:
           "typecheck=${{ steps.typecheck.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
           "clippy=${{ steps.clippy.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
           "fmt=${{ steps.fmt.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "vitest=${{ steps.vitest.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "cargo_test=${{ steps.cargo_test.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
 
       - name: Upload quality results
         if: always()
