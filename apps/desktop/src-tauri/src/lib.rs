@@ -401,19 +401,15 @@ async fn execute_command(
     args: Vec<String>,
     cwd: String,
 ) -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    let mut cmd = {
-        let mut c = silent_command("cmd");
-        c.arg("/C").arg(&command).args(&args);
-        c
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let mut cmd = {
-        let mut c = silent_command(&command);
-        c.args(&args);
-        c
-    };
+    // Spawn the program directly on every platform. The previous Windows
+    // branch wrapped the call in `cmd /C <command> <args...>`, which asks
+    // `cmd.exe` to parse `&`, `|`, `^`, `%VAR%`, quoted redirections, etc.
+    // Even when individual arguments are quoted, a crafted `command` string
+    // could still toggle shell behavior. Going direct closes that injection
+    // surface. `.bat` / `.cmd` callers must now invoke `cmd /C foo.bat`
+    // explicitly instead of relying on the wrapper.
+    let mut cmd = silent_command(&command);
+    cmd.args(&args);
 
     let output = cmd
         .current_dir(cwd)
