@@ -6,6 +6,13 @@ import { useApp, FileState } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu, { ContextMenuItem } from "./ui/ContextMenu";
 
+// Derive a stable, HTML-id-safe handle from the file path. Shared with
+// `EditorArea` so the editor panel can set `aria-labelledby` to the active
+// tab's id.
+export const EDITOR_TABPANEL_ID = "editor-tabpanel";
+export const tabIdFor = (path: string): string =>
+  `tab-${path.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+
 const TabBar: React.FC = () => {
   const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useApp();
   const { t } = useL10n();
@@ -69,6 +76,32 @@ const TabBar: React.FC = () => {
     }
   ] : [];
 
+  // Keyboard handler for the roving tablist. Enter/Space activate the focused
+  // tab as before; ArrowLeft/Right move focus+selection with wrap-around, and
+  // Home/End jump to the first/last tab. Focus is moved by calling `.focus()`
+  // on the destination element after state updates — `tabIndex={-1}` does not
+  // block programmatic focus.
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, file: FileState) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setCurrentFile(file);
+      return;
+    }
+    const idx = openFiles.findIndex(f => f.path === file.path);
+    if (idx === -1) return;
+    const len = openFiles.length;
+    let nextIdx: number | null = null;
+    if (e.key === "ArrowLeft") nextIdx = (idx - 1 + len) % len;
+    else if (e.key === "ArrowRight") nextIdx = (idx + 1) % len;
+    else if (e.key === "Home") nextIdx = 0;
+    else if (e.key === "End") nextIdx = len - 1;
+    if (nextIdx === null) return;
+    e.preventDefault();
+    const nextFile = openFiles[nextIdx];
+    setCurrentFile(nextFile);
+    document.getElementById(tabIdFor(nextFile.path))?.focus();
+  };
+
   if (openFiles.length === 0) return null;
 
   return (
@@ -82,17 +115,14 @@ const TabBar: React.FC = () => {
         return (
           <div
             key={file.path}
+            id={tabIdFor(file.path)}
             role="tab"
             aria-selected={isActive}
+            aria-controls={EDITOR_TABPANEL_ID}
             aria-label={file.isModified ? `${file.name} (${t('tab.modified', { defaultValue: 'unsaved' })})` : file.name}
-            tabIndex={0}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => setCurrentFile(file)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setCurrentFile(file);
-              }
-            }}
+            onKeyDown={(e) => handleTabKeyDown(e, file)}
             onContextMenu={(e) => handleContextMenu(e, file.path)}
             className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-[#1a1a1a] group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 ${
               isActive
