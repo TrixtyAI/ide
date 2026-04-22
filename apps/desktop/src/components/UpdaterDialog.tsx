@@ -154,7 +154,7 @@ const UpdaterDialog: React.FC = () => {
             <button
               onClick={() => setDismissed(true)}
               className="p-1 text-[#555] hover:text-white rounded transition-colors"
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
             >
               <X size={13} />
             </button>
@@ -259,7 +259,7 @@ const UpdaterDialog: React.FC = () => {
               <button
                 onClick={() => setDismissed(true)}
                 className="text-[11px] text-[#555] hover:text-white transition-colors"
-                aria-label="Dismiss Error"
+                aria-label={t('common.dismiss_error')}
               >
                 {t('common.cancel')}
               </button>
