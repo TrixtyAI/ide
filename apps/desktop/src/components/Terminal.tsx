@@ -76,13 +76,17 @@ const Terminal: React.FC = () => {
     });
     resizeObserver.observe(terminalRef.current);
 
-    setTimeout(() => {
+    // Let layout settle before the first fit; xterm's measurements read
+    // offsetWidth on the container and can return 0 if the bottom panel is
+    // still animating in.
+    const initialFitTimer = window.setTimeout(() => {
       if (terminalRef.current && terminalRef.current.clientWidth > 0) {
         fitAddon.fit();
       }
     }, 150);
 
     return () => {
+      window.clearTimeout(initialFitTimer);
       resizeObserver.disconnect();
       term.dispose();
       xtermRef.current = null;
@@ -147,8 +151,11 @@ const Terminal: React.FC = () => {
       isCanceled = true;
       if (unlisten) unlisten();
     };
-    // Intentionally depend only on path changes: including `t` would respawn the PTY
-    // on every locale update, but localization changes should only affect future error text.
+    // Intentional deps: `terminalPath` and `rootPath` are primitive strings, so
+    // React's Object.is comparison re-runs only on a real value change (i.e. the
+    // user switches workspace or pins the terminal to a new folder). `t` is
+    // excluded on purpose: including it would respawn the PTY on every locale
+    // update, but localization changes should only affect future error text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalPath, rootPath]);
 
