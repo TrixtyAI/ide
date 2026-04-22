@@ -1,18 +1,30 @@
 "use client";
 
 import React, { useRef } from "react";
-import MonacoEditor, { OnMount, Monaco, loader } from "@monaco-editor/react";
-import { editor } from "monaco-editor";
-
-// Configure Monaco loader to use local assets
-if (typeof window !== "undefined") {
-  loader.config({ paths: { vs: "/vs" } });
-}
+import dynamic from "next/dynamic";
+import type { OnMount, Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import { useApp } from "@/context/AppContext";
 import TabBar from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
-import MarketplaceView from "./MarketplaceView";
 import { ErrorBoundary } from "./ErrorBoundary";
+
+// Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
+// Loading it with `next/dynamic` keeps it off the boot path; it only arrives
+// once the user opens their first real file. The loader also needs `window`,
+// so keep `ssr: false`.
+const MonacoEditor = dynamic(
+  async () => {
+    const mod = await import("@monaco-editor/react");
+    mod.loader.config({ paths: { vs: "/vs" } });
+    return mod.default;
+  },
+  { ssr: false },
+);
+
+// Marketplace is only reachable via the virtual `extensions` tab — no reason
+// to ship it in the initial bundle next to Monaco.
+const MarketplaceView = dynamic(() => import("./MarketplaceView"), { ssr: false });
 
 const EditorArea: React.FC = () => {
   const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();

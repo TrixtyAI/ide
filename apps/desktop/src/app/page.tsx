@@ -1,19 +1,26 @@
 "use client";
 
 import React, { useEffect } from "react";
+import dynamic from "next/dynamic";
 import ActivityBar from "@/components/ActivityBar";
 import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
-import EditorArea from "@/components/EditorArea";
 import WelcomeScreen from "@/components/WelcomeScreen";
-import RightPanelSlot from "@/components/slots/RightPanelSlot";
-import BottomPanel from "@/components/BottomPanel";
 import TitleBar from "@/components/TitleBar";
-import SettingsView from "@/components/SettingsView";
 import UpdaterDialog from "@/components/UpdaterDialog";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
+
+// Code-split heavy panels so Monaco, xterm, Marketplace, AI chat, and the
+// Settings modal aren't downloaded until the user actually opens them.
+// `ssr: false` skips the RSC attempt — this app is always client-rendered
+// inside Tauri, and several of these components touch `window` at module
+// scope.
+const EditorArea = dynamic(() => import("@/components/EditorArea"), { ssr: false });
+const BottomPanel = dynamic(() => import("@/components/BottomPanel"), { ssr: false });
+const RightPanelSlot = dynamic(() => import("@/components/slots/RightPanelSlot"), { ssr: false });
+const SettingsView = dynamic(() => import("@/components/SettingsView"), { ssr: false });
 
 export default function Home() {
   const {
