@@ -361,27 +361,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => document.removeEventListener("contextmenu", handleContextMenu);
   }, []);
 
-  // Persistence effects - ONLY run after initial load to avoid overwriting store with defaults
+  // Persistence effects — ONLY run after initial load to avoid overwriting the
+  // store with defaults. Writes are debounced by 300 ms via effect cleanup:
+  // the timer is scheduled on every state change and cancelled by the next
+  // cleanup, so a burst of rapid edits (font-size slider, toggles) coalesces
+  // into a single persisted write instead of firing once per keystroke.
+  //
+  // Trade-off: if the user closes the app within the 300 ms window, the last
+  // change is lost. Acceptable for settings toggles; the next session reads a
+  // value that is at most one debounce interval stale.
+  const PERSIST_DEBOUNCE_MS = 300;
+
   useEffect(() => {
     if (!isInitialLoadComplete) return;
-    if (chatSessions.length > 0) {
+    if (chatSessions.length === 0) return;
+    const handle = setTimeout(() => {
       trixtyStore.set("trixty-chats", chatSessions);
-    }
+    }, PERSIST_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
   }, [chatSessions, isInitialLoadComplete]);
 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
-    trixtyStore.set("trixty-ai-settings", aiSettings);
+    const handle = setTimeout(() => {
+      trixtyStore.set("trixty-ai-settings", aiSettings);
+    }, PERSIST_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
   }, [aiSettings, isInitialLoadComplete]);
 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
-    trixtyStore.set("trixty-editor-settings", editorSettings);
+    const handle = setTimeout(() => {
+      trixtyStore.set("trixty-editor-settings", editorSettings);
+    }, PERSIST_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
   }, [editorSettings, isInitialLoadComplete]);
 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
-    trixtyStore.set("trixty-system-settings", systemSettings);
+    const handle = setTimeout(() => {
+      trixtyStore.set("trixty-system-settings", systemSettings);
+    }, PERSIST_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
   }, [systemSettings, isInitialLoadComplete]);
 
   const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
