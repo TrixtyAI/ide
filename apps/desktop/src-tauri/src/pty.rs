@@ -4,9 +4,10 @@ use std::{
     io::{Read, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        mpsc, Arc, Mutex,
     },
     thread::{self, JoinHandle},
+    time::Duration,
 };
 use tauri::{AppHandle, Emitter, Runtime};
 
@@ -30,6 +31,24 @@ fn split_utf8_safely(buf: &[u8]) -> usize {
     }
 }
 
+/// Batching thresholds for the emitter thread. A busy shell (`cargo build`,
+/// `npm install`, recursive `find`) used to generate tens of thousands of
+/// `pty-output` events per second — one per 4 KiB PTY read — and each event
+/// paid the full Tauri IPC + JSON serialization cost. Coalescing reads into
+/// short time windows collapses that into a handful of larger events with no
+/// perceptible latency cost.
+///
+/// - `EMIT_BUFFER_BYTES` bounds a single emit so burst output still streams
+///   through in roughly screen-sized chunks instead of piling up into
+///   multi-megabyte payloads on `npm install` style floods.
+/// - `EMIT_INTERVAL` caps the user-visible latency when output trickles in
+///   (a shell prompt after an idle pause, the next `echo` from a slow
+///   script). The reader blocks inside `read()` so without a timeout on the
+///   emitter side, trailing bytes would sit in the buffer until the *next*
+///   read returned.
+const EMIT_BUFFER_BYTES: usize = 16 * 1024;
+const EMIT_INTERVAL: Duration = Duration::from_millis(10);
+
 pub struct PtyState {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub master: Box<dyn portable_pty::MasterPty + Send>,
@@ -38,17 +57,19 @@ pub struct PtyState {
     /// reads so bytes still in flight from a previous shell cannot land in
     /// the tab of the next one.
     shutdown: Arc<AtomicBool>,
-    /// Owned handle to the reader thread. Held in an `Option` so
-    /// `shutdown_and_join` can take it out (joining consumes the handle)
+    /// Owned handles to the reader + emitter threads. Held in `Option`s so
+    /// `shutdown_and_join` can take them out (joining consumes the handle)
     /// without needing `&mut self`.
-    thread_handle: Option<JoinHandle<()>>,
+    reader_handle: Option<JoinHandle<()>>,
+    emitter_handle: Option<JoinHandle<()>>,
 }
 
 impl PtyState {
-    /// Flags the reader for shutdown and waits for it to finish. Called
-    /// explicitly by `spawn_pty` (when replacing an old session) and
-    /// `kill_pty` (when the user closes the terminal) so the next session
-    /// cannot receive stale `pty-output` events from the old reader.
+    /// Flags the reader for shutdown and waits for both worker threads to
+    /// finish. Called explicitly by `spawn_pty` (when replacing an old
+    /// session) and `kill_pty` (when the user closes the terminal) so the
+    /// next session cannot receive stale `pty-output` events from the old
+    /// reader.
     ///
     /// Both callers always go through this path; there is no implicit
     /// `Drop`-based teardown, because `Drop` would have to run on
@@ -60,14 +81,20 @@ impl PtyState {
         // Destructure so we can drop `master` *before* joining. Dropping
         // the master closes the native PTY handle and unblocks the
         // reader's pending `read` call with `Ok(0)` / `Err` on all
-        // supported platforms; the join then returns promptly.
+        // supported platforms; the reader thread exits, its `Sender`
+        // drops, the emitter's `recv_timeout` returns `Disconnected`, and
+        // both joins return promptly.
         let PtyState {
             master,
-            thread_handle,
+            reader_handle,
+            emitter_handle,
             ..
         } = self;
         drop(master);
-        if let Some(handle) = thread_handle {
+        if let Some(handle) = reader_handle {
+            let _ = handle.join();
+        }
+        if let Some(handle) = emitter_handle {
             let _ = handle.join();
         }
     }
@@ -151,6 +178,37 @@ fn skip_to_string_terminator<I: Iterator<Item = char>>(
             return;
         }
     }
+}
+
+/// Flushes the UTF-8-safe prefix of `combined` to the frontend as a single
+/// `pty-output` event. Returns `true` if a flush actually went over the
+/// bridge so callers can update their timestamp.
+///
+/// Bytes that form a truncated UTF-8 codepoint at the very tail stay in
+/// `combined` for the next flush — same leftover-aware decoding the
+/// per-read loop used before this refactor. When `shutdown` is already
+/// set we drop the emit silently so a killed session cannot leak stale
+/// output into a freshly opened tab.
+fn flush_combined<R: Runtime>(
+    app: &AppHandle<R>,
+    combined: &mut Vec<u8>,
+    shutdown: &AtomicBool,
+) -> bool {
+    if combined.is_empty() {
+        return false;
+    }
+    let split = split_utf8_safely(combined);
+    if split == 0 {
+        return false;
+    }
+    if shutdown.load(Ordering::Acquire) {
+        combined.drain(..split);
+        return false;
+    }
+    let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
+    let _ = app.emit("pty-output", chunk);
+    combined.drain(..split);
+    true
 }
 
 #[tauri::command]
@@ -245,50 +303,33 @@ pub fn spawn_pty<R: Runtime>(
     })?;
 
     let shutdown = Arc::new(AtomicBool::new(false));
-    let shutdown_for_thread = shutdown.clone();
+    let shutdown_for_emitter = shutdown.clone();
 
-    // Spawn a thread to read from the PTY and emit to the frontend.
+    // Two-thread architecture:
     //
-    // Why the leftover buffer: a single UTF-8 codepoint can span up to 4
-    // bytes, and we read in fixed 4 KiB chunks. When a multi-byte character
-    // straddles the chunk boundary, decoding each chunk independently with
-    // `from_utf8_lossy` produces U+FFFD replacement characters (showing up
-    // as `�` in the terminal) even though the byte stream itself is
-    // perfectly valid. We hold back the trailing truncated bytes and
-    // prepend them to the next read so codepoints are never split. See
-    // `split_utf8_safely` for the decoding rules.
+    // - Reader thread: blocks inside `reader.read(...)` and forwards each
+    //   chunk to the emitter via a channel. Keeping this thread narrow
+    //   means the emitter can apply a timeout (`recv_timeout`) that the
+    //   blocking read itself does not support on portable_pty.
     //
-    // The `JoinHandle` is kept so `shutdown_and_join` can wait for the
-    // thread to exit before the next session starts. Dropping the master
-    // closes the native reader and unblocks a pending `read`, which lets
-    // the join return promptly.
-    let handle = thread::spawn(move || {
+    // - Emitter thread: batches incoming chunks into a single `pty-output`
+    //   event every `EMIT_INTERVAL` or once `EMIT_BUFFER_BYTES` accumulate,
+    //   whichever comes first. Preserves the UTF-8 leftover handling from
+    //   the previous single-thread implementation via `split_utf8_safely`,
+    //   so a multi-byte codepoint that straddles a read boundary still
+    //   arrives intact.
+    let (tx, rx) = mpsc::channel::<Vec<u8>>();
+
+    let reader_handle = thread::spawn(move || {
         let mut buffer = [0u8; 4096];
-        // Reuse the same assembly buffer across reads so a busy shell does
-        // not force one allocation per iteration. Capacity is chunk size +
-        // the maximum UTF-8 sequence length (4), so a full read plus a
-        // 3-byte truncated leftover never has to grow.
-        let mut combined: Vec<u8> = Vec::with_capacity(buffer.len() + 4);
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
-                    combined.extend_from_slice(&buffer[..n]);
-
-                    let split = split_utf8_safely(&combined);
-                    if split > 0 {
-                        // Observe the shutdown flag *before* emitting so
-                        // bytes read from a shell the user already killed
-                        // cannot surface inside a new session's tab.
-                        if shutdown_for_thread.load(Ordering::Acquire) {
-                            break;
-                        }
-                        let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
-                        let _ = app.emit("pty-output", chunk);
-                        // Drop the emitted prefix in place; the tail (at
-                        // most 3 bytes of a truncated codepoint) stays put
-                        // for the next read.
-                        combined.drain(..split);
+                    if tx.send(buffer[..n].to_vec()).is_err() {
+                        // Emitter has gone away (shutdown) — no point
+                        // keeping the reader thread running.
+                        break;
                     }
                 }
                 Err(e) => {
@@ -297,14 +338,43 @@ pub fn spawn_pty<R: Runtime>(
                 }
             }
         }
-        // Flush any trailing truncated bytes the child never completed so
-        // users still see the final prompt/output byte-for-byte (lossy at
-        // worst on a deliberately malformed tail). Skip the flush when
-        // the session was explicitly shut down — same reason the main
-        // emit is gated.
-        if !combined.is_empty() && !shutdown_for_thread.load(Ordering::Acquire) {
-            let tail = String::from_utf8_lossy(&combined).into_owned();
-            let _ = app.emit("pty-output", tail);
+        // Dropping `tx` here closes the channel. The emitter sees
+        // `RecvTimeoutError::Disconnected` on its next `recv_timeout` and
+        // performs a final flush before exiting.
+    });
+
+    let emitter_handle = thread::spawn(move || {
+        // Reused across iterations so a busy shell does not force one
+        // allocation per flush. Sized to comfortably hold one batch plus a
+        // small tail of UTF-8 leftover without reallocating.
+        let mut combined: Vec<u8> = Vec::with_capacity(EMIT_BUFFER_BYTES + 4);
+        loop {
+            match rx.recv_timeout(EMIT_INTERVAL) {
+                Ok(bytes) => {
+                    combined.extend_from_slice(&bytes);
+                    if combined.len() >= EMIT_BUFFER_BYTES {
+                        flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    // No new data for `EMIT_INTERVAL`; flush whatever is
+                    // buffered so trickling output (e.g. a shell prompt
+                    // after an idle pause) surfaces promptly.
+                    flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // Reader dropped its `Sender` — either EOF, error, or
+                    // shutdown. One final flush, including any trailing
+                    // truncated UTF-8 bytes (lossy at worst), so users
+                    // still see the last prompt/output byte-for-byte.
+                    flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                    if !combined.is_empty() && !shutdown_for_emitter.load(Ordering::Acquire) {
+                        let tail = String::from_utf8_lossy(&combined).into_owned();
+                        let _ = app.emit("pty-output", tail);
+                    }
+                    break;
+                }
+            }
         }
     });
 
@@ -312,7 +382,8 @@ pub fn spawn_pty<R: Runtime>(
         writer: Arc::new(Mutex::new(writer)),
         master: pair.master,
         shutdown,
-        thread_handle: Some(handle),
+        reader_handle: Some(reader_handle),
+        emitter_handle: Some(emitter_handle),
     };
 
     *state.lock().map_err(|e| {
