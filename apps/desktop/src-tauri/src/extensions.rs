@@ -451,8 +451,24 @@ pub async fn update_extension(app: AppHandle, id: String) -> Result<(), String> 
         return Err("Extension not installed".into());
     }
 
+    // Harden `git pull` against a malicious `.git/config` left behind by the
+    // extension author. git honors `core.sshCommand`, `core.fsmonitor` and
+    // `protocol.*.allow` from local config, which together turn a plain pull
+    // into an RCE primitive. Override them on the command line so the clone's
+    // own config cannot dictate what gets executed. Mirrors the install path's
+    // protocol allow-listing and extends it with the exec-vector flags.
     let output = Command::new("git")
-        .args(["pull"])
+        .arg("-c")
+        .arg("core.sshCommand=")
+        .arg("-c")
+        .arg("core.fsmonitor=false")
+        .arg("-c")
+        .arg("protocol.ext.allow=never")
+        .arg("-c")
+        .arg("protocol.file.allow=never")
+        .arg("-c")
+        .arg("protocol.git.allow=never")
+        .arg("pull")
         .current_dir(&target_dir)
         .output()
         .await
