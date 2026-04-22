@@ -80,6 +80,9 @@ const AiChatComponent: React.FC = () => {
   }, [pendingTool]);
   const menuRef = useRef<HTMLDivElement>(null);
   const permissionDialogRef = useRef<HTMLDivElement>(null);
+  const modelTriggerRef = useRef<HTMLButtonElement>(null);
+  const modelOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [activeModelIndex, setActiveModelIndex] = useState(0);
 
   // Single resolver path used by both the Allow/Deny buttons and Escape.
   // Snapshots the currently-shown tool id so a faster follow-up prompt that
@@ -104,6 +107,40 @@ const AiChatComponent: React.FC = () => {
     containerRef: permissionDialogRef,
     onEscape: () => resolvePendingTool(false),
   });
+
+  // When the model menu opens, seed `activeModelIndex` to the currently
+  // selected model (or the first option) and move focus there. Deferred via
+  // microtask so the option buttons are mounted by the time we call `.focus()`.
+  useEffect(() => {
+    if (!showModelMenu || models.length === 0) return;
+    const idx = Math.max(0, models.findIndex((m) => m.name === selectedModel));
+    setActiveModelIndex(idx);
+    queueMicrotask(() => modelOptionRefs.current[idx]?.focus());
+  }, [showModelMenu, models, selectedModel]);
+
+  // Keyboard handler for the model listbox. Enter/Space are handled natively
+  // by the `<button>` children; we only override cursor navigation and
+  // dismissal so outside-click + native click behaviour stay intact.
+  const handleModelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (models.length === 0) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowModelMenu(false);
+      modelTriggerRef.current?.focus();
+      return;
+    }
+    const len = models.length;
+    let next: number | null = null;
+    if (e.key === "ArrowDown") next = (activeModelIndex + 1) % len;
+    else if (e.key === "ArrowUp") next = (activeModelIndex - 1 + len) % len;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = len - 1;
+    if (next === null) return;
+    e.preventDefault();
+    setActiveModelIndex(next);
+    modelOptionRefs.current[next]?.focus();
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -622,7 +659,11 @@ const AiChatComponent: React.FC = () => {
       <div className="p-3 border-b border-[#1a1a1a] flex items-center justify-between bg-[#0a0a0a] shrink-0">
         <div className="flex items-center gap-2 relative" ref={menuRef}>
           <button
+            ref={modelTriggerRef}
             onClick={() => setShowModelMenu(!showModelMenu)}
+            aria-haspopup="listbox"
+            aria-expanded={showModelMenu}
+            aria-controls="ai-model-listbox"
             className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/5 transition-all group"
           >
             <div className="flex flex-col items-start translate-y-[1px]">
@@ -644,11 +685,24 @@ const AiChatComponent: React.FC = () => {
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
               </div>
-              <div className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                {models.map(m => (
+              <div
+                role="listbox"
+                id="ai-model-listbox"
+                aria-label={t('ai.models.local_title')}
+                onKeyDown={handleModelKeyDown}
+                className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+              >
+                {models.map((m, idx) => (
                   <button
                     key={m.name}
-                    onClick={() => { setSelectedModel(m.name); setShowModelMenu(false); }}
+                    ref={(el) => {
+                      modelOptionRefs.current[idx] = el;
+                    }}
+                    role="option"
+                    aria-selected={selectedModel === m.name}
+                    tabIndex={activeModelIndex === idx ? 0 : -1}
+                    onClick={() => { setSelectedModel(m.name); setShowModelMenu(false); modelTriggerRef.current?.focus(); }}
+                    onFocus={() => setActiveModelIndex(idx)}
                     className={`w-full text-left p-2 rounded-lg transition-all flex items-center justify-between group/item ${
                       selectedModel === m.name ? 'bg-white/10 border-white/10' : 'hover:bg-white/5'
                     }`}
