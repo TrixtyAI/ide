@@ -523,15 +523,18 @@ const GitExplorerComponent: React.FC = () => {
       const diff = await invoke("get_git_diff", { path: rootPath });
       if (!diff.trim()) { flash(t('git.status.no_staged_changes')); setAiSuggestLoading(false); return; }
 
-      const res = await fetch(`${aiSettings.endpoint || "http://localhost:11434"}/api/generate`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const endpoint = (aiSettings.endpoint || "http://localhost:11434").replace(/\/+$/, "");
+      const result = await invoke("ollama_proxy", {
+        method: "POST",
+        url: `${endpoint}/api/generate`,
+        body: {
+          type: "generate",
           model: "llama3", // Or choose a better default if needed
           prompt: `Based on this git diff, write a concise commit message in conventional commits format. Output ONLY the message.\n\n${diff.substring(0, 3000)}`,
-          stream: false
-        }),
+          stream: false,
+        },
       });
-      const data = await res.json();
+      const data = JSON.parse(result.body) as { response?: string };
       if (data.response) setCommitMessage(data.response.trim());
     } catch (e) { flash(t('git.error', { message: String(e) })); }
     finally { setAiSuggestLoading(false); }
