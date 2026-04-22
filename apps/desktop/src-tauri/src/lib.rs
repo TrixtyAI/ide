@@ -842,6 +842,9 @@ async fn git_stash_drop(path: String, index: u32) -> Result<String, String> {
 async fn git_commit(path: String, message: String, amend: Option<bool>) -> Result<String, String> {
     // We no longer automatically stage all changes.
     // Users must stage changes explicitly.
+    if message.starts_with('-') {
+        return Err("Invalid commit message".to_string());
+    }
 
     let mut args = vec!["commit"];
     if amend.unwrap_or(false) {
