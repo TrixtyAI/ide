@@ -212,6 +212,7 @@ const OnboardingWizard: React.FC = () => {
                         <button
                           key={lang.id}
                           onClick={() => setLocale(lang.id)}
+                          aria-pressed={locale === lang.id}
                           className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all group ${locale === lang.id
                               ? "bg-white/[0.05] border-white/20 shadow-lg"
                               : "bg-transparent border-white/5 hover:border-white/10 hover:bg-white/[0.02]"

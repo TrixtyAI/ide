@@ -172,12 +172,21 @@ const DetailsView: React.FC<{
           </div>
 
           {/* TABS */}
-          <div className="flex items-center gap-8 mt-2 border-b border-[#2d2d2d]">
+          <div
+            role="tablist"
+            aria-label={t('marketplace.tabs.details')}
+            className="flex items-center gap-8 mt-2 border-b border-[#2d2d2d]"
+          >
             {["details", "changelog"].map(tab => (
               <button
                 key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls="marketplace-details-tabpanel"
+                id={`marketplace-tab-${tab}`}
+                tabIndex={activeTab === tab ? 0 : -1}
                 onClick={() => setActiveTab(tab)}
-                className={`text-[12px] pb-2 font-medium tracking-wide transition-colors relative top-[1px] border-b-2 ${activeTab === tab ? "text-white border-[#007acc]" : "text-[#cccccc] border-transparent hover:text-white"
+                className={`text-[12px] pb-2 font-medium tracking-wide transition-colors relative top-[1px] border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${activeTab === tab ? "text-white border-[#007acc]" : "text-[#cccccc] border-transparent hover:text-white"
                   }`}
               >
                 {t(`marketplace.tabs.${tab}`)}
@@ -187,7 +196,13 @@ const DetailsView: React.FC<{
         </div>
 
         {/* CONTENT AREA */}
-        <div className="flex-1 flex px-10 py-8 gap-16 bg-[#1e1e1e]">
+        <div
+          role="tabpanel"
+          id="marketplace-details-tabpanel"
+          aria-labelledby={`marketplace-tab-${activeTab}`}
+          tabIndex={0}
+          className="flex-1 flex px-10 py-8 gap-16 bg-[#1e1e1e] focus:outline-none"
+        >
           {/* Markdown side */}
           <div className="flex-1 min-w-0">
             <div className="prose prose-invert prose-sm max-w-none prose-headings:font-normal prose-headings:text-white prose-a:text-[#3794ff] prose-code:text-[#d4d4d4] prose-code:bg-[#252526] prose-pre:bg-[#252526] prose-pre:border prose-pre:border-[#2d2d2d]">
@@ -318,10 +333,12 @@ const MarketplaceView: React.FC = () => {
         <div className="px-8 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {displayedCatalog.map((ext) => (
-              <div
+              <button
                 key={ext.id}
+                type="button"
                 onClick={() => setSelectedEntry(ext)}
-                className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#333] transition-all cursor-pointer group"
+                aria-label={ext.manifest?.name || ext.id}
+                className="text-left bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#333] transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-transparent group-hover:bg-white/10 group-hover:border-white/5 transition-colors overflow-hidden">
@@ -354,7 +371,7 @@ const MarketplaceView: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
