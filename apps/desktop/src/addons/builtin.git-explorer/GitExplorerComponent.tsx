@@ -517,8 +517,15 @@ const GitExplorerComponent: React.FC = () => {
   const handleSearch = async () => {
     if (!searchQuery.trim() || !rootPath) return;
     setIsSearching(true);
-    try { setSearchResults(await invoke("search_in_project", { query: searchQuery, rootPath })); }
-    catch (e) { logger.error(e); } finally { setIsSearching(false); }
+    try {
+      setSearchResults(
+        await invoke("search_in_project", {
+          query: searchQuery,
+          rootPath,
+          filesExclude: systemSettings.filesExclude,
+        }),
+      );
+    } catch (e) { logger.error(e); } finally { setIsSearching(false); }
   };
 
   const handleSearchClick = async (r: SearchResult) => {
