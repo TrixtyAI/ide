@@ -112,7 +112,18 @@ export interface TauriInvokeMap {
   "search_in_project": { args: { query: string; rootPath: string; filesExclude?: string[] }; return: SearchResult[] };
   "read_extension_script": { args: { id: string }; return: string };
   "perform_web_search": { args: { query: string }; return: string };
+  "watch_path": { args: { path: string; excludes: string[] }; return: void };
+  "unwatch_all": { args: undefined; return: void };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
+}
+
+/**
+ * Payload emitted on the `fs-changed` Tauri event. Subscribe with
+ * `listen<FsChangeEvent>("fs-changed", ...)` after calling `watch_path`.
+ */
+export interface FsChangeEvent {
+  path: string;
+  kind: "created" | "modified" | "removed" | "renamed" | "other";
 }
 
 /**

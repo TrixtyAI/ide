@@ -1,6 +1,7 @@
 mod about;
 mod error;
 mod fs_atomic;
+mod fs_watcher;
 mod http;
 mod pty;
 
@@ -9,6 +10,7 @@ use error::redact_user_paths;
 mod extensions;
 use extensions::*;
 
+use fs_watcher::{unwatch_all, watch_path, FsWatcherState};
 use log::{error, info, warn};
 use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
 use scraper::{Html, Selector};
@@ -1531,6 +1533,7 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
         })))
+        .manage(Arc::new(Mutex::new(FsWatcherState::new())))
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -1586,6 +1589,8 @@ pub fn run() {
             reveal_path,
             delete_path,
             perform_web_search,
+            watch_path,
+            unwatch_all,
             about::get_trixty_about_info
         ])
         .setup(|app| {
