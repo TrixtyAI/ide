@@ -155,7 +155,7 @@ const DetailsView: React.FC<{
                   </button>
                 ) : (
                   <>
-                    <button onClick={handleUpdate} disabled={loadingAction !== null} className="bg-blue-600 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg hover:bg-blue-500 flex items-center gap-2 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/10" title="Update locally">
+                    <button onClick={handleUpdate} disabled={loadingAction !== null} className="bg-blue-600 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg hover:bg-blue-500 flex items-center gap-2 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/10" title={t('marketplace.update_locally')}>
                       {loadingAction === "update" ? <RefreshCw size={13} strokeWidth={1.5} className="animate-spin" /> : null}
                       {t('marketplace.update_button', { version: entry.manifest?.version || "Latest" })}
                     </button>

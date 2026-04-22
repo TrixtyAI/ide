@@ -58,6 +58,7 @@ export function registerBuiltinTranslations() {
         'marketplace.installing': 'Installing...',
         'marketplace.install_button': 'Install',
         'marketplace.update_button': 'Update to v{version}',
+        'marketplace.update_locally': 'Update locally',
         'marketplace.disable_button': 'Disable',
         'marketplace.enable_button': 'Enable',
         'marketplace.uninstall_button': 'Uninstall',
@@ -310,7 +311,9 @@ export function registerBuiltinTranslations() {
         'common.cancel': 'Cancel',
         'common.prev': 'Back',
         'common.next': 'Next',
-        
+        'common.dismiss': 'Dismiss',
+        'common.dismiss_error': 'Dismiss error',
+
         'updater.installed': 'Update installed!',
         'updater.available': 'Update available',
         'updater.title.checking': 'Software Update',
@@ -446,6 +449,7 @@ export function registerBuiltinTranslations() {
         'marketplace.installing': 'Instalando...',
         'marketplace.install_button': 'Instalar',
         'marketplace.update_button': 'Actualizar a v{version}',
+        'marketplace.update_locally': 'Actualizar localmente',
         'marketplace.disable_button': 'Desactivar',
         'marketplace.enable_button': 'Activar',
         'marketplace.uninstall_button': 'Desinstalar',
@@ -697,6 +701,8 @@ export function registerBuiltinTranslations() {
         'common.cancel': 'Cancelar',
         'common.prev': 'Atrás',
         'common.next': 'Siguiente',
+        'common.dismiss': 'Descartar',
+        'common.dismiss_error': 'Descartar error',
 
         'updater.installed': '¡Actualización instalada!',
         'updater.available': 'Actualización disponible',
