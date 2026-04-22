@@ -32,6 +32,86 @@ pub struct PtyState {
     pub master: Box<dyn portable_pty::MasterPty + Send>,
 }
 
+/// Strips ANSI escape sequences that have no legitimate reason to travel
+/// *from* the UI into the PTY. These sequences are meant for shell-to-UI
+/// signalling; if the frontend forwards them to the shell (because the user
+/// pasted untrusted output, an AI reply, or a README into the terminal),
+/// an attacker can hijack the clipboard (OSC 52), retitle the window
+/// (OSC 0/1/2), point the host at a bogus working directory (OSC 7),
+/// smuggle data through DCS/APC/PM/SOS payloads, or spoof link targets
+/// via OSC 8.
+///
+/// Stripped, starting at either the 7-bit `ESC` (0x1B) + introducer form
+/// or the corresponding single-character C1 control code point in the
+/// input `&str` (for example, OSC as `U+009D`, encoded in UTF-8 as
+/// `0xC2 0x9D`), and consuming everything up to a String Terminator
+/// (`ST` = `U+009C` or `ESC \\`, plus the BEL shorthand `U+0007` for OSC):
+/// - OSC (`ESC ]` / `U+009D`)
+/// - DCS (`ESC P` / `U+0090`)
+/// - SOS (`ESC X` / `U+0098`)
+/// - PM  (`ESC ^` / `U+009E`)
+/// - APC (`ESC _` / `U+009F`)
+///
+/// Unterminated sequences are dropped through end-of-input so half a
+/// payload cannot sneak through a later `write_to_pty` call.
+///
+/// CSI (`ESC [`) is intentionally preserved: xterm.js emits it for
+/// bracketed paste (`CSI 200 ~` / `CSI 201 ~`), arrow keys, mouse events,
+/// and other normal terminal input the user legitimately produces.
+fn sanitize_pty_input(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        // ESC-introduced sequences. We peek first so a bare ESC (the plain
+        // Escape key — needed by vim, readline vi-mode, etc.) is preserved.
+        if c == '\x1b' {
+            if let Some(&next) = chars.peek() {
+                if matches!(next, ']' | 'P' | 'X' | '^' | '_') {
+                    chars.next(); // consume the introducer
+                    skip_to_string_terminator(&mut chars, next == ']');
+                    continue;
+                }
+            }
+        }
+        // C1 control code points for OSC/DCS/SOS/PM/APC. Iterating by
+        // `char` (not bytes) is essential: `U+0098` appears as the UTF-8
+        // byte sequence `0xC2 0x98`, but UTF-8 continuation bytes inside
+        // legitimate code points (e.g. `😀` contains 0x98) must not be
+        // mistaken for a C1 introducer.
+        if matches!(c, '\u{90}' | '\u{98}' | '\u{9d}' | '\u{9e}' | '\u{9f}') {
+            skip_to_string_terminator(&mut chars, c == '\u{9d}');
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// Consumes the iterator through a String Terminator. If `accept_bel` is
+/// true, a bare `BEL` (U+0007) also ends the sequence (OSC uses BEL as a
+/// shorthand terminator).
+///
+/// If no terminator is found the iterator is drained — an unterminated
+/// control sequence is treated as "drop everything through end of input"
+/// so a split payload cannot sneak through a later call.
+fn skip_to_string_terminator<I: Iterator<Item = char>>(
+    chars: &mut std::iter::Peekable<I>,
+    accept_bel: bool,
+) {
+    while let Some(c) = chars.next() {
+        if accept_bel && c == '\x07' {
+            return;
+        }
+        if c == '\u{9c}' {
+            return;
+        }
+        if c == '\x1b' && chars.peek() == Some(&'\\') {
+            chars.next();
+            return;
+        }
+    }
+}
+
 #[tauri::command]
 pub fn spawn_pty<R: Runtime>(
     app: AppHandle<R>,
@@ -172,11 +252,12 @@ pub fn write_to_pty(
     data: String,
     state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
 ) -> Result<(), String> {
+    let sanitized = sanitize_pty_input(&data);
     let guard = state.lock().map_err(|e| e.to_string())?;
     if let Some(s) = guard.as_ref() {
         let mut writer = s.writer.lock().map_err(|e| e.to_string())?;
         writer
-            .write_all(data.as_bytes())
+            .write_all(sanitized.as_bytes())
             .map_err(|e| e.to_string())?;
         writer.flush().map_err(|e| e.to_string())?;
     }
@@ -214,7 +295,7 @@ pub fn kill_pty(state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::split_utf8_safely;
+    use super::{sanitize_pty_input, split_utf8_safely};
 
     /// Walks `bytes` in fixed `chunk` sized reads, feeding each slice through
     /// the same leftover-aware decoder the PTY thread uses, and returns the
@@ -331,5 +412,74 @@ mod tests {
         let out = drain(&input, 8);
         assert!(out.starts_with("done "));
         assert!(out.contains('\u{FFFD}'));
+    }
+
+    #[test]
+    fn passes_through_plain_text_and_newlines() {
+        let input = "ls -la\nwhoami\r\n";
+        assert_eq!(sanitize_pty_input(input), input);
+    }
+
+    #[test]
+    fn passes_through_csi_sequences_used_by_xtermjs() {
+        // Arrow up, bracketed paste start/end, color reset — all CSI, all
+        // expected from normal terminal input.
+        let input = "\x1b[A\x1b[200~hello\x1b[201~\x1b[0m";
+        assert_eq!(sanitize_pty_input(input), input);
+    }
+
+    #[test]
+    fn strips_osc_52_clipboard_injection_bel_terminated() {
+        // OSC 52 is the classic "paste-to-clipboard" attack vector.
+        let input = "safe\x1b]52;c;aGVsbG8=\x07after";
+        assert_eq!(sanitize_pty_input(input), "safeafter");
+    }
+
+    #[test]
+    fn strips_osc_st_terminated() {
+        // ST form (ESC \) must also terminate.
+        let input = "x\x1b]0;evil-title\x1b\\y";
+        assert_eq!(sanitize_pty_input(input), "xy");
+    }
+
+    #[test]
+    fn strips_dcs_apc_pm_sos() {
+        let input = "a\x1bPevil\x1b\\b\x1b_apc\x1b\\c\x1b^pm\x1b\\d\x1bXsos\x1b\\e";
+        assert_eq!(sanitize_pty_input(input), "abcde");
+    }
+
+    #[test]
+    fn drops_unterminated_osc_through_end_of_input() {
+        // No ST / BEL ever arrives — everything from the OSC introducer on
+        // must be discarded so a split payload cannot sneak through.
+        let input = "start\x1b]52;c;dGFpbA==";
+        assert_eq!(sanitize_pty_input(input), "start");
+    }
+
+    #[test]
+    fn strips_8bit_c1_equivalents() {
+        // 0x9D = OSC, 0x9C = ST. These 8-bit forms must be handled too.
+        let input = "ok\u{9d}1;alert\u{9c}done";
+        assert_eq!(sanitize_pty_input(input), "okdone");
+    }
+
+    #[test]
+    fn handles_back_to_back_sequences() {
+        let input = "pre\x1b]0;a\x07\x1b]52;c;Yg==\x07post";
+        assert_eq!(sanitize_pty_input(input), "prepost");
+    }
+
+    #[test]
+    fn preserves_lone_esc_that_is_not_an_attack_introducer() {
+        // Bare ESC with nothing after is just the Escape key — leave it so
+        // shells (vim, readline vi-mode) still see it.
+        let input = "\x1b";
+        assert_eq!(sanitize_pty_input(input), "\x1b");
+    }
+
+    #[test]
+    fn preserves_utf8_multibyte_content() {
+        let input = "café 日本 😀";
+        assert_eq!(sanitize_pty_input(input), input);
     }
 }
