@@ -1297,12 +1297,88 @@ async fn perform_web_search(query: String) -> Result<String, String> {
     Ok(wrap_untrusted_web_content(&results.join("\n---\n")))
 }
 
+/// Rejects `ollama_proxy` targets that are either malformed or point at
+/// well-known SSRF traps. The Ollama endpoint is user-configurable
+/// (`aiSettings.endpoint`) so we can't hard-code the host, but a compromised
+/// frontend or extension could pass an arbitrary URL here and have the
+/// backend — which sits inside the user's network — fetch it on its behalf.
+///
+/// The two things we guard against:
+///
+/// 1. **Wrong schemes.** Anything other than `http` / `https` is rejected
+///    outright. `file://` would let a caller read local files through the
+///    proxy, and `data:` / `gopher:` / `ftp:` have no legitimate use here.
+/// 2. **Cloud-metadata and link-local hosts.** `169.254.169.254` is the
+///    classic AWS/GCP IMDS address (Azure IMDS also lives under
+///    `169.254.169.254`); `fe80::/10` is the IPv6 link-local range. Both
+///    are tiny surfaces but outsized attack value (IAM credentials, SSRF
+///    into cloud APIs), so we drop them regardless of scheme.
+///
+/// We deliberately do **not** restrict to loopback: real users run Ollama
+/// on a LAN host (`http://192.168.x.x:11434`) or expose it behind
+/// Cloudflare Tunnel / Tailscale with a real hostname. Blocking those
+/// would break a legitimate setup. A full allow-list is a product
+/// decision for a follow-up; this is the cheap first layer.
+fn validate_ollama_url(raw: &str) -> Result<(), String> {
+    let parsed =
+        reqwest::Url::parse(raw).map_err(|e| format!("Ollama URL is not a valid URL: {}", e))?;
+
+    match parsed.scheme() {
+        "http" | "https" => {}
+        other => {
+            return Err(format!(
+                "Ollama URL scheme must be http or https, got: {}",
+                other
+            ));
+        }
+    }
+
+    // `reqwest::Url` parses `http:///path` as a valid URL with an *empty*
+    // host string — not a missing one — so the `None` check alone isn't
+    // enough. Treat empty-host as missing-host here.
+    let host = parsed
+        .host_str()
+        .filter(|h| !h.is_empty())
+        .ok_or_else(|| "Ollama URL must have a host".to_string())?;
+
+    if is_metadata_or_link_local(host) {
+        return Err(format!(
+            "Ollama URL host {} is a link-local / cloud-metadata address and is rejected to prevent SSRF",
+            host
+        ));
+    }
+
+    Ok(())
+}
+
+fn is_metadata_or_link_local(host: &str) -> bool {
+    use std::net::{Ipv4Addr, Ipv6Addr};
+
+    // `url` strips the brackets from a bracketed IPv6 literal in `host_str`,
+    // but a paranoid parse strips them again just in case.
+    let trimmed = host.trim_start_matches('[').trim_end_matches(']');
+
+    if let Ok(v4) = trimmed.parse::<Ipv4Addr>() {
+        // RFC 3927: 169.254.0.0/16 link-local. Covers the AWS/Azure/GCP IMDS
+        // address (169.254.169.254) and WPAD-style discovery targets.
+        return v4.is_link_local();
+    }
+    if let Ok(v6) = trimmed.parse::<Ipv6Addr>() {
+        // fe80::/10 is IPv6 link-local. The first 10 bits match 0xfe80.
+        let first = v6.segments()[0];
+        return (first & 0xffc0) == 0xfe80;
+    }
+    false
+}
+
 #[tauri::command]
 async fn ollama_proxy(
     method: String,
     url: String,
     body: Option<serde_json::Value>,
 ) -> Result<ProxyResponse, String> {
+    validate_ollama_url(&url)?;
+
     let client = http::shared_client();
     let mut request = match method.as_str() {
         "POST" => client.post(&url),
@@ -1704,5 +1780,90 @@ mod web_content_tests {
         assert_eq!(wrapped.matches(WEB_CONTENT_END).count(), 1);
         assert!(wrapped.contains("[END_WEB_CONTENT]"));
         assert!(wrapped.contains("[BEGIN_WEB_CONTENT]"));
+    }
+}
+
+#[cfg(test)]
+mod ollama_url_tests {
+    use super::validate_ollama_url;
+
+    #[test]
+    fn accepts_default_localhost() {
+        assert!(validate_ollama_url("http://localhost:11434/api/tags").is_ok());
+        assert!(validate_ollama_url("http://127.0.0.1:11434/api/tags").is_ok());
+        assert!(validate_ollama_url("http://[::1]:11434/api/tags").is_ok());
+    }
+
+    #[test]
+    fn accepts_lan_and_remote_hosts_over_http_or_https() {
+        // Real users expose Ollama on a LAN host or behind a tunnel with
+        // a real hostname. Neither should be blocked.
+        assert!(validate_ollama_url("http://192.168.1.42:11434/api/tags").is_ok());
+        assert!(validate_ollama_url("https://ollama.example.com/api/tags").is_ok());
+    }
+
+    #[test]
+    fn rejects_unsupported_schemes() {
+        for url in [
+            "file:///etc/passwd",
+            "ftp://example.com/foo",
+            "gopher://example.com/",
+            "data:text/plain,hi",
+            "javascript:alert(1)",
+        ] {
+            let err = validate_ollama_url(url).expect_err(&format!("should reject {}", url));
+            assert!(
+                err.contains("scheme"),
+                "expected scheme error for {}, got: {}",
+                url,
+                err
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_aws_and_gcp_imds_ipv4() {
+        // AWS/Azure/GCP classic instance metadata endpoint.
+        let err = validate_ollama_url("http://169.254.169.254/latest/meta-data/")
+            .expect_err("IMDS must be rejected");
+        assert!(err.contains("link-local") || err.contains("metadata"));
+    }
+
+    #[test]
+    fn rejects_other_ipv4_link_local_addresses() {
+        // Any 169.254.x.x target is in the RFC 3927 range — WPAD, Azure
+        // Wireserver, etc. all live there.
+        for host in [
+            "http://169.254.0.1/",
+            "http://169.254.169.123/anywhere",
+            "http://169.254.255.255/",
+        ] {
+            assert!(
+                validate_ollama_url(host).is_err(),
+                "{} should be rejected",
+                host
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_ipv6_link_local() {
+        for host in [
+            "http://[fe80::1]/",
+            "http://[fe80::dead:beef]/api",
+            "http://[febf::1]/", // still within fe80::/10
+        ] {
+            assert!(
+                validate_ollama_url(host).is_err(),
+                "{} should be rejected",
+                host
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_urls() {
+        assert!(validate_ollama_url("not a url").is_err());
+        assert!(validate_ollama_url("").is_err());
     }
 }
