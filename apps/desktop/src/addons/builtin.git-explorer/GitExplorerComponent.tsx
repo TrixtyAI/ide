@@ -738,14 +738,19 @@ const GitExplorerComponent: React.FC = () => {
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {isSearching ? <div className="flex justify-center p-6"><RefreshCw size={14} className="animate-spin text-[#444]" /></div> :
                searchResults.length > 0 ? searchResults.map((r, i) => (
-                <div key={i} onClick={() => handleSearchClick(r)} className="px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-white/[0.03] cursor-pointer">
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleSearchClick(r)}
+                  className="w-full text-left block px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-white/[0.03] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/30"
+                >
                   <div className="flex items-center gap-2 mb-1">
                     <File size={11} className="text-[#555]" />
                     <span className="text-[11px] text-white font-medium truncate">{r.file_name}</span>
                     <span className="text-[10px] text-[#444]">:{r.line_number}</span>
                   </div>
                   <p className="text-[11px] text-[#555] font-mono truncate">{r.content}</p>
-                </div>
+                </button>
               )) : (
                 <div className="flex flex-col items-center justify-center h-32 text-[#333] text-center p-4">
                   <Search size={28} strokeWidth={1} className="mb-2" />

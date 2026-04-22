@@ -28,10 +28,11 @@ const WelcomeScreen: React.FC = () => {
 
       <div className="w-full max-w-sm space-y-1">
         {shortcuts.map((s, i) => (
-          <div
+          <button
             key={i}
+            type="button"
             onClick={s.action}
-            className="flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] transition-all border border-transparent hover:border-[#1e1e1e] group cursor-pointer"
+            className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] transition-all border border-transparent hover:border-[#1e1e1e] group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           >
             <div className="flex items-center gap-3">
               <s.icon size={16} className="text-[#444] group-hover:text-white/70" />
@@ -44,7 +45,7 @@ const WelcomeScreen: React.FC = () => {
                 </kbd>
               ))}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
