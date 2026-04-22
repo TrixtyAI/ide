@@ -12,6 +12,7 @@ import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
 import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
@@ -73,7 +74,36 @@ const AiChatComponent: React.FC = () => {
   const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const [projectTree, setProjectTree] = useState<string[]>([]);
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
+  const pendingToolRef = useRef<PendingTool | null>(null);
+  useEffect(() => {
+    pendingToolRef.current = pendingTool;
+  }, [pendingTool]);
   const menuRef = useRef<HTMLDivElement>(null);
+  const permissionDialogRef = useRef<HTMLDivElement>(null);
+
+  // Single resolver path used by both the Allow/Deny buttons and Escape.
+  // Snapshots the currently-shown tool id so a faster follow-up prompt that
+  // already replaced `pendingTool` cannot have its dialog hidden or its
+  // Promise stranded by this resolution. Reads via a ref to keep the
+  // callback identity stable without incurring stale-closure bugs — the
+  // `setState` updater is pure, safe under React StrictMode.
+  const resolvePendingTool = useCallback((allowed: boolean) => {
+    const current = pendingToolRef.current;
+    if (!current) return;
+    const resolver = pendingResolversRef.current.get(current.id);
+    if (!resolver) return;
+    pendingResolversRef.current.delete(current.id);
+    resolver(allowed);
+    setPendingTool((prev) =>
+      prev && prev.id === current.id ? null : prev,
+    );
+  }, []);
+
+  useFocusTrap({
+    active: pendingTool !== null,
+    containerRef: permissionDialogRef,
+    onEscape: () => resolvePendingTool(false),
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -796,10 +826,17 @@ const AiChatComponent: React.FC = () => {
           {/* Permission Request */}
           {pendingTool && (
             <div className="flex justify-start">
-              <div className="bg-[#1a1a1a] border border-white/20 p-4 rounded-xl max-w-[90%] shadow-2xl animate-in slide-in-from-left-2 transition-all">
+              <div
+                ref={permissionDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="permission-dialog-title"
+                tabIndex={-1}
+                className="bg-[#1a1a1a] border border-white/20 p-4 rounded-xl max-w-[90%] shadow-2xl animate-in slide-in-from-left-2 transition-all focus:outline-none"
+              >
                 <div className="flex items-center gap-2 mb-3 text-white font-semibold">
                   <Sparkles size={16} className="text-white" />
-                  <span className="text-xs uppercase tracking-tighter">{t('ai.tool_permission_title')}</span>
+                  <span id="permission-dialog-title" className="text-xs uppercase tracking-tighter">{t('ai.tool_permission_title')}</span>
                 </div>
                 <div className="bg-black/40 p-3 rounded-lg border border-white/5 mb-4">
                   <div className="text-[11px] text-white/90 font-mono mb-1">{pendingTool.name}</div>
@@ -809,36 +846,13 @@ const AiChatComponent: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      // Capture the id at click time and only clear state if
-                      // the dialog is still showing *this* id. A faster
-                      // follow-up prompt may have already replaced
-                      // `pendingTool`; if we cleared unconditionally we'd
-                      // hide the newer dialog and strand its Promise.
-                      const clickedId = pendingTool.id;
-                      const resolver = pendingResolversRef.current.get(clickedId);
-                      if (!resolver) return;
-                      pendingResolversRef.current.delete(clickedId);
-                      setPendingTool((current) =>
-                        current && current.id === clickedId ? null : current
-                      );
-                      resolver(true);
-                    }}
+                    onClick={() => resolvePendingTool(true)}
                     className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
                   >
                     {t('ai.tool_allow')}
                   </button>
                   <button
-                    onClick={() => {
-                      const clickedId = pendingTool.id;
-                      const resolver = pendingResolversRef.current.get(clickedId);
-                      if (!resolver) return;
-                      pendingResolversRef.current.delete(clickedId);
-                      setPendingTool((current) =>
-                        current && current.id === clickedId ? null : current
-                      );
-                      resolver(false);
-                    }}
+                    onClick={() => resolvePendingTool(false)}
                     className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
                   >
                     {t('ai.tool_deny')}
