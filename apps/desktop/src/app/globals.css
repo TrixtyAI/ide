@@ -29,6 +29,57 @@
   --color-sidebar: var(--sidebar-bg);
   --color-status-bar: var(--status-bar-bg);
   --color-editor: var(--editor-bg);
+
+  /* ----- Surface scale (dark grays, ordered from deepest to most elevated) -----
+     surface-0: shell / TitleBar / ActivityBar — the darkest chrome
+     surface-1: secondary panel surfaces (Welcome screen, Marketplace, AI chat)
+     surface-2: cards / tiles / tab hover (neutral "body" gray)
+     surface-3: elevated controls, tooltips, raised cards
+     Tokens map to existing literals — none of them shift visually. */
+  --color-surface-0: #0a0a0a;
+  --color-surface-1: #0e0e0e;
+  --color-surface-2: #111111;
+  --color-surface-3: #1a1a1a;
+
+  /* Borders — two tiers:
+     subtle: standard panel separators (matches the #1a1a1a/#222 cluster)
+     strong: focused / hover emphasis (#2a2a2a / #333). */
+  --color-border-subtle: #1a1a1a;
+  --color-border-strong: #2a2a2a;
+
+  /* Muted foreground ramp. `muted-fg` is the workhorse label color
+     (currently `text-[#777]` on TitleBar/WelcomeScreen). `subtle-fg`
+     covers the dimmer `text-[#555]` role used for inactive ActivityBar
+     icons and secondary metadata. */
+  --color-muted-fg: #777777;
+  --color-subtle-fg: #555555;
+
+  /* Z-index scale — numbers match the current literals in use so nothing
+     reorders visually. `z-titlebar` replaces the broken `z-999` class on
+     TitleBar (Tailwind silently compiled it to a no-op). */
+  --z-tooltip: 50;
+  --z-modal: 100;
+  --z-titlebar: 999;
+  --z-menu: 1000;
+  --z-toast: 9999;
+
+  /* Typography — the app has 164 occurrences of `text-[11px]`/`text-[13px]`
+     covering the "caption" and "UI body" roles. Expose them as named
+     tokens so future changes touch one place. */
+  --text-caption: 11px;
+  --text-ui: 13px;
+
+  /* Radii — three canonical semantic steps. These extend Tailwind's default
+     `rounded-sm`/`md`/`lg` (2px/6px/8px) rather than override them, because
+     the codebase already has 108 call sites on the default scale and the
+     maintainer wants zero visual drift. Components should prefer these
+     named tokens for new code:
+       rounded-control  — buttons, inputs, small chips
+       rounded-popover  — menus, toasts, hover cards
+       rounded-modal    — dialogs, sheets, large surfaces */
+  --radius-control: 4px;
+  --radius-popover: 8px;
+  --radius-modal: 16px;
 }
 
 body {

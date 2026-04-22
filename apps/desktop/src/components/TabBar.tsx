@@ -108,7 +108,7 @@ const TabBar: React.FC = () => {
     <div
       role="tablist"
       aria-label={t('tabbar.label')}
-      className="flex bg-[#0f0f0f] h-[36px] overflow-x-auto scrollbar-none border-b border-[#1a1a1a] shrink-0"
+      className="flex bg-surface-1 h-[36px] overflow-x-auto scrollbar-none border-b border-border-subtle shrink-0"
     >
       {openFiles.map((file) => {
         const isActive = currentFile?.path === file.path;
@@ -124,10 +124,10 @@ const TabBar: React.FC = () => {
             onClick={() => setCurrentFile(file)}
             onKeyDown={(e) => handleTabKeyDown(e, file)}
             onContextMenu={(e) => handleContextMenu(e, file.path)}
-            className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-[#1a1a1a] group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 ${
+            className={`relative flex items-center gap-2 px-3 min-w-[100px] max-w-[180px] h-full cursor-pointer transition-all border-r border-border-subtle group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 ${
               isActive
                 ? "bg-[#141414] text-white"
-                : "text-[#666] hover:text-[#999] hover:bg-[#111]"
+                : "text-[#666] hover:text-[#999] hover:bg-surface-2"
             }`}
           >
             {isActive && <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-[1px] bg-white/40" />}

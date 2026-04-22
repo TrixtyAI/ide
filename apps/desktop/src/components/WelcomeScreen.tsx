@@ -16,14 +16,14 @@ const WelcomeScreen: React.FC = () => {
   ];
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center bg-[#0e0e0e] text-[#666]">
+    <div className="h-full w-full flex flex-col items-center justify-center bg-surface-1 text-[#666]">
       <div className="mb-12 flex flex-col items-center">
         <div className="w-24 h-24  flex items-center justify-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoWhite.src} alt="Trixty Logo" className="w-14 h-14 object-contain" />
         </div>
         <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">{t('welcome.title')}</h1>
-        <p className="text-[13px] text-[#555]">{t('welcome.subtitle')}</p>
+        <p className="text-ui text-subtle-fg">{t('welcome.subtitle')}</p>
       </div>
 
       <div className="w-full max-w-sm space-y-1">
@@ -36,11 +36,11 @@ const WelcomeScreen: React.FC = () => {
           >
             <div className="flex items-center gap-3">
               <s.icon size={16} className="text-[#444] group-hover:text-white/70" />
-              <span className="text-[13px] text-[#777] group-hover:text-white">{s.label}</span>
+              <span className="text-ui text-muted-fg group-hover:text-white">{s.label}</span>
             </div>
             <div className="flex gap-1">
               {s.keys.map((k, j) => (
-                <kbd key={j} className="px-1.5 py-0.5 min-w-[20px] text-center bg-[#1a1a1a] text-[10px] rounded border border-[#222] text-[#555] font-mono">
+                <kbd key={j} className="px-1.5 py-0.5 min-w-[20px] text-center bg-surface-3 text-[10px] rounded border border-border-subtle text-subtle-fg font-mono">
                   {k}
                 </kbd>
               ))}

@@ -129,7 +129,7 @@ const UpdaterDialog: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 z-toast animate-in slide-in-from-bottom-4 fade-in duration-300">
       {/* Dedicated live region so only the phase text is announced — not
           the whole toast with buttons, and not every frame of the
           `updater-progress` stream. Role escalates to `alert` on error. */}
@@ -140,10 +140,10 @@ const UpdaterDialog: React.FC = () => {
       >
         {getAnnouncement()}
       </span>
-      <div className="w-[340px] bg-[#111] border border-[#262626] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden">
+      <div className="w-[340px] bg-surface-2 border border-[#262626] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a] bg-[#0d0d0d]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-[#0d0d0d]">
           <div className="flex items-center gap-2">
             <ArrowUpCircle size={15} className="text-blue-400" />
             <span className="text-[12px] font-semibold text-white tracking-wide">
@@ -153,7 +153,7 @@ const UpdaterDialog: React.FC = () => {
           {state.phase !== "downloading" && state.phase !== "ready" && (
             <button
               onClick={() => setDismissed(true)}
-              className="p-1 text-[#555] hover:text-white rounded transition-colors"
+              className="p-1 text-subtle-fg hover:text-white rounded transition-colors"
               aria-label={t('common.dismiss')}
             >
               <X size={13} />
@@ -214,7 +214,7 @@ const UpdaterDialog: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setDismissed(true)}
-                  className="px-3 py-1.5 bg-[#1a1a1a] border border-[#262626] text-[#777] text-[11px] font-medium rounded-lg hover:text-white hover:border-[#333] transition-all"
+                  className="px-3 py-1.5 bg-surface-3 border border-[#262626] text-muted-fg text-caption font-medium rounded-lg hover:text-white hover:border-[#333] transition-all"
                 >
                   {t('updater.later')}
                 </button>
@@ -235,7 +235,7 @@ const UpdaterDialog: React.FC = () => {
                 </span>
               </div>
               {/* Progress bar */}
-              <div className="w-full h-[3px] bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div className="w-full h-[3px] bg-surface-3 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 rounded-full transition-all duration-200"
                   style={{ width: state.progress > 0 ? `${state.progress}%` : "20%", animation: state.progress === 0 ? "pulse 1.5s infinite" : undefined }}

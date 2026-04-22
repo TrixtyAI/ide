@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import FloatingPanel from "@/components/ui/FloatingPanel";
+import { cn } from "@/lib/utils";
 
 export interface ContextMenuItem {
   label?: string;
@@ -106,12 +108,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const adjustedY = Math.min(y, typeof window !== "undefined" ? window.innerHeight - items.length * 45 : y);
 
   return (
-    <div
+    <FloatingPanel
       ref={menuRef}
       role="menu"
       onKeyDown={handleMenuKeyDown}
+      shape="menu"
       style={{ top: adjustedY, left: adjustedX }}
-      className="fixed z-[1000] w-72 bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2.5 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-menu w-72 py-2.5 animate-in fade-in zoom-in-95 duration-100"
     >
       {items.map((item, index) => (
         <React.Fragment key={index}>
@@ -133,25 +136,25 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
               }}
               onFocus={() => setActiveIndex(index)}
               disabled={item.disabled}
-              className={`
-                w-full flex items-center justify-between px-4 py-2.5 text-[13px] transition-all
-                ${item.disabled
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-2.5 text-ui transition-all",
+                item.disabled
                   ? "opacity-30 cursor-not-allowed"
-                  : "text-[#ccc] hover:bg-white/10 hover:text-white cursor-default"}
-              `}
+                  : "text-[#ccc] hover:bg-white/10 hover:text-white cursor-default",
+              )}
             >
               <div className="flex items-center gap-3">
                 <span className="opacity-70 scale-110">{item.icon}</span>
                 <span className="font-medium tracking-tight">{item.label}</span>
               </div>
               {item.shortcut && (
-                <span className="text-[11px] opacity-40 font-mono ml-4 tracking-tighter">{item.shortcut}</span>
+                <span className="text-caption opacity-40 font-mono ml-4 tracking-tighter">{item.shortcut}</span>
               )}
             </button>
           )}
         </React.Fragment>
       ))}
-    </div>
+    </FloatingPanel>
   );
 };
 

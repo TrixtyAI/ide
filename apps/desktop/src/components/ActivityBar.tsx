@@ -3,6 +3,8 @@ import { Settings, Package } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { trixty, WebviewView } from "@/api/trixty";
 import { useL10n } from "@/hooks/useL10n";
+import Tooltip from "@/components/ui/Tooltip";
+import { cn } from "@/lib/utils";
 
 const ActivityBar: React.FC = () => {
   const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, setSidebarOpen, openFile, setSettingsOpen } = useApp();
@@ -47,7 +49,7 @@ const ActivityBar: React.FC = () => {
       role="tablist"
       aria-orientation="vertical"
       aria-label={t('activitybar.label')}
-      className="w-[48px] bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col items-center py-2 gap-1 shrink-0"
+      className="w-[48px] bg-surface-0 border-r border-border-subtle flex flex-col items-center py-2 gap-1 shrink-0"
     >
 
 
@@ -60,17 +62,19 @@ const ActivityBar: React.FC = () => {
             aria-selected={isActive}
             aria-label={t(item.title)}
             onClick={() => handleTabClick(item.id)}
-            className={`w-[40px] h-[40px] flex items-center justify-center rounded-lg transition-all relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${isActive ? "text-white bg-white/10" : "text-[#555] hover:text-white/80 hover:bg-white/5"
-              }`}
+            className={cn(
+              "w-[40px] h-[40px] flex items-center justify-center rounded-lg transition-all relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+              isActive
+                ? "text-white bg-white/10"
+                : "text-subtle-fg hover:text-white/80 hover:bg-white/5",
+            )}
             title={t(item.title)}
           >
             {item.icon}
             {isActive && (
               <div aria-hidden="true" className="absolute left-0 top-[8px] bottom-[8px] w-[2px] bg-white rounded-r-full" />
             )}
-            <div aria-hidden="true" className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1a1a1a] text-white text-[11px] rounded-md border border-[#2a2a2a] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity shadow-xl">
-              {t(item.title)}
-            </div>
+            <Tooltip label={t(item.title)} />
           </button>
         );
       })}
@@ -80,13 +84,11 @@ const ActivityBar: React.FC = () => {
           aria-selected={false}
           aria-label={t('extensions.title')}
           onClick={() => handleTabClick("extensions")}
-          className="w-[40px] h-[40px] flex mb-1 items-center justify-center rounded-lg text-[#555] hover:text-white/80 hover:bg-white/5 transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="w-[40px] h-[40px] flex mb-1 items-center justify-center rounded-lg text-subtle-fg hover:text-white/80 hover:bg-white/5 transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           title={t('extensions.title')}
         >
           <Package size={18} strokeWidth={1.5} />
-          <div aria-hidden="true" className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1a1a1a] text-white text-[11px] rounded-md border border-[#2a2a2a] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity shadow-xl">
-            {t('extensions.title')}
-          </div>
+          <Tooltip label={t('extensions.title')} />
         </button>
 
         <button
@@ -94,14 +96,16 @@ const ActivityBar: React.FC = () => {
           aria-selected={activeSidebarTab === "settings"}
           aria-label={t('settings.title')}
           onClick={() => handleTabClick("settings")}
-          className={`w-[40px] h-[40px] flex items-center justify-center rounded-lg transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${activeSidebarTab === "settings" ? "text-white bg-white/10" : "text-[#555] hover:text-white/80 hover:bg-white/5"
-            }`}
+          className={cn(
+            "w-[40px] h-[40px] flex items-center justify-center rounded-lg transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+            activeSidebarTab === "settings"
+              ? "text-white bg-white/10"
+              : "text-subtle-fg hover:text-white/80 hover:bg-white/5",
+          )}
           title={t('settings.title')}
         >
           <Settings size={18} strokeWidth={1.5} />
-          <div aria-hidden="true" className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1a1a1a] text-white text-[11px] rounded-md border border-[#2a2a2a] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity shadow-xl">
-            {t('settings.title')}
-          </div>
+          <Tooltip label={t('settings.title')} />
         </button>
       </div>
     </div>
