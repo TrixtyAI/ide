@@ -1,5 +1,8 @@
 import React from "react";
-import { loader, type Monaco } from "@monaco-editor/react";
+// Keep Monaco as a type-only import so the `@monaco-editor/react` chunk stays
+// off the boot graph. The runtime `loader.init()` call is deferred into
+// `LanguageRegistry`'s constructor via `await import(...)`.
+import type { Monaco } from "@monaco-editor/react";
 import type { languages } from "monaco-editor";
 import { logger } from "@/lib/logger";
 
@@ -144,11 +147,19 @@ class LanguageRegistry {
 
     constructor() {
         if (typeof window !== 'undefined') {
-            loader.init().then(instance => {
-                this.monaco = instance;
-                logger.debug("[LanguageRegistry] Monaco instance initialized. Flushing buffer...");
-                this.flush();
-            }).catch(logger.error);
+            // Lazy-load Monaco's loader so importing `trixty.ts` from the boot
+            // path does not pull `@monaco-editor/react` into the initial chunk.
+            // The import + init both happen off the critical path; any
+            // `register(...)` call before Monaco is ready buffers the request
+            // and `flush()` replays it once the loader resolves.
+            import("@monaco-editor/react")
+                .then(({ loader }) => loader.init())
+                .then((instance) => {
+                    this.monaco = instance;
+                    logger.debug("[LanguageRegistry] Monaco instance initialized. Flushing buffer...");
+                    this.flush();
+                })
+                .catch(logger.error);
         }
     }
 
