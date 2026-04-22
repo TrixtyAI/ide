@@ -1718,10 +1718,12 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                std::process::exit(0);
-            }
+        .run(|_app_handle, _event| {
+            // Intentionally no-op: let Tauri's default shutdown sequence run so
+            // plugins (tauri-plugin-window-state, tauri-plugin-store, ...) get
+            // their final flush. The previous `std::process::exit(0)` on
+            // `ExitRequested` short-circuited that flow and could drop pending
+            // window-state / store writes.
         });
 }
 

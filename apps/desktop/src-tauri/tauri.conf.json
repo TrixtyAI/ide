@@ -24,7 +24,8 @@
         "maximized": false,
         "visible": false,
         "center": true,
-        "backgroundColor": "#1e1e1e"
+        "backgroundColor": "#1e1e1e",
+        "devtools": false
       },
       {
         "label": "splashscreen",
