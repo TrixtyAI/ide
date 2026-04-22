@@ -14,6 +14,7 @@ import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu from "@/components/ui/ContextMenu";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
 import pm from "picomatch";
 
@@ -79,8 +80,17 @@ const GitExplorerComponent: React.FC = () => {
   const branchTriggerRef = useRef<HTMLButtonElement | null>(null);
   const branchOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
+  const diffModalRef = useRef<HTMLDivElement | null>(null);
 
   useClickOutside(commitMenuRef, () => setCommitMenuOpen(false), commitMenuOpen);
+
+  // Diff modal shares the standard dialog a11y contract: Escape dismisses,
+  // Tab cycles inside the modal, and focus returns to the trigger on close.
+  useFocusTrap({
+    active: diffModal !== null,
+    containerRef: diffModalRef,
+    onEscape: () => setDiffModal(null),
+  });
 
   // Visible branches (after filter) — same derivation used in the render; kept
   // as a local for the keyboard handler so it doesn't drift from the list the
@@ -1141,10 +1151,22 @@ const GitExplorerComponent: React.FC = () => {
 
         {diffModal && (
           <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-3" onClick={() => setDiffModal(null)}>
-            <div className="bg-[#0e0e0e] border border-[#222] rounded-xl w-full h-full flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div
+              ref={diffModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="git-diff-modal-title"
+              tabIndex={-1}
+              className="bg-[#0e0e0e] border border-[#222] rounded-xl w-full h-full flex flex-col overflow-hidden focus:outline-none"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between px-3 py-2 border-b border-[#1a1a1a] shrink-0">
-                <span className="text-[11px] text-white/80 truncate">{t('git.diff.title', { file: diffModal.file })}</span>
-                <button onClick={() => setDiffModal(null)} className="p-1 text-[#555] hover:text-white transition-colors rounded">
+                <span id="git-diff-modal-title" className="text-[11px] text-white/80 truncate">{t('git.diff.title', { file: diffModal.file })}</span>
+                <button
+                  onClick={() => setDiffModal(null)}
+                  aria-label={t('window.close')}
+                  className="p-1 text-[#555] hover:text-white transition-colors rounded"
+                >
                   <Minus size={14} />
                 </button>
               </div>

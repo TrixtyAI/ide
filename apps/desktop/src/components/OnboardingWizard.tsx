@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import {
   Sparkles,
   Languages,
@@ -45,6 +46,18 @@ const OnboardingWizard: React.FC = () => {
   const [isVerifyingOllama, setIsVerifyingOllama] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState<"idle" | "success" | "error">("idle");
   const { isNativeWindow, isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
+  const wizardRef = useRef<HTMLDivElement>(null);
+
+  // Traps Tab inside the wizard so keyboard users can't land on the hidden
+  // background app. Intentionally a no-op on Escape: first-run onboarding
+  // collects required settings, so dismissing it without going through the
+  // Launch button would leave the user in an inconsistent state. Users can
+  // still close the whole window via the title-bar X.
+  useFocusTrap({
+    active: !systemSettings.hasCompletedOnboarding,
+    containerRef: wizardRef,
+    onEscape: () => {},
+  });
 
   const checkOllama = useCallback(async () => {
     setIsVerifyingOllama(true);
@@ -117,7 +130,15 @@ const OnboardingWizard: React.FC = () => {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6 overflow-hidden text-white">
+    <div
+      ref={wizardRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+      tabIndex={-1}
+      className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6 overflow-hidden text-white focus:outline-none"
+    >
+      <h1 id="onboarding-title" className="sr-only">{t('onboarding.welcome.title')}</h1>
       {/* Absolute Window Header (Top-level) */}
       {isNativeWindow && (
         <div className="absolute top-0 left-0 right-0 h-10 flex items-center justify-end px-4 z-[120]" data-tauri-drag-region>

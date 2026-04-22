@@ -83,6 +83,7 @@ const AiChatComponent: React.FC = () => {
   const modelTriggerRef = useRef<HTMLButtonElement>(null);
   const modelOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeModelIndex, setActiveModelIndex] = useState(0);
+  const historyOverlayRef = useRef<HTMLDivElement>(null);
 
   // Single resolver path used by both the Allow/Deny buttons and Escape.
   // Snapshots the currently-shown tool id so a faster follow-up prompt that
@@ -141,6 +142,14 @@ const AiChatComponent: React.FC = () => {
     setActiveModelIndex(next);
     modelOptionRefs.current[next]?.focus();
   };
+
+  // Chat history overlay shares the same a11y contract as the permission
+  // dialog: trap Tab, restore focus on close, dismiss on Escape.
+  useFocusTrap({
+    active: showHistory,
+    containerRef: historyOverlayRef,
+    onEscape: () => setShowHistory(false),
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -767,11 +776,16 @@ const AiChatComponent: React.FC = () => {
         {/* History Overlay */}
         {showHistory && (
           <div
-            className="absolute inset-0 bg-[#0e0e0e] z-20 border-l border-[#1a1a1a] flex flex-col"
+            ref={historyOverlayRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chat-history-title"
+            tabIndex={-1}
+            className="absolute inset-0 bg-[#0e0e0e] z-20 border-l border-[#1a1a1a] flex flex-col focus:outline-none"
           >
             <div className="p-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#555] uppercase tracking-wider">{t('ai.history_title')}</span>
-              <button onClick={() => setShowHistory(false)}><X size={14} /></button>
+              <span id="chat-history-title" className="text-xs font-semibold text-[#555] uppercase tracking-wider">{t('ai.history_title')}</span>
+              <button onClick={() => setShowHistory(false)} aria-label={t('window.close')}><X size={14} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {chatSessions.map((s) => (
