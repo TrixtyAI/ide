@@ -149,8 +149,14 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
 
   // Graceful degradation for browser development
   logger.warn(`[Tauri Mock] Command ignored (not in Tauri): ${cmd}`, payload);
-  
-  // Return empty/default values for common commands to avoid UI breakage
+
+  // Return empty/default values for common commands so `next dev` in the
+  // browser doesn't crash on boot-time queries. Only applied in development:
+  // in a production build, Tauri should always be present, so falling back
+  // to a silent default would mask a real initialization failure instead of
+  // surfacing it. When NODE_ENV is "production" we reject with a clear error
+  // and let the caller deal with it.
+  const isDev = process.env.NODE_ENV !== "production";
   const defaults: Partial<{ [K in keyof TauriInvokeMap]: TauriInvokeMap[K]["return"] }> = {
     "get_installed_extensions": [],
     "get_registry_catalog": { marketplace: [] },
@@ -158,9 +164,9 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
     "get_system_health": { cpu_usage: 0, memory_usage: 0 }
   };
 
-  if (cmd in defaults) {
+  if (isDev && cmd in defaults) {
       return defaults[cmd as keyof typeof defaults] as TauriInvokeMap[K]["return"];
   }
-  
+
   return Promise.reject(new Error(`Tauri internals not found while calling "${cmd}". Ensure you are running in the desktop app window.`));
 }

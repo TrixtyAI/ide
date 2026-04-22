@@ -431,17 +431,21 @@ async fn execute_command(
 async fn get_system_health(
     state: tauri::State<'_, Arc<Mutex<SystemState>>>,
 ) -> Result<SystemStats, String> {
-    let mut state = state.lock().map_err(|e| e.to_string())?;
+    // Keep the critical section explicit: the refresh calls are the slow
+    // part, so snapshot every value we need while we hold the lock, then
+    // drop it before building the response so other consumers of
+    // `SystemState` don't block on something as cheap as constructing the
+    // return struct.
+    let (cpu_usage, memory_usage) = {
+        let mut state = state.lock().map_err(|e| e.to_string())?;
+        state.sys.refresh_cpu_all();
+        state.sys.refresh_memory();
 
-    // Refresh only what we need for performance
-    state.sys.refresh_cpu_all();
-    state.sys.refresh_memory();
-
-    let cpu_usage = state.sys.global_cpu_usage();
-
-    let total_mem = state.sys.total_memory() as f64;
-    let used_mem = state.sys.used_memory() as f64;
-    let memory_usage = (used_mem / total_mem) * 100.0;
+        let cpu = state.sys.global_cpu_usage();
+        let total = state.sys.total_memory() as f64;
+        let used = state.sys.used_memory() as f64;
+        (cpu, (used / total) * 100.0)
+    };
 
     Ok(SystemStats {
         cpu_usage,
@@ -1628,10 +1632,13 @@ pub fn run() {
                                     }
 
                                     log::info!("[Startup] Awaiting Ollama model: {}", model);
-                                    let client = reqwest::Client::builder()
-                                        .timeout(std::time::Duration::from_secs(180))
-                                        .build()
-                                        .unwrap_or_default();
+                                    // Reuse the process-wide `reqwest::Client` so pooling and
+                                    // TLS config stay consistent with the rest of the app.
+                                    // Applying the 180s budget per-request instead of cloning
+                                    // a dedicated client also avoids the previous silent
+                                    // fallback to a timeout-less `Client::default()` on
+                                    // builder failure.
+                                    let client = crate::http::shared_client().clone();
 
                                     let url = format!(
                                         "{}/api/generate",
@@ -1654,7 +1661,13 @@ pub fn run() {
                                     // masquerade as "ready" in logs.
                                     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
                                     tauri::async_runtime::spawn(async move {
-                                        let outcome = match client.post(&url).json(&body).send().await {
+                                        let outcome = match client
+                                            .post(&url)
+                                            .timeout(std::time::Duration::from_secs(180))
+                                            .json(&body)
+                                            .send()
+                                            .await
+                                        {
                                             Ok(_) => {
                                                 log::info!("[Startup] Ollama preload completed.");
                                                 Ok(())
