@@ -7,7 +7,6 @@ import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
 import WelcomeScreen from "@/components/WelcomeScreen";
 import TitleBar from "@/components/TitleBar";
 import UpdaterDialog from "@/components/UpdaterDialog";
-import OnboardingWizard from "@/components/OnboardingWizard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useApp } from "@/context/AppContext";
 import { PluginManager } from "@/api/PluginManager";
@@ -21,6 +20,9 @@ const EditorArea = dynamic(() => import("@/components/EditorArea"), { ssr: false
 const BottomPanel = dynamic(() => import("@/components/BottomPanel"), { ssr: false });
 const RightPanelSlot = dynamic(() => import("@/components/slots/RightPanelSlot"), { ssr: false });
 const SettingsView = dynamic(() => import("@/components/SettingsView"), { ssr: false });
+// Onboarding only renders during first-run and pulls ~50 KB of framer-motion
+// behind it. Dynamic-load it so returning users never pay for the module.
+const OnboardingWizard = dynamic(() => import("@/components/OnboardingWizard"), { ssr: false });
 
 export default function Home() {
   const {
