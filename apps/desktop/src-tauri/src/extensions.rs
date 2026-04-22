@@ -2,8 +2,8 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
-use std::process::Command;
 use tauri::{AppHandle, Manager};
+use tokio::process::Command;
 
 use crate::error::redact_user_paths;
 use crate::http::{read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES};
@@ -416,6 +416,7 @@ pub async fn install_extension(app: AppHandle, id: String, git_url: String) -> R
         .arg(&git_url)
         .arg(&target_dir)
         .output()
+        .await
         .map_err(|e| redact_user_paths(&e.to_string()))?;
 
     if !output.status.success() {
@@ -454,6 +455,7 @@ pub async fn update_extension(app: AppHandle, id: String) -> Result<(), String> 
         .args(["pull"])
         .current_dir(&target_dir)
         .output()
+        .await
         .map_err(|e| redact_user_paths(&e.to_string()))?;
 
     if !output.status.success() {
