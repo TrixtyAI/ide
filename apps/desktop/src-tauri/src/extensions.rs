@@ -516,7 +516,15 @@ pub async fn is_extension_active(app: AppHandle, id: String) -> Result<bool, Str
     }
 
     let content = std::fs::read_to_string(&disabled_file).map_err(|e| e.to_string())?;
-    let disabled: Vec<String> = serde_json::from_str(&content).unwrap_or_default();
+    // Surface parse failures instead of silently falling back to "no extensions
+    // disabled". A corrupted disabled_extensions.json previously re-enabled
+    // every extension on the next read, which the user has no way to notice
+    // until an extension they had disabled starts running again.
+    let disabled: Vec<String> = serde_json::from_str(&content).map_err(|e| {
+        let err = format!("Failed to parse disabled_extensions.json: {}", e);
+        error!("{}", err);
+        redact_user_paths(&err)
+    })?;
 
     Ok(!disabled.contains(&id))
 }
@@ -531,9 +539,20 @@ pub async fn toggle_extension_state(
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let disabled_file = app_data.join("disabled_extensions.json");
 
+    // Same rationale as `is_extension_active`: a corrupted disabled list used
+    // to silently re-enable every extension here. Propagate both the read
+    // error and the parse error so the caller can surface the problem.
     let mut disabled: Vec<String> = if disabled_file.exists() {
-        let content = std::fs::read_to_string(&disabled_file).unwrap_or_default();
-        serde_json::from_str(&content).unwrap_or_default()
+        let content = std::fs::read_to_string(&disabled_file).map_err(|e| {
+            let err = format!("Failed to read disabled_extensions.json: {}", e);
+            error!("{}", err);
+            redact_user_paths(&err)
+        })?;
+        serde_json::from_str(&content).map_err(|e| {
+            let err = format!("Failed to parse disabled_extensions.json: {}", e);
+            error!("{}", err);
+            redact_user_paths(&err)
+        })?
     } else {
         Vec::new()
     };
