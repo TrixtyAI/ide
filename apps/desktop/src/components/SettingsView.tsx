@@ -152,8 +152,19 @@ Node.js: ${systemInfo.node_version}
                     <input
                       id="settings-editor-font-size"
                       type="number"
+                      min={1}
                       value={editorSettings.fontSize}
-                      onChange={(e) => updateEditorSettings({ fontSize: parseInt(e.target.value) })}
+                      onChange={(e) => {
+                        // Clearing the field or typing non-digit (the browser
+                        // normalizes that to an empty value) produced `NaN`
+                        // here before, which then stored as `NaN` and made
+                        // Monaco render nothing until the user reloaded.
+                        // Silently ignore non-positive values instead.
+                        const val = e.target.valueAsNumber;
+                        if (Number.isFinite(val) && val > 0) {
+                          updateEditorSettings({ fontSize: val });
+                        }
+                      }}
                       className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                     />
                   </div>
@@ -162,8 +173,14 @@ Node.js: ${systemInfo.node_version}
                     <input
                       id="settings-editor-line-height"
                       type="number"
+                      min={1}
                       value={editorSettings.lineHeight}
-                      onChange={(e) => updateEditorSettings({ lineHeight: parseInt(e.target.value) })}
+                      onChange={(e) => {
+                        const val = e.target.valueAsNumber;
+                        if (Number.isFinite(val) && val > 0) {
+                          updateEditorSettings({ lineHeight: val });
+                        }
+                      }}
                       className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors"
                     />
                   </div>
