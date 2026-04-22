@@ -28,7 +28,7 @@ const TitleBar: React.FC = () => {
   };
 
   return (
-    <div className="h-[32px] bg-[#0a0a0a] flex items-center shrink-0 select-none border-b border-[#1a1a1a] z-999">
+    <div className="h-[32px] bg-surface-0 flex items-center shrink-0 select-none border-b border-border-subtle z-titlebar">
       {/* App icon + Drag region with title */}
       <div
         data-tauri-drag-region
@@ -42,7 +42,7 @@ const TitleBar: React.FC = () => {
 
         {/* Title */}
         <span
-          className="text-[11px] text-[#777] font-normal tracking-wide truncate"
+          className="text-caption text-muted-fg font-normal tracking-wide truncate"
         >
           {buildTitle()}
         </span>
@@ -58,18 +58,18 @@ const TitleBar: React.FC = () => {
           className={`h-full w-[46px] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 ${
             isRightPanelOpen
               ? "text-white bg-white/10"
-              : "text-[#777] hover:bg-white/10 hover:text-white"
+              : "text-muted-fg hover:bg-white/10 hover:text-white"
           }`}
           title={t('panel.right.toggle')}
         >
           <PanelRight size={14} strokeWidth={1.5} />
         </button>
 
-        <div aria-hidden="true" className="w-[1px] h-[14px] bg-[#222]" />
+        <div aria-hidden="true" className="w-[1px] h-[14px] bg-border-subtle" />
         <button
           onClick={minimize}
           aria-label={t('window.minimize')}
-          className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
+          className="h-full w-[46px] flex items-center justify-center text-muted-fg hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
           title={t('window.minimize')}
         >
           <Minus size={14} strokeWidth={1.5} />
@@ -78,7 +78,7 @@ const TitleBar: React.FC = () => {
         <button
           onClick={toggleMaximize}
           aria-label={isMaximized ? t('window.restore') : t('window.maximize')}
-          className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
+          className="h-full w-[46px] flex items-center justify-center text-muted-fg hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
           title={isMaximized ? t('window.restore') : t('window.maximize')}
         >
           {isMaximized ? (
@@ -91,7 +91,7 @@ const TitleBar: React.FC = () => {
         <button
           onClick={close}
           aria-label={t('window.close')}
-          className="h-full w-[46px] flex items-center justify-center text-[#777] hover:bg-[#e81123] hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
+          className="h-full w-[46px] flex items-center justify-center text-muted-fg hover:bg-[#e81123] hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
           title={t('window.close')}
         >
           <X size={14} strokeWidth={1.5} />

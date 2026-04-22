@@ -268,7 +268,7 @@ export default function Home() {
   const { systemSettings, isInitialLoadComplete } = useApp();
 
   if (!isInitialLoadComplete) {
-    return <div className="bg-[#0a0a0a] w-screen h-screen" />;
+    return <div className="bg-surface-0 w-screen h-screen" />;
   }
 
   if (!systemSettings.hasCompletedOnboarding) {
@@ -276,7 +276,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0a0a] text-[#999] font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-0 text-[#999] font-sans">
       <TitleBar />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -285,7 +285,7 @@ export default function Home() {
 
         {/* Sidebar Slot — conditionally rendered */}
         {isSidebarOpen && (
-          <div className="h-full border-r border-[#1a1a1a]" style={{ width: 260 }}>
+          <div className="h-full border-r border-border-subtle" style={{ width: 260 }}>
             <LeftSidebarSlot />
           </div>
         )}
@@ -293,7 +293,7 @@ export default function Home() {
         {/* Center area: editor on top, terminal on bottom */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           {/* Editor / Welcome — takes remaining space */}
-          <div className="flex-1 overflow-hidden bg-[#111]">
+          <div className="flex-1 overflow-hidden bg-surface-2">
             <ErrorBoundary name="Editor Area">
               {openFiles.length > 0 ? (
                 <EditorArea />
@@ -315,7 +315,7 @@ export default function Home() {
 
         {/* Right Panel (AI) */}
         {isRightPanelOpen && (
-          <div className="w-[380px] shrink-0 h-full border-l border-[#1a1a1a]">
+          <div className="w-[380px] shrink-0 h-full border-l border-border-subtle">
             <ErrorBoundary name="AI Panel">
               <RightPanelSlot />
             </ErrorBoundary>

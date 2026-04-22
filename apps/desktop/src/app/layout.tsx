@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="font-sans min-h-full flex flex-col bg-[#1e1e1e] text-white">
+      <body className="font-sans min-h-full flex flex-col bg-background text-white">
         <ErrorBoundary name="Root Layout">
           <AppProvider>
             <AgentProvider>

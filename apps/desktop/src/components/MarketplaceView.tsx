@@ -286,9 +286,9 @@ const MarketplaceView: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#0e0e0e] text-white">
+    <div className="flex-1 h-full overflow-y-auto bg-surface-1 text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#0e0e0e]/95 backdrop-blur-sm border-b border-[#1a1a1a] px-8 py-6">
+      <div className="sticky top-0 z-10 bg-surface-1/95 backdrop-blur-sm border-b border-border-subtle px-8 py-6">
         <div className="flex items-center gap-4 mb-5">
           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10">
             <Package size={20} className="text-white/70" />
@@ -307,15 +307,15 @@ const MarketplaceView: React.FC = () => {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('marketplace.search_placeholder')}
               aria-label={t('marketplace.search_placeholder')}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-9 pr-4 text-[13px] text-white placeholder-[#555] focus:outline-none focus:border-[#555] transition-colors"
+              className="w-full bg-surface-3 border border-border-strong rounded-lg py-2 pl-9 pr-4 text-ui text-white placeholder-subtle-fg focus:outline-none focus:border-[#555] transition-colors"
             />
-            <Search size={14} className="absolute left-3 top-[10px] text-[#555]" />
+            <Search size={14} className="absolute left-3 top-[10px] text-subtle-fg" />
           </div>
           <select
             value={filter}
             onChange={e => setFilter(e.target.value)}
             aria-label={t('marketplace.filter_aria_label')}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 text-[12px] text-[#aaa] focus:outline-none cursor-pointer"
+            className="bg-surface-3 border border-border-strong rounded-lg px-4 text-[12px] text-[#aaa] focus:outline-none cursor-pointer"
           >
             <option value="all">{t('marketplace.filter_all', { count: catalog.length.toString() })}</option>
             <option value="installed">{t('marketplace.filter_installed', { count: installedIds.length.toString() })}</option>
