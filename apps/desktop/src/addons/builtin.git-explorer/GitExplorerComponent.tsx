@@ -76,8 +76,50 @@ const GitExplorerComponent: React.FC = () => {
   const gitLoadingRef = useRef(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const commitMenuRef = useRef<HTMLDivElement | null>(null);
+  const branchTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const branchOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [activeBranchIndex, setActiveBranchIndex] = useState(0);
 
   useClickOutside(commitMenuRef, () => setCommitMenuOpen(false), commitMenuOpen);
+
+  // Visible branches (after filter) — same derivation used in the render; kept
+  // as a local for the keyboard handler so it doesn't drift from the list the
+  // user actually sees.
+  const visibleBranches = branches.filter(
+    (b) => !branchFilter || b.toLowerCase().includes(branchFilter.toLowerCase()),
+  );
+
+  // When the branch menu opens or the filtered list changes, seed
+  // `activeBranchIndex` to the currently checked-out branch (or 0) and move
+  // focus to it. Deferred via microtask so the refs are populated.
+  useEffect(() => {
+    if (!showBranchMenu || visibleBranches.length === 0) return;
+    const idx = Math.max(0, visibleBranches.findIndex((b) => b === currentBranch));
+    setActiveBranchIndex(idx);
+    queueMicrotask(() => branchOptionRefs.current[idx]?.focus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBranchMenu, branchFilter, currentBranch]);
+
+  const handleBranchKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (visibleBranches.length === 0) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowBranchMenu(false);
+      branchTriggerRef.current?.focus();
+      return;
+    }
+    const len = visibleBranches.length;
+    let next: number | null = null;
+    if (e.key === "ArrowDown") next = (activeBranchIndex + 1) % len;
+    else if (e.key === "ArrowUp") next = (activeBranchIndex - 1 + len) % len;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = len - 1;
+    if (next === null) return;
+    e.preventDefault();
+    setActiveBranchIndex(next);
+    branchOptionRefs.current[next]?.focus();
+  };
 
   const loadDirectory = useCallback(async (path: string, parentPath?: string) => {
     setLoading(true);
@@ -817,7 +859,14 @@ const GitExplorerComponent: React.FC = () => {
 
             {/* Branch */}
             <div className="px-3 py-2 border-b border-[#1a1a1a]">
-              <button onClick={() => setShowBranchMenu(!showBranchMenu)} className="flex items-center gap-2 w-full text-[12px] text-white hover:bg-white/[0.04] rounded-lg p-1.5 transition-colors">
+              <button
+                ref={branchTriggerRef}
+                onClick={() => setShowBranchMenu(!showBranchMenu)}
+                aria-haspopup="listbox"
+                aria-expanded={showBranchMenu}
+                aria-controls="git-branch-listbox"
+                className="flex items-center gap-2 w-full text-[12px] text-white hover:bg-white/[0.04] rounded-lg p-1.5 transition-colors"
+              >
                 <GitBranch size={13} className={!currentBranch ? "text-yellow-400" : "text-[#666]"} />
                 {!currentBranch ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-yellow-400/10 border border-yellow-400/20 text-yellow-300 text-[10px] font-medium">
@@ -838,12 +887,27 @@ const GitExplorerComponent: React.FC = () => {
                         className="w-full bg-[#0e0e0e] border border-[#222] rounded-md px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#444]" />
                     </div>
                   )}
-                  <div className="max-h-[200px] overflow-y-auto scrollbar-thin">
-                    {branches.filter((b) => !branchFilter || b.toLowerCase().includes(branchFilter.toLowerCase())).map((b) => {
+                  <div
+                    role="listbox"
+                    id="git-branch-listbox"
+                    aria-label={t('git.title')}
+                    onKeyDown={handleBranchKeyDown}
+                    className="max-h-[200px] overflow-y-auto scrollbar-thin"
+                  >
+                    {visibleBranches.map((b, idx) => {
                       const isCurrent = b === currentBranch;
                       return (
                         <div key={b} className="group flex items-center hover:bg-white/[0.04] transition-colors">
-                          <button onClick={() => handleCheckoutBranch(b)} disabled={gitLoading}
+                          <button
+                            ref={(el) => {
+                              branchOptionRefs.current[idx] = el;
+                            }}
+                            role="option"
+                            aria-selected={isCurrent}
+                            tabIndex={activeBranchIndex === idx ? 0 : -1}
+                            onClick={() => handleCheckoutBranch(b)}
+                            onFocus={() => setActiveBranchIndex(idx)}
+                            disabled={gitLoading}
                             aria-current={isCurrent ? "true" : undefined}
                             className={`flex-1 text-left px-3 py-1.5 text-[11px] flex items-center gap-1.5 transition-colors disabled:opacity-50 ${isCurrent ? "text-white font-medium" : "text-[#999]"}`}>
                             {isCurrent ? <Check size={11} className="text-green-400/80" /> : <span className="w-[11px]" />}
@@ -851,6 +915,7 @@ const GitExplorerComponent: React.FC = () => {
                           </button>
                           {!isCurrent && (
                             <button onClick={() => handleMerge(b)} title={t('git.action.merge')}
+                              aria-label={`${t('git.action.merge')}: ${b}`}
                               className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-[#555] hover:text-white transition-all rounded">
                               <GitMerge size={12} />
                             </button>
