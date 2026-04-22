@@ -361,9 +361,15 @@ const EditorArea: React.FC = () => {
           // page-level keydown guard skips editable targets by default; Monaco
           // owns its own save semantics so it needs this attribute to keep
           // Ctrl+S firing while the editor has focus.
+          //
+          // Also: Monaco identifies files by the `path` prop and swaps to the
+          // matching model on change, preserving scroll position, cursor,
+          // undo history, and markers per file. Previously a `key={currentFile.path}`
+          // tore all of that down on every tab switch; now Monaco does the
+          // swap itself and the model-cleanup effect below still disposes
+          // models that fall out of `openFiles`, so memory stays bounded.
           <div className="h-full" data-allow-global-shortcuts="true">
           <MonacoEditor
-            key={currentFile.path}
             height="100%"
             language={currentFile.language}
             value={currentFile.content}
