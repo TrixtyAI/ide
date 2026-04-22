@@ -211,6 +211,20 @@ const EditorArea: React.FC = () => {
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // If the EditorArea unmounts while a debounced write is still pending
+  // (closing the last tab, switching workspace, hot reload), the callback
+  // would otherwise fire and call `updateFileContent` on a context that
+  // may already be tearing down. Clear the timer on unmount so the
+  // pending write is dropped cleanly.
+  React.useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+    };
+  }, []);
+
   const handleEditorChange = (value: string | undefined) => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     // Capture the path and content at the moment the edit happened. If the timer

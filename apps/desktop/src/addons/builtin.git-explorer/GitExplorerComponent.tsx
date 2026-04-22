@@ -209,8 +209,15 @@ const GitExplorerComponent: React.FC = () => {
         errStr.includes("not a git repository") ||
         errStr.includes("must be run in a work tree");
       if (errStr.includes("dubious ownership")) {
-        const shouldFix = window.confirm(
-          `${t('git.explorer.safe_dir_title')}\n\n${t('git.explorer.safe_dir_desc', { path: rootPath })}\n\n(This runs: git config --global --add safe.directory)`
+        // Use Tauri's native dialog instead of `window.confirm`: the Tauri
+        // webview can block synchronous dialogs depending on CSP, and
+        // `window.confirm` freezes the whole event loop — including
+        // Tauri's IPC channel — which starves any invoke in flight. The
+        // `ask` plugin was already imported for other prompts in this
+        // file, so this swap is a one-liner.
+        const shouldFix = await ask(
+          `${t('git.explorer.safe_dir_desc', { path: rootPath })}\n\n(This runs: git config --global --add safe.directory)`,
+          { title: t('git.explorer.safe_dir_title'), kind: 'warning' },
         );
         if (shouldFix) {
           try {
