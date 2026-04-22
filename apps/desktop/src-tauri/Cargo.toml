@@ -46,6 +46,7 @@ sysinfo = { version = "0.36.1", default-features = false, features = ["system"] 
 scraper = "0.19"
 html2text = "0.12"
 tauri-plugin-http = "2"
+notify = "6"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
