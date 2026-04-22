@@ -216,76 +216,158 @@ struct SearchResult {
     content: String,
 }
 
+/// Upper bounds for `search_in_project`. Kept as module constants instead of
+/// magic numbers so the reader knows the cap without scrolling through a
+/// 60-line function, and so tuning them is a one-line change.
+const SEARCH_MAX_RESULTS: usize = 200;
+const SEARCH_MAX_FILE_SIZE: u64 = 500 * 1024; // 500 KiB
+const SEARCH_MAX_LINE_LEN: usize = 1000; // skip minified bundles
+
+/// Searches the workspace for a case-insensitive literal match of `query`.
+///
+/// Built on the ripgrep crates: `ignore::WalkBuilder::build_parallel` drives
+/// a multi-threaded walk that honors `.gitignore`, `.ignore`,
+/// `.git/info/exclude` and the user's `git config core.excludesFile`;
+/// `grep-regex` + `grep-searcher` do the matching with ripgrep-grade binary
+/// detection and memory-mapping. The previous implementation ran a
+/// single-threaded `WalkDir` with a hard-coded ignore list
+/// (`node_modules`, `.git`, `target`, `.next` (duplicated), `dist`, `build`)
+/// and had no awareness of `.gitignore` or the `filesExclude` setting.
+///
+/// `files_exclude` is an optional list of glob patterns, typically
+/// `systemSettings.filesExclude` from the frontend. Each pattern is added
+/// as a negative `OverrideBuilder` rule (the crate inverts gitignore-style
+/// semantics: `!pattern` means "exclude"), so users can augment gitignore
+/// without modifying their tree.
+///
+/// Result ordering is not guaranteed: the walk is parallel, and the 200-hit
+/// cap may stop the walk mid-file. Callers that need deterministic ordering
+/// should sort on `file_path` and `line_number` after receiving results.
 #[tauri::command]
-async fn search_in_project(query: String, root_path: String) -> Result<Vec<SearchResult>, String> {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    use walkdir::WalkDir;
+async fn search_in_project(
+    query: String,
+    root_path: String,
+    files_exclude: Option<Vec<String>>,
+) -> Result<Vec<SearchResult>, String> {
+    use grep_regex::RegexMatcherBuilder;
+    use grep_searcher::sinks::UTF8;
+    use grep_searcher::SearcherBuilder;
+    use ignore::overrides::OverrideBuilder;
+    use ignore::{WalkBuilder, WalkState};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
 
-    let mut results = Vec::new();
-    let query_lower = query.to_lowercase();
-    let max_results = 200; // Reduced for performance
-    let max_file_size = 500 * 1024; // 500KB limit for search indexing
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
 
-    for entry in WalkDir::new(&root_path)
-        .into_iter()
-        .filter_entry(|e| {
-            let name = e.file_name().to_string_lossy();
-            name != "node_modules"
-                && name != ".git"
-                && name != "target"
-                && name != ".next"
-                && name != "dist"
-                && name != "build"
-        })
-        .filter_map(|e| e.ok())
-    {
-        if results.len() >= max_results {
-            break;
-        }
+    // Build a case-insensitive literal matcher. Escaping the input means
+    // characters like `.` or `(` are treated as text, preserving the
+    // substring semantics of the previous `to_lowercase().contains`
+    // implementation without exposing users to regex surprises.
+    let pattern = regex::escape(&query);
+    let matcher = RegexMatcherBuilder::new()
+        .case_insensitive(true)
+        .build(&pattern)
+        .map_err(|e| format!("Failed to build search matcher: {}", e))?;
 
-        let path = entry.path();
-        if path.is_file() {
-            // Performance: Skip files based on extension or size
-            let metadata = match entry.metadata() {
-                Ok(m) => m,
-                Err(_) => continue,
-            };
+    let mut walk_builder = WalkBuilder::new(&root_path);
+    walk_builder.max_filesize(Some(SEARCH_MAX_FILE_SIZE));
 
-            if metadata.len() > max_file_size {
-                continue;
+    if let Some(patterns) = files_exclude.as_ref() {
+        let mut ob = OverrideBuilder::new(&root_path);
+        for pat in patterns {
+            // `OverrideBuilder` uses gitignore-inverted semantics: a bare
+            // glob is a *whitelist* entry, and `!glob` is an *exclude*. We
+            // want `filesExclude` patterns to exclude, so we prefix each.
+            // Invalid patterns (e.g. malformed globs) are logged and
+            // skipped instead of failing the whole search.
+            if let Err(e) = ob.add(&format!("!{}", pat)) {
+                warn!("Skipping invalid filesExclude pattern {:?}: {}", pat, e);
             }
-
-            let file = match File::open(path) {
-                Ok(f) => f,
-                Err(_) => continue,
-            };
-
-            let reader = BufReader::new(file);
-            // Optimization: Read line by line but with a limit on line length to avoid CPU spikes on minified files
-            for (index, line_result) in reader.lines().enumerate() {
-                if let Ok(line) = line_result {
-                    if line.len() > 1000 {
-                        continue;
-                    } // Skip very long lines (minified)
-
-                    if line.to_lowercase().contains(&query_lower) {
-                        results.push(SearchResult {
-                            file_path: path.to_string_lossy().to_string(),
-                            file_name: path.file_name().unwrap().to_string_lossy().to_string(),
-                            line_number: index + 1,
-                            content: line.trim().to_string(),
-                        });
-                        if results.len() >= max_results {
-                            break;
-                        }
-                    }
-                } else {
-                    break; // Likely binary
-                }
+        }
+        match ob.build() {
+            Ok(overrides) => {
+                walk_builder.overrides(overrides);
+            }
+            Err(e) => {
+                warn!("Failed to compile filesExclude overrides: {}", e);
             }
         }
     }
+
+    let results: Arc<Mutex<Vec<SearchResult>>> = Arc::new(Mutex::new(Vec::new()));
+    let stop = Arc::new(AtomicBool::new(false));
+
+    walk_builder.build_parallel().run(|| {
+        let matcher = matcher.clone();
+        let results = Arc::clone(&results);
+        let stop = Arc::clone(&stop);
+        Box::new(move |entry| {
+            if stop.load(Ordering::Relaxed) {
+                return WalkState::Quit;
+            }
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => return WalkState::Continue,
+            };
+            if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
+                return WalkState::Continue;
+            }
+            let path = entry.path();
+            let path_str = path.to_string_lossy().into_owned();
+            let file_name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+
+            let mut local: Vec<SearchResult> = Vec::new();
+            let mut searcher = SearcherBuilder::new().line_number(true).build();
+            let sink = UTF8(|line_number, line| {
+                // Skip minified / generated lines: scanning them dominates
+                // CPU without giving usable context in results.
+                if line.len() > SEARCH_MAX_LINE_LEN {
+                    return Ok(true);
+                }
+                if stop.load(Ordering::Relaxed) {
+                    return Ok(false);
+                }
+                local.push(SearchResult {
+                    file_path: path_str.clone(),
+                    file_name: file_name.clone(),
+                    line_number: line_number as usize,
+                    content: line.trim().to_string(),
+                });
+                Ok(true)
+            });
+            // Swallow per-file errors: unreadable files (permissions,
+            // races with deletion) should not abort the whole search.
+            let _ = searcher.search_path(&matcher, path, sink);
+
+            if !local.is_empty() {
+                let mut guard = match results.lock() {
+                    Ok(g) => g,
+                    Err(_) => return WalkState::Quit,
+                };
+                for r in local {
+                    if guard.len() >= SEARCH_MAX_RESULTS {
+                        break;
+                    }
+                    guard.push(r);
+                }
+                if guard.len() >= SEARCH_MAX_RESULTS {
+                    stop.store(true, Ordering::Relaxed);
+                    return WalkState::Quit;
+                }
+            }
+            WalkState::Continue
+        })
+    });
+
+    let results = Arc::try_unwrap(results)
+        .map_err(|_| "search results still referenced after walk finished".to_string())?
+        .into_inner()
+        .map_err(|e| format!("search results mutex poisoned: {}", e))?;
     Ok(results)
 }
 
