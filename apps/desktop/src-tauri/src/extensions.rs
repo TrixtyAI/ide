@@ -2,8 +2,8 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
-use tokio::process::Command;
 use tauri::{AppHandle, Manager};
+use tokio::process::Command;
 
 use crate::error::redact_user_paths;
 use crate::http::{read_text_capped, shared_client, DEFAULT_REQUEST_TIMEOUT, MAX_RESPONSE_BYTES};
