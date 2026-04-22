@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useApp } from "@/context/AppContext";
-import TabBar from "./TabBar";
+import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import { ErrorBoundary } from "./ErrorBoundary";
 
@@ -215,11 +215,20 @@ const EditorArea: React.FC = () => {
         );
     }
   };
+  const activeTabId = currentFile ? tabIdFor(currentFile.path) : undefined;
+
   return (
     <div className="flex-1 w-full h-full overflow-hidden flex flex-col bg-[#0e0e0e]">
       <TabBar />
 
-      <div className="flex-1 overflow-hidden relative" ref={containerRef}>
+      <div
+        role="tabpanel"
+        id={EDITOR_TABPANEL_ID}
+        aria-labelledby={activeTabId}
+        tabIndex={0}
+        className="flex-1 overflow-hidden relative focus:outline-none"
+        ref={containerRef}
+      >
         {isVirtualTab ? (
           renderVirtualView()
         ) : isBinaryTab ? (
