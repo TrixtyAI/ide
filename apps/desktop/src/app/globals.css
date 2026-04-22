@@ -73,3 +73,19 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.05) transparent;
 }
+
+/* Respect the OS `prefers-reduced-motion` setting across Tailwind utility
+   animations (`animate-in`, `slide-in-from-*`, `fade-in`, `animate-pulse`,
+   `animate-spin`) and any bespoke CSS transitions used across the app. This
+   covers everything style-driven; Framer Motion is handled separately via
+   `<MotionConfig reducedMotion="user">` where motion.* lives (OnboardingWizard
+   today), and Monaco's `cursorSmoothCaretAnimation` is gated by the same
+   media query in `EditorArea.tsx` (#214). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

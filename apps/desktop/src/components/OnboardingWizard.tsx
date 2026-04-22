@@ -15,7 +15,7 @@ import {
   Loader2,
   Settings2
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import { safeInvoke as invoke } from "@/api/tauri";
@@ -116,6 +116,7 @@ const OnboardingWizard: React.FC = () => {
   if (systemSettings.hasCompletedOnboarding) return null;
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6 overflow-hidden text-white">
       {/* Absolute Window Header (Top-level) */}
       {isNativeWindow && (
@@ -343,6 +344,7 @@ const OnboardingWizard: React.FC = () => {
         </div>
       </div>
     </div>
+    </MotionConfig>
   );
 };
 
