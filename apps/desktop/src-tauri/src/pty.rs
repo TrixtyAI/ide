@@ -204,10 +204,17 @@ pub fn spawn_pty<R: Runtime>(
         cmd.cwd(home);
     }
 
+    // Clamp the terminal dimensions before handing them to the native
+    // PTY. Accepting anything up to `u16::MAX` (65535) lets a compromised
+    // frontend DoS the backend by asking portable_pty for a giant
+    // allocation or a malformed size that the underlying OS handle
+    // rejects with a panic. Real terminals never exceed a few hundred
+    // cells in either direction; 1000 is generous.
+    const PTY_MAX_DIM: u16 = 1000;
     let pair = pty_system
         .openpty(PtySize {
-            rows: rows.unwrap_or(24),
-            cols: cols.unwrap_or(80),
+            rows: rows.unwrap_or(24).min(PTY_MAX_DIM),
+            cols: cols.unwrap_or(80).min(PTY_MAX_DIM),
             pixel_width: 0,
             pixel_height: 0,
         })

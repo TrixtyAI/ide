@@ -187,7 +187,15 @@ const READ_FILE_MAX_BYTES: u64 = 10 * 1024 * 1024;
 fn read_file(path: String) -> Result<String, String> {
     let metadata = fs::metadata(&path).map_err(|e| {
         let err = format!("Failed to stat file {}: {}", path, e);
-        error!("{}", err);
+        // `read_file` doubles as an existence probe for the frontend (the
+        // agent panel sonda `.agents/AGENTS.md`, `MEMORY.md`, etc. at
+        // startup and on every repo switch). NotFound is an expected
+        // outcome of those probes — logging it as `error!` spammed the
+        // log with false failures on every launch. Still returns `Err`
+        // so the caller knows the file isn't there.
+        if e.kind() != std::io::ErrorKind::NotFound {
+            error!("{}", err);
+        }
         err
     })?;
 
@@ -204,7 +212,13 @@ fn read_file(path: String) -> Result<String, String> {
 
     fs::read_to_string(&path).map_err(|e| {
         let err = format!("Failed to read file {}: {}", path, e);
-        error!("{}", err);
+        // Same reasoning as the `metadata` call above: a file can vanish
+        // between the stat and the read (user deleted it, git switched
+        // branches), and the caller handles NotFound fine without the
+        // log noise.
+        if e.kind() != std::io::ErrorKind::NotFound {
+            error!("{}", err);
+        }
         redact_user_paths(&err)
     })
 }
@@ -613,9 +627,15 @@ struct GitLogEntry {
     subject: String,
 }
 
+/// Upper bound for `git_log` to defend against a compromised frontend or
+/// extension asking for `u32::MAX` commits: git would happily stream that
+/// and the JSON serialization + IPC round-trip would stall the runtime and
+/// balloon memory. 1000 is well past any UI scroll scenario.
+const GIT_LOG_MAX_LIMIT: u32 = 1000;
+
 #[tauri::command]
 async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry>, String> {
-    let n = limit.unwrap_or(50);
+    let n = limit.unwrap_or(50).min(GIT_LOG_MAX_LIMIT);
     // Unit Separator (0x1F) between fields, Record Separator (0x1E) between entries.
     let format = "--pretty=format:%H\x1f%h\x1f%an\x1f%ae\x1f%at\x1f%s\x1e";
     let output = silent_command("git")
