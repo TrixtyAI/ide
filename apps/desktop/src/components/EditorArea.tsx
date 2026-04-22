@@ -284,6 +284,14 @@ const EditorArea: React.FC = () => {
         invisibleCharacters: false,
       },
       cursorSmoothCaretAnimation: prefersReducedMotion ? "off" : "on",
+      // Accessibility: `accessibilitySupport: "on"` force-enables the hidden
+      // DOM mirror Monaco ships for screen readers (default is "auto", which
+      // disables it unless Monaco detects AT — unreliable inside a Tauri
+      // webview). `ariaLabel` is what AT announces when focus lands on the
+      // editor; using the path keeps two tabs with the same basename
+      // distinguishable.
+      accessibilitySupport: "on",
+      ariaLabel: currentFile?.path,
     }),
     [
       editorSettings.minimapEnabled,
@@ -292,6 +300,7 @@ const EditorArea: React.FC = () => {
       editorSettings.lineHeight,
       isLargeFile,
       prefersReducedMotion,
+      currentFile?.path,
     ],
   );
 

@@ -53,6 +53,11 @@ const Terminal: React.FC = () => {
       lineHeight: 1.3,
       letterSpacing: 0,
       scrollback: 5000,
+      // `screenReaderMode: true` makes xterm build a hidden DOM mirror of the
+      // visible viewport that assistive technologies can read. Without this,
+      // the canvas renderer is opaque to AT and the terminal effectively does
+      // not exist for screen-reader users.
+      screenReaderMode: true,
     });
 
     const fitAddon = new FitAddon();
@@ -159,7 +164,14 @@ const Terminal: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalPath, rootPath]);
 
-  return <div ref={terminalRef} className="w-full p-3 h-full" />;
+  return (
+    <div
+      ref={terminalRef}
+      role="region"
+      aria-label={t('panel.bottom.terminal')}
+      className="w-full p-3 h-full"
+    />
+  );
 };
 
 export default Terminal;
