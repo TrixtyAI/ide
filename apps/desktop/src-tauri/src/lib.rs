@@ -14,20 +14,30 @@ use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::process::Command;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
+use tokio::process::Command;
 
-/// Creates a [`Command`] that will NOT show a console window on Windows.
-/// On other platforms this is equivalent to `Command::new(program)`.
+/// Creates a [`tokio::process::Command`] that will NOT show a console window
+/// on Windows. On other platforms this is equivalent to `Command::new`.
+///
+/// Returning the Tokio variant keeps every async `#[tauri::command]` on the
+/// runtime: `.output().await` yields the worker instead of blocking on a
+/// `std::process::Command::output()` syscall, which is the default
+/// tokio-runtime stall described in issue #92. The few call sites that only
+/// need fire-and-forget `spawn()` must themselves run inside the runtime
+/// (any `async fn` does), because Tokio's Command initializes its child
+/// supervisor lazily the first time you spawn.
 #[inline]
 fn silent_command(program: &str) -> Command {
     let mut cmd = Command::new(program);
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
+        // `creation_flags` and `raw_arg` are inherent methods on
+        // `tokio::process::Command`, so there's no `CommandExt` import to
+        // pull in the way `std::process::Command` needs one.
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
@@ -391,7 +401,11 @@ async fn execute_command(
         c
     };
 
-    let output = cmd.current_dir(cwd).output().map_err(|e| e.to_string())?;
+    let output = cmd
+        .current_dir(cwd)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -431,6 +445,7 @@ async fn git_init(path: String) -> Result<String, String> {
         .arg("init")
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -446,6 +461,7 @@ async fn get_git_status(path: String) -> Result<String, String> {
         .args(["status", "--porcelain"])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
@@ -467,6 +483,7 @@ async fn get_git_branches(path: String) -> Result<GitBranches, String> {
         .args(["branch", "--format=%(refname:short)"])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
@@ -485,6 +502,7 @@ async fn get_git_branches(path: String) -> Result<GitBranches, String> {
         .args(["symbolic-ref", "--short", "HEAD"])
         .current_dir(&path)
         .output()
+        .await
         .ok()
         .and_then(|out| {
             if out.status.success() {
@@ -517,6 +535,7 @@ async fn git_checkout_branch(path: String, branch: String) -> Result<String, Str
         .args(["switch", &branch])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -533,6 +552,7 @@ async fn git_create_branch(path: String, branch: String) -> Result<String, Strin
         .args(["switch", "-c", &branch])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -552,6 +572,7 @@ async fn git_pull(path: String, rebase: Option<bool>) -> Result<String, String> 
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -567,6 +588,7 @@ async fn git_fetch(path: String) -> Result<String, String> {
         .args(["fetch", "--all", "--prune"])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -600,6 +622,7 @@ async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry>, S
         .args(["log", format, &format!("-n{}", n)])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
@@ -636,6 +659,7 @@ async fn git_merge(path: String, branch: String) -> Result<String, String> {
         .args(["merge", "--no-edit", &branch])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -659,6 +683,7 @@ async fn git_reset(path: String, mode: String, target: String) -> Result<String,
         .args(["reset", mode_flag, &target])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -677,6 +702,7 @@ async fn git_revert(path: String, commit: String) -> Result<String, String> {
         .args(["revert", "--no-edit", &commit])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -699,6 +725,7 @@ async fn git_stash_list(path: String) -> Result<Vec<GitStashEntry>, String> {
         .args(["stash", "list", "--pretty=format:%gd\x1f%s"])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
@@ -733,6 +760,7 @@ async fn git_stash(path: String, message: Option<String>) -> Result<String, Stri
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -750,6 +778,7 @@ async fn git_stash_pop(path: String, index: Option<u32>) -> Result<String, Strin
         .args(["stash", "pop", &stash_ref])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -766,6 +795,7 @@ async fn git_stash_apply(path: String, index: u32) -> Result<String, String> {
         .args(["stash", "apply", &stash_ref])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -782,6 +812,7 @@ async fn git_stash_drop(path: String, index: u32) -> Result<String, String> {
         .args(["stash", "drop", &stash_ref])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -807,6 +838,7 @@ async fn git_commit(path: String, message: String, amend: Option<bool>) -> Resul
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -827,6 +859,7 @@ async fn git_add(path: String, files: Vec<String>) -> Result<String, String> {
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -847,6 +880,7 @@ async fn git_unstage(path: String, files: Vec<String>) -> Result<String, String>
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -862,6 +896,7 @@ async fn git_push(path: String) -> Result<String, String> {
         .arg("push")
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| {
             let err = format!("Git push failed at {}: {}", path, e);
             error!("{}", err);
@@ -882,6 +917,7 @@ async fn git_push(path: String) -> Result<String, String> {
             .args(["symbolic-ref", "--quiet", "--short", "HEAD"])
             .current_dir(&path)
             .output()
+            .await
             .map_err(|e| e.to_string())?;
         if branch_output.status.success() {
             let branch = String::from_utf8_lossy(&branch_output.stdout)
@@ -892,6 +928,7 @@ async fn git_push(path: String) -> Result<String, String> {
                     .args(["push", "--set-upstream", "origin", &branch])
                     .current_dir(&path)
                     .output()
+                    .await
                     .map_err(|e| e.to_string())?;
                 if retry.status.success() {
                     return Ok(String::from_utf8_lossy(&retry.stdout).to_string());
@@ -914,6 +951,7 @@ async fn git_restore(path: String, files: Vec<String>) -> Result<String, String>
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -935,6 +973,7 @@ async fn get_git_file_diff(path: String, file: String, staged: bool) -> Result<S
         .args(&args)
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -951,6 +990,7 @@ async fn get_git_diff(path: String) -> Result<String, String> {
         .args(["diff", "--staged"])
         .current_dir(&path)
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if output.status.success() {
@@ -1036,6 +1076,7 @@ async fn git_add_safe_directory(path: String) -> Result<String, String> {
     let output = silent_command("git")
         .args(["config", "--global", "--add", "safe.directory", cleaned])
         .output()
+        .await
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
@@ -1279,7 +1320,7 @@ async fn open_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn reveal_path(path: String) -> Result<(), String> {
+async fn reveal_path(path: String) -> Result<(), String> {
     // Resolve the caller-supplied string against the filesystem before
     // handing it to a shell helper. `canonicalize` fails if the target
     // doesn't exist, so a non-existent or partial path can't be used to
@@ -1290,8 +1331,6 @@ fn reveal_path(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
-
         // `Path::canonicalize` on Windows returns verbatim paths: `\\?\C:\…`
         // for drive-letter targets and `\\?\UNC\server\share\…` for UNC
         // shares. Explorer doesn't understand the verbatim prefix on either
@@ -1469,6 +1508,7 @@ pub fn run() {
                 let is_installed = silent_command("ollama")
                     .arg("--version")
                     .output()
+                    .await
                     .map(|o| o.status.success())
                     .unwrap_or(false);
 
