@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Languages,
   Type,
@@ -22,6 +22,7 @@ import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
 import logoWhite from "@/assets/branding/logo-white.png";
 import AgentSettings from "@/addons/builtin.agent-support/AgentSettings";
@@ -44,6 +45,13 @@ const SettingsView: React.FC = () => {
   const [newPattern, setNewPattern] = useState("");
   const [copied, setCopied] = useState(false);
   const [systemInfo, setSystemInfo] = useState<Record<string, string> | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap({
+    active: isSettingsOpen,
+    containerRef: dialogRef,
+    onEscape: () => setSettingsOpen(false),
+  });
 
   useEffect(() => {
     if (isSettingsOpen && activeCategory === "about" && !systemInfo) {
@@ -385,10 +393,7 @@ Node.js: ${systemInfo.node_version}
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12 animate-in fade-in duration-300"
-      onKeyDown={(e) => e.key === "Escape" && setSettingsOpen(false)}
-    >
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12 animate-in fade-in duration-300">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
@@ -396,11 +401,18 @@ Node.js: ${systemInfo.node_version}
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-5xl h-full max-h-[85vh] bg-[#0e0e0e] border border-[#1a1a1a] rounded-2xl shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-dialog-title"
+        tabIndex={-1}
+        className="relative w-full max-w-5xl h-full max-h-[85vh] bg-[#0e0e0e] border border-[#1a1a1a] rounded-2xl shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300 focus:outline-none"
+      >
         {/* Sidebar Navigation */}
         <div className="w-[200px] border-r border-[#1a1a1a] bg-[#0c0c0c] flex flex-col py-6 shrink-0">
           <div className="px-6 mb-8">
-            <h2 className="text-[18px] font-bold text-white tracking-tight flex items-center gap-2">
+            <h2 id="settings-dialog-title" className="text-[18px] font-bold text-white tracking-tight flex items-center gap-2">
               <Settings className="text-blue-500" size={20} />
               {t('settings.title')}
             </h2>
