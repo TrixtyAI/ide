@@ -7,15 +7,6 @@
   ],
   "permissions": [
     "core:default",
-    "shell:default",
-    "fs:default",
-    "dialog:default",
-    "dialog:allow-ask",
-    "dialog:allow-confirm",
-    "process:default",
-    "store:default",
-    "positioner:default",
-    "window-state:default",
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
@@ -25,7 +16,19 @@
     "core:window:allow-set-title",
     "core:window:allow-start-resize-dragging",
     "core:window:allow-show",
-    "core:window:allow-hide"
+    "core:window:allow-hide",
+
+    "positioner:default",
+    "window-state:default",
+
+    "shell:allow-open",
+
+    "dialog:allow-open",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+
+    "process:allow-restart",
+
+    "store:default"
   ]
 }
-
