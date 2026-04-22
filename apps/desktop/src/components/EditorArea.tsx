@@ -238,6 +238,11 @@ const EditorArea: React.FC = () => {
             </p>
           </div>
         ) : currentFile ? (
+          // Opt Monaco back into the app's global shortcuts (Ctrl+S etc.). The
+          // page-level keydown guard skips editable targets by default; Monaco
+          // owns its own save semantics so it needs this attribute to keep
+          // Ctrl+S firing while the editor has focus.
+          <div className="h-full" data-allow-global-shortcuts="true">
           <MonacoEditor
             key={currentFile.path}
             height="100%"
@@ -293,6 +298,7 @@ const EditorArea: React.FC = () => {
               }
             }}
           />
+          </div>
         ) : null}
       </div>
     </div>

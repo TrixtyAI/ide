@@ -60,10 +60,45 @@ export default function Home() {
 
   // Global keyboard shortcuts
   useEffect(() => {
+    // Returns true when the keydown originated inside an editable control
+    // (input, textarea, contenteditable). Container-level opt-in via
+    // `data-allow-global-shortcuts="true"` lets a surface that owns its own
+    // save/submit semantics (Monaco today) keep receiving app shortcuts
+    // even when focus is on an internal input.
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.closest<HTMLElement>('[data-allow-global-shortcuts="true"]')) {
+        return false;
+      }
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (target.isContentEditable) return true;
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
       const shift = e.shiftKey;
       const key = e.key.toLowerCase();
+
+      // Before doing any app-shortcut work, bail out when the user is typing
+      // into a regular input/textarea/contenteditable. Escape and F-keys are
+      // universally "exit / help" chords and must reach their handlers even
+      // from inside a field, and `Ctrl+Shift+P` is reserved for the future
+      // command palette. Everything else falls through to the platform or
+      // the input itself, so Ctrl+S no longer saves the active file while
+      // the AI-chat textarea is focused.
+      const isGlobalEscape = key === "escape";
+      const isFKey = /^f\d+$/.test(key);
+      const isCommandPalette = ctrl && shift && key === "p";
+      if (
+        isEditableTarget(e.target) &&
+        !isGlobalEscape &&
+        !isFKey &&
+        !isCommandPalette
+      ) {
+        return;
+      }
 
       // Resolve a pending `Ctrl+K` chord first. The follow-up key is a
       // plain letter (no modifier) — if the user held Ctrl through the
