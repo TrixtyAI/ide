@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
@@ -26,72 +26,111 @@ const MonacoEditor = dynamic(
 // to ship it in the initial bundle next to Monaco.
 const MarketplaceView = dynamic(() => import("./MarketplaceView"), { ssr: false });
 
+// Bracket colorization and indent guides are expensive on very large buffers.
+// Above this threshold we disable both. Kept as a module constant so the memo
+// dep (`isLargeFile` boolean) only flips when crossing the threshold, not on
+// every keystroke inside the file.
+const LARGE_FILE_BYTES = 1024 * 1024;
+const MONACO_THEME_NAME = "trixty-dark";
+
+// Theme config is static, so hoist the literal out of `handleEditorDidMount`
+// and register it at most once per page load. Each tab switch would otherwise
+// re-run `defineTheme` against the same name.
+const TRIXTY_DARK_THEME: editor.IStandaloneThemeData = {
+  base: "vs-dark",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "5c6370", fontStyle: "italic" },
+    { token: "keyword", foreground: "c678dd" },
+    { token: "keyword.control", foreground: "c678dd" },
+    { token: "keyword.operator", foreground: "c678dd" },
+    { token: "keyword.function", foreground: "c678dd" },
+    { token: "storage", foreground: "c678dd" },
+    { token: "storage.type", foreground: "c678dd" },
+    { token: "storage.modifier", foreground: "c678dd" },
+    { token: "variable.parameter", foreground: "61afef" },
+    { token: "variable.name", foreground: "abb2bf" },
+    { token: "variable.other.property", foreground: "61afef" },
+    { token: "identifier", foreground: "abb2bf" },
+    { token: "type", foreground: "e5c07b" },
+    { token: "class", foreground: "e5c07b" },
+    { token: "function", foreground: "61afef" },
+    { token: "string", foreground: "98c379" },
+    { token: "number", foreground: "d19a66" },
+    { token: "constant", foreground: "d19a66" },
+    { token: "operator", foreground: "c678dd" },
+    { token: "delimiter", foreground: "abb2bf" },
+    { token: "delimiter.bracket", foreground: "c678dd" },
+    { token: "tag", foreground: "e06c75" },
+    { token: "attribute.name", foreground: "d19a66" },
+    { token: "attribute.value", foreground: "98c379" },
+    { token: "meta.preprocessor", foreground: "c678dd" },
+    { token: "key", foreground: "61afef" },
+  ],
+  colors: {
+    "editor.background": "#1c1c1c",
+    "editor.foreground": "#abb2bf",
+    "editorLineNumber.foreground": "#4b5263",
+    "editorLineNumber.activeForeground": "#abb2bf",
+    "editor.lineHighlightBackground": "#2c313a",
+    "editorCursor.foreground": "#528bff",
+    "editor.selectionBackground": "#3e445190",
+    "editor.inactiveSelectionBackground": "#3e445140",
+    "editorBracketMatch.background": "#515a6b",
+    "editorBracketMatch.border": "#515a6b",
+    "editorOverviewRuler.border": "#00000000",
+    "editor.border": "#181a1f",
+    "editorIndentGuide.background": "#3b4048",
+    "editorIndentGuide.activeBackground": "#c678dd",
+    "editorSuggestWidget.background": "#1c1c1c",
+    "editorSuggestWidget.border": "#181a1f",
+    "editorSuggestWidget.selectedBackground": "#2c313a",
+    "editorWidget.background": "#1c1c1c",
+    "editorWidget.border": "#181a1f",
+  },
+};
+
+let monacoThemeRegistered = false;
+function ensureMonacoTheme(monaco: Monaco) {
+  if (monacoThemeRegistered) return;
+  monaco.editor.defineTheme(MONACO_THEME_NAME, TRIXTY_DARK_THEME);
+  monacoThemeRegistered = true;
+}
+
+// Local `prefers-reduced-motion` hook. Kept in this file for now since #214 is
+// the only consumer; can be promoted to a shared hook if #194 lands and other
+// components need it.
+function usePrefersReducedMotion(): boolean {
+  const subscribe = useCallback((onChange: () => void) => {
+    if (typeof window === "undefined") return () => {};
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  const getSnapshot = useCallback(
+    () =>
+      typeof window === "undefined"
+        ? false
+        : window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
+}
+
 const EditorArea: React.FC = () => {
   const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();
   const { t } = useL10n();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    monaco.editor.defineTheme('trixty-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'c678dd' },
-        { token: 'keyword.control', foreground: 'c678dd' },
-        { token: 'keyword.operator', foreground: 'c678dd' },
-        { token: 'keyword.function', foreground: 'c678dd' },
-        { token: 'storage', foreground: 'c678dd' },
-        { token: 'storage.type', foreground: 'c678dd' },
-        { token: 'storage.modifier', foreground: 'c678dd' },
-        { token: 'variable.parameter', foreground: '61afef' },
-        { token: 'variable.name', foreground: 'abb2bf' },
-        { token: 'variable.other.property', foreground: '61afef' },
-        { token: 'identifier', foreground: 'abb2bf' },
-        { token: 'type', foreground: 'e5c07b' },
-        { token: 'class', foreground: 'e5c07b' },
-        { token: 'function', foreground: '61afef' },
-        { token: 'string', foreground: '98c379' },
-        { token: 'number', foreground: 'd19a66' },
-        { token: 'constant', foreground: 'd19a66' },
-        { token: 'operator', foreground: 'c678dd' },
-        { token: 'delimiter', foreground: 'abb2bf' },
-        { token: 'delimiter.bracket', foreground: 'c678dd' },
-        { token: 'tag', foreground: 'e06c75' },
-        { token: 'attribute.name', foreground: 'd19a66' },
-        { token: 'attribute.value', foreground: '98c379' },
-        { token: 'meta.preprocessor', foreground: 'c678dd' },
-        { token: 'key', foreground: '61afef' },
-      ],
-      colors: {
-        'editor.background': '#1c1c1c',
-        'editor.foreground': '#abb2bf',
-        'editorLineNumber.foreground': '#4b5263',
-        'editorLineNumber.activeForeground': '#abb2bf',
-        'editor.lineHighlightBackground': '#2c313a',
-        'editorCursor.foreground': '#528bff',
-        'editor.selectionBackground': '#3e445190',
-        'editor.inactiveSelectionBackground': '#3e445140',
-        'editorBracketMatch.background': '#515a6b',
-        'editorBracketMatch.border': '#515a6b',
-        'editorOverviewRuler.border': '#00000000',
-        'editor.border': '#181a1f',
-        'editorIndentGuide.background': '#3b4048',
-        'editorIndentGuide.activeBackground': '#c678dd',
-        'editorSuggestWidget.background': '#1c1c1c',
-        'editorSuggestWidget.border': '#181a1f',
-        'editorSuggestWidget.selectedBackground': '#2c313a',
-        'editorWidget.background': '#1c1c1c',
-        'editorWidget.border': '#181a1f',
-      }
-    });
-
-    monaco.editor.setTheme('trixty-dark');
+    ensureMonacoTheme(monaco);
+    monaco.editor.setTheme(MONACO_THEME_NAME);
 
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
       target: monaco.languages.typescript.ScriptTarget.ESNext,
@@ -117,7 +156,7 @@ const EditorArea: React.FC = () => {
   // Performance: Efficient Layout handling
   React.useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
-    
+
     // Immediate layout
     editorRef.current.layout();
 
@@ -126,7 +165,7 @@ const EditorArea: React.FC = () => {
     });
 
     resizeObserver.observe(containerRef.current);
-    
+
     // Delayed layout to catch cases where the container might still be expanding
     const timer = setTimeout(() => {
       editorRef.current?.layout();
@@ -149,7 +188,7 @@ const EditorArea: React.FC = () => {
       const result = isWindowsPath ? slashed.toLowerCase() : slashed;
       return result;
     };
-    
+
     const openPathsArray = openFiles.map(f => normalize(f.path));
     const openPaths = new Set(openPathsArray);
     const activeModelPath = normalize(currentFile.path);
@@ -157,12 +196,12 @@ const EditorArea: React.FC = () => {
     const models = monacoRef.current.editor.getModels();
     for (const model of models) {
       if (model.uri.scheme === "inmemory") continue;
-      
+
       const modelPath = normalize(model.uri.fsPath);
-      
+
       // Safety: Never dispose of the current file's model
       if (modelPath === activeModelPath) continue;
-      
+
       if (!openPaths.has(modelPath)) {
         model.dispose();
       }
@@ -184,6 +223,63 @@ const EditorArea: React.FC = () => {
       updateFileContent(path, content);
     }, 300);
   };
+
+  // Derive the threshold as a primitive boolean so the memo below only rebuilds
+  // options when we cross `LARGE_FILE_BYTES`, not on every keystroke.
+  const isLargeFile = (currentFile?.content?.length ?? 0) >= LARGE_FILE_BYTES;
+
+  const editorOptions = useMemo<editor.IStandaloneEditorConstructionOptions>(
+    () => ({
+      minimap: { enabled: editorSettings.minimapEnabled },
+      fontSize: editorSettings.fontSize,
+      fontFamily: editorSettings.fontFamily,
+      fontLigatures: true,
+      lineHeight: editorSettings.lineHeight,
+      letterSpacing: 0.5,
+      largeFileOptimizations: true,
+      maxTokenizationLineLength: 20000,
+      scrollbar: {
+        vertical: "visible",
+        horizontal: "visible",
+        useShadows: false,
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10,
+      },
+      lineNumbers: "on",
+      roundedSelection: true,
+      scrollBeyondLastLine: false,
+      readOnly: false,
+      automaticLayout: true,
+      padding: { top: 15 },
+      overviewRulerBorder: false,
+      hideCursorInOverviewRuler: true,
+      renderLineHighlight: "all",
+      fixedOverflowWidgets: true,
+      bracketPairColorization: { enabled: !isLargeFile },
+      guides: { bracketPairs: !isLargeFile },
+      suggestOnTriggerCharacters: true,
+      acceptSuggestionOnEnter: "on",
+      quickSuggestions: true,
+      tabCompletion: "on",
+      wordBasedSuggestions: "currentDocument",
+      parameterHints: { enabled: true },
+      suggest: { showIcons: true },
+      links: false,
+      unicodeHighlight: {
+        ambiguousCharacters: false,
+        invisibleCharacters: false,
+      },
+      cursorSmoothCaretAnimation: prefersReducedMotion ? "off" : "on",
+    }),
+    [
+      editorSettings.minimapEnabled,
+      editorSettings.fontSize,
+      editorSettings.fontFamily,
+      editorSettings.lineHeight,
+      isLargeFile,
+      prefersReducedMotion,
+    ],
+  );
 
   if (openFiles.length === 0) {
     return (
@@ -248,55 +344,11 @@ const EditorArea: React.FC = () => {
             height="100%"
             language={currentFile.language}
             value={currentFile.content}
-            theme="trixty-dark"
+            theme={MONACO_THEME_NAME}
             onMount={handleEditorDidMount}
             onChange={handleEditorChange}
             path={currentFile.path}
-            options={{
-              minimap: { enabled: editorSettings.minimapEnabled },
-              fontSize: editorSettings.fontSize,
-              fontFamily: editorSettings.fontFamily,
-              fontLigatures: true,
-              lineHeight: editorSettings.lineHeight,
-              letterSpacing: 0.5,
-              largeFileOptimizations: true,
-              maxTokenizationLineLength: 20000,
-              scrollbar: {
-                vertical: "visible",
-                horizontal: "visible",
-                useShadows: false,
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10,
-              },
-              lineNumbers: "on",
-              roundedSelection: true,
-              scrollBeyondLastLine: false,
-              readOnly: false,
-              automaticLayout: true, // Native layout handling
-              padding: { top: 15 },
-              overviewRulerBorder: false,
-              hideCursorInOverviewRuler: true,
-              renderLineHighlight: "all",
-              fixedOverflowWidgets: true,
-              bracketPairColorization: { 
-                enabled: (currentFile.content?.length || 0) < 1024 * 1024 
-              },
-              guides: { bracketPairs: (currentFile.content?.length || 0) < 1024 * 1024 },
-              suggestOnTriggerCharacters: true,
-              acceptSuggestionOnEnter: "on",
-              quickSuggestions: true,
-              tabCompletion: "on",
-              wordBasedSuggestions: "currentDocument", // Performance
-              parameterHints: { enabled: true },
-              suggest: {
-                showIcons: true
-              },
-              links: false, // Performance: Disable link scanning
-              unicodeHighlight: {
-                ambiguousCharacters: false,
-                invisibleCharacters: false,
-              }
-            }}
+            options={editorOptions}
           />
           </div>
         ) : null}
