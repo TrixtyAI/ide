@@ -54,7 +54,9 @@ jobs:
               { id: 'lint', name: 'Lint', log: 'logs/lint.log' },
               { id: 'typecheck', name: 'Typecheck', log: 'logs/typecheck.log' },
               { id: 'clippy', name: 'Clippy', log: 'logs/clippy.log' },
-              { id: 'fmt', name: 'Format', log: 'logs/fmt.log' }
+              { id: 'fmt', name: 'Format', log: 'logs/fmt.log' },
+              { id: 'vitest', name: 'Vitest', log: 'logs/vitest.log' },
+              { id: 'cargo_test', name: 'Cargo Test', log: 'logs/cargo-test.log' }
             ];
 
             const isFailure = Object.values(status).includes('failure');

@@ -692,3 +692,49 @@ mod extension_id_validation_tests {
         assert!(validate_extension_id("exté").is_err());
     }
 }
+
+#[cfg(test)]
+mod repo_to_raw_base_tests {
+    use super::repo_to_raw_base;
+
+    #[test]
+    fn converts_github_https_to_raw_host() {
+        let out = repo_to_raw_base("https://github.com/owner/repo", "main", None);
+        assert_eq!(out, "https://raw.githubusercontent.com/owner/repo/main");
+    }
+
+    #[test]
+    fn strips_trailing_git_suffix() {
+        let out = repo_to_raw_base("https://github.com/owner/repo.git", "main", None);
+        assert_eq!(out, "https://raw.githubusercontent.com/owner/repo/main");
+    }
+
+    #[test]
+    fn appends_branch() {
+        let out = repo_to_raw_base("https://github.com/owner/repo", "release/v1", None);
+        assert_eq!(
+            out,
+            "https://raw.githubusercontent.com/owner/repo/release/v1"
+        );
+    }
+
+    #[test]
+    fn appends_subpath_trimming_leading_slashes() {
+        let out = repo_to_raw_base("https://github.com/owner/repo", "main", Some("/pkg/a"));
+        assert_eq!(
+            out,
+            "https://raw.githubusercontent.com/owner/repo/main/pkg/a"
+        );
+        // Already-clean subpath yields the same result.
+        let out2 = repo_to_raw_base("https://github.com/owner/repo", "main", Some("pkg/a"));
+        assert_eq!(out, out2);
+    }
+
+    #[test]
+    fn leaves_non_github_hosts_alone() {
+        // The helper only rewrites GitHub hosts; anything else passes through
+        // as-is so a self-hosted gitlab / gitea URL is not silently broken.
+        let out = repo_to_raw_base("https://gitlab.com/owner/repo", "main", None);
+        assert_eq!(out, "https://gitlab.com/owner/repo/main");
+    }
+}

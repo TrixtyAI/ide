@@ -1886,3 +1886,35 @@ mod ollama_url_tests {
         assert!(validate_ollama_url("").is_err());
     }
 }
+
+#[cfg(test)]
+mod validate_branch_name_tests {
+    use super::validate_branch_name;
+
+    #[test]
+    fn accepts_plain_branch_names() {
+        assert!(validate_branch_name("main").is_ok());
+        assert!(validate_branch_name("feature/foo").is_ok());
+        assert!(validate_branch_name("release-1.0").is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_string() {
+        assert!(validate_branch_name("").is_err());
+    }
+
+    #[test]
+    fn rejects_names_starting_with_dash() {
+        // Prevents callers from smuggling option flags (e.g. `--orphan`,
+        // `--detach`) through the branch argument.
+        assert!(validate_branch_name("-orphan").is_err());
+        assert!(validate_branch_name("--amend").is_err());
+    }
+
+    #[test]
+    fn permits_embedded_dashes() {
+        // Only a LEADING dash is rejected; dashes inside a branch name are
+        // legitimate (e.g. `release-1.0`, `fix-bug-123`).
+        assert!(validate_branch_name("fix-bug-123").is_ok());
+    }
+}
