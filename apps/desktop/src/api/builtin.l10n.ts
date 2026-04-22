@@ -265,6 +265,10 @@ export function registerBuiltinTranslations() {
         'ai.disclaimer': 'Trixty AI can make mistakes. Check important info.',
         'ai.chat_log_label': 'AI chat transcript',
 
+        'activitybar.label': 'Primary sidebar navigation',
+        'tabbar.label': 'Open editor tabs',
+        'tab.close_aria': 'Close {file}',
+
         'terminal.error_connect': 'Error connecting to terminal: ',
         'editor.empty_desc': 'Select a file from the explorer to begin',
         'editor.view_not_found': 'View not found',
@@ -647,6 +651,10 @@ export function registerBuiltinTranslations() {
         'ai.status.badge.busy': 'Ocupado',
         'ai.disclaimer': 'Trixty AI puede cometer errores. Verifica info importante.',
         'ai.chat_log_label': 'Transcripción del chat de IA',
+
+        'activitybar.label': 'Navegación principal del panel lateral',
+        'tabbar.label': 'Pestañas de editores abiertos',
+        'tab.close_aria': 'Cerrar {file}',
 
         'terminal.error_connect': 'Error al conectar con la terminal: ',
         'editor.empty_desc': 'Selecciona un archivo del explorador para comenzar',
