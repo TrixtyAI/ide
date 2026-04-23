@@ -171,7 +171,17 @@ const GitExplorerComponent: React.FC = () => {
   const handleOpenFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false, title: t('explorer.select_folder') });
-      if (selected && typeof selected === "string") { setRootPath(selected); setEntries([]); setExpandedDirs({}); loadDirectory(selected); }
+      if (selected && typeof selected === "string") {
+        // `setRootPath` is async: it syncs the Rust-side workspace guard
+        // before committing React state. Without the await the subsequent
+        // `loadDirectory(selected)` would race the `read_directory` call
+        // against the backend still holding the previous workspace root,
+        // causing the first folder load to fail with a containment error.
+        await setRootPath(selected);
+        setEntries([]);
+        setExpandedDirs({});
+        loadDirectory(selected);
+      }
     } catch (e) { logger.error(e); }
   };
 

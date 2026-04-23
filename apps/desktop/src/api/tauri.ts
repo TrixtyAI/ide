@@ -114,6 +114,7 @@ export interface TauriInvokeMap {
   "perform_web_search": { args: { query: string }; return: string };
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };
+  "set_workspace_root": { args: { path: string | null }; return: void };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
 }
 
