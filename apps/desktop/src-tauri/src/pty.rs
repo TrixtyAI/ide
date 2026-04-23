@@ -23,6 +23,59 @@ use tauri::{AppHandle, Emitter, Runtime};
 /// caller emit the whole thing — `from_utf8_lossy` replaces the bad bytes
 /// with `U+FFFD` and valid bytes that follow the invalid byte in the same
 /// chunk are not delayed to the next read.
+/// Describes which shell binary to launch on Unix and whether to pass the
+/// `-l` (login) flag. Populated by [`select_unix_shell`].
+#[derive(Debug, PartialEq, Eq)]
+struct UnixShell {
+    path: String,
+    /// `true` if the shell is a known POSIX-ish login shell that understands
+    /// `-l`. Unknown shells are launched without the flag — passing `-l` to
+    /// a shell that does not accept it would crash the terminal at startup.
+    login_arg: bool,
+}
+
+/// Shells that accept `-l` to run as a login shell, loading user rc/profile
+/// files. `sh` is included because many systems symlink `/bin/sh` to one of
+/// these; `dash` and `ksh` are listed for minimal distros.
+const KNOWN_LOGIN_SHELLS: &[&str] = &["bash", "zsh", "fish", "ksh", "dash", "sh"];
+
+/// Picks the shell to launch on Unix. Tries in order:
+/// 1. `$SHELL` if the binary exists.
+/// 2. `/bin/bash` if it exists.
+/// 3. `/bin/sh` as the last resort (POSIX-mandated).
+///
+/// Pure over `env` / `exists` for testability: unit tests inject stubs and
+/// the production call site wires them to `std::env::var` and
+/// `Path::exists`.
+fn select_unix_shell<E, X>(env: E, exists: X) -> UnixShell
+where
+    E: Fn(&str) -> Option<String>,
+    X: Fn(&str) -> bool,
+{
+    if let Some(path) = env("SHELL") {
+        if !path.is_empty() && exists(&path) {
+            let name = std::path::Path::new(&path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            let login_arg = KNOWN_LOGIN_SHELLS.contains(&name);
+            return UnixShell { path, login_arg };
+        }
+    }
+    if exists("/bin/bash") {
+        return UnixShell {
+            path: "/bin/bash".to_string(),
+            login_arg: true,
+        };
+    }
+    // POSIX mandates `/bin/sh`; if even that is gone the PTY spawn will
+    // fail below and `spawn_pty` surfaces the error to the caller.
+    UnixShell {
+        path: "/bin/sh".to_string(),
+        login_arg: false,
+    }
+}
+
 fn split_utf8_safely(buf: &[u8]) -> usize {
     match std::str::from_utf8(buf) {
         Ok(_) => buf.len(),
@@ -246,8 +299,18 @@ pub fn spawn_pty<R: Runtime>(
         c.arg("-NoExit"); // Keep running
         c
     } else {
-        let mut c = CommandBuilder::new("bash");
-        c.arg("-l"); // Login shell to load .bash_profile
+        // Respect the user's login shell (`$SHELL`) when present and
+        // executable; fall back to `/bin/bash`, then `/bin/sh`. Hardcoding
+        // `bash` used to break on macOS Catalina+ (default is zsh) and any
+        // minimal Linux image that ships without bash.
+        let shell = select_unix_shell(
+            |k| std::env::var(k).ok(),
+            |p| std::path::Path::new(p).exists(),
+        );
+        let mut c = CommandBuilder::new(&shell.path);
+        if shell.login_arg {
+            c.arg("-l");
+        }
         c
     };
 
@@ -448,6 +511,133 @@ pub fn kill_pty(state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>) -> Result
         old_state.shutdown_and_join();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod shell_selection_tests {
+    use super::{select_unix_shell, UnixShell};
+
+    fn no_env(_: &str) -> Option<String> {
+        None
+    }
+
+    #[test]
+    fn uses_shell_env_when_set_and_exists() {
+        let shell = select_unix_shell(
+            |k| {
+                if k == "SHELL" {
+                    Some("/usr/bin/zsh".to_string())
+                } else {
+                    None
+                }
+            },
+            |p| p == "/usr/bin/zsh",
+        );
+        assert_eq!(
+            shell,
+            UnixShell {
+                path: "/usr/bin/zsh".to_string(),
+                login_arg: true,
+            }
+        );
+    }
+
+    #[test]
+    fn falls_back_to_bash_when_shell_env_unset() {
+        let shell = select_unix_shell(no_env, |p| p == "/bin/bash");
+        assert_eq!(
+            shell,
+            UnixShell {
+                path: "/bin/bash".to_string(),
+                login_arg: true,
+            }
+        );
+    }
+
+    #[test]
+    fn falls_back_to_bash_when_shell_env_points_at_missing_binary() {
+        let shell = select_unix_shell(
+            |k| {
+                if k == "SHELL" {
+                    Some("/usr/local/bin/missing".to_string())
+                } else {
+                    None
+                }
+            },
+            |p| p == "/bin/bash",
+        );
+        assert_eq!(shell.path, "/bin/bash");
+    }
+
+    #[test]
+    fn final_fallback_is_posix_sh_without_login_flag() {
+        // No $SHELL, no /bin/bash — a minimal container image that only
+        // ships busybox, for example. Must not panic; must spawn *something*
+        // that has a chance of working.
+        let shell = select_unix_shell(no_env, |_| false);
+        assert_eq!(
+            shell,
+            UnixShell {
+                path: "/bin/sh".to_string(),
+                login_arg: false,
+            }
+        );
+    }
+
+    #[test]
+    fn recognises_common_login_shells() {
+        for name in ["bash", "zsh", "fish", "ksh", "dash", "sh"] {
+            let path = format!("/usr/bin/{name}");
+            let path_clone = path.clone();
+            let shell = select_unix_shell(
+                |k| {
+                    if k == "SHELL" {
+                        Some(path_clone.clone())
+                    } else {
+                        None
+                    }
+                },
+                |p| p == path,
+            );
+            assert!(shell.login_arg, "{name} should accept -l");
+            assert_eq!(shell.path, path);
+        }
+    }
+
+    #[test]
+    fn unknown_shell_skips_login_flag() {
+        // Any shell we do not recognize gets launched without `-l` because
+        // passing an unknown flag would crash the terminal at startup.
+        let shell = select_unix_shell(
+            |k| {
+                if k == "SHELL" {
+                    Some("/opt/weirdshell/bin/ws".to_string())
+                } else {
+                    None
+                }
+            },
+            |p| p == "/opt/weirdshell/bin/ws",
+        );
+        assert_eq!(shell.path, "/opt/weirdshell/bin/ws");
+        assert!(!shell.login_arg);
+    }
+
+    #[test]
+    fn empty_shell_env_falls_through_to_fallback() {
+        // Some environments set `SHELL=` literally; treat it the same as
+        // unset so we do not try to spawn an empty-path binary.
+        let shell = select_unix_shell(
+            |k| {
+                if k == "SHELL" {
+                    Some(String::new())
+                } else {
+                    None
+                }
+            },
+            |p| p == "/bin/bash",
+        );
+        assert_eq!(shell.path, "/bin/bash");
+    }
 }
 
 #[cfg(test)]
