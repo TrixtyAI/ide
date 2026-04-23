@@ -1,6 +1,7 @@
 mod about;
 mod error;
 mod fs_atomic;
+mod fs_guard;
 mod fs_watcher;
 mod http;
 mod pty;
@@ -10,6 +11,7 @@ use error::redact_user_paths;
 mod extensions;
 use extensions::*;
 
+use fs_guard::{new_workspace_state, resolve_within_workspace, set_workspace_root, WorkspaceState};
 use fs_watcher::{unwatch_all, watch_path, FsWatcherState};
 use log::{error, info, warn};
 use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
@@ -150,8 +152,12 @@ pub struct FileEntry {
 }
 
 #[tauri::command]
-fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
-    let dir_iter = match fs::read_dir(&path) {
+fn read_directory(
+    path: String,
+    workspace: tauri::State<'_, WorkspaceState>,
+) -> Result<Vec<FileEntry>, String> {
+    let resolved = resolve_within_workspace(&path, workspace.inner())?;
+    let dir_iter = match fs::read_dir(&resolved) {
         Ok(iter) => iter,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Ok(Vec::new());
@@ -186,8 +192,9 @@ fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
 const READ_FILE_MAX_BYTES: u64 = 10 * 1024 * 1024;
 
 #[tauri::command]
-fn read_file(path: String) -> Result<String, String> {
-    let metadata = fs::metadata(&path).map_err(|e| {
+fn read_file(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Result<String, String> {
+    let resolved = resolve_within_workspace(&path, workspace.inner())?;
+    let metadata = fs::metadata(&resolved).map_err(|e| {
         let err = format!("Failed to stat file {}: {}", path, e);
         // `read_file` doubles as an existence probe for the frontend (the
         // agent panel sonda `.agents/AGENTS.md`, `MEMORY.md`, etc. at
@@ -212,7 +219,7 @@ fn read_file(path: String) -> Result<String, String> {
         return Err(err);
     }
 
-    fs::read_to_string(&path).map_err(|e| {
+    fs::read_to_string(&resolved).map_err(|e| {
         let err = format!("Failed to read file {}: {}", path, e);
         // Same reasoning as the `metadata` call above: a file can vanish
         // between the stat and the read (user deleted it, git switched
@@ -226,8 +233,13 @@ fn read_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn write_file(path: String, content: String) -> Result<(), String> {
-    fs_atomic::write_atomic(std::path::Path::new(&path), content.as_bytes()).map_err(|e| {
+fn write_file(
+    path: String,
+    content: String,
+    workspace: tauri::State<'_, WorkspaceState>,
+) -> Result<(), String> {
+    let resolved = resolve_within_workspace(&path, workspace.inner())?;
+    fs_atomic::write_atomic(&resolved, content.as_bytes()).map_err(|e| {
         let err = format!("Failed to write file {}: {}", path, e);
         error!("{}", err);
         redact_user_paths(&err)
@@ -1406,8 +1418,12 @@ async fn ollama_proxy(
 }
 
 #[tauri::command]
-fn create_directory(path: String) -> Result<(), String> {
-    fs::create_dir_all(path).map_err(|e| e.to_string())
+fn create_directory(
+    path: String,
+    workspace: tauri::State<'_, WorkspaceState>,
+) -> Result<(), String> {
+    let resolved = resolve_within_workspace(&path, workspace.inner())?;
+    fs::create_dir_all(resolved).map_err(|e| redact_user_paths(&e.to_string()))
 }
 
 #[tauri::command]
@@ -1487,12 +1503,12 @@ async fn reveal_path(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn delete_path(path: String) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
-    if p.is_dir() {
-        fs::remove_dir_all(p).map_err(|e| e.to_string())
+fn delete_path(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Result<(), String> {
+    let resolved = resolve_within_workspace(&path, workspace.inner())?;
+    if resolved.is_dir() {
+        fs::remove_dir_all(&resolved).map_err(|e| redact_user_paths(&e.to_string()))
     } else {
-        fs::remove_file(p).map_err(|e| e.to_string())
+        fs::remove_file(&resolved).map_err(|e| redact_user_paths(&e.to_string()))
     }
 }
 
@@ -1534,6 +1550,7 @@ pub fn run() {
             sys: System::new_all(),
         })))
         .manage(Arc::new(Mutex::new(FsWatcherState::new())))
+        .manage::<WorkspaceState>(new_workspace_state())
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -1591,6 +1608,7 @@ pub fn run() {
             perform_web_search,
             watch_path,
             unwatch_all,
+            set_workspace_root,
             about::get_trixty_about_info
         ])
         .setup(|app| {

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { trixtyStore } from "@/api/store";
 import { logger } from "@/lib/logger";
-import { isTauri } from "@/api/tauri";
+import { isTauri, safeInvoke } from "@/api/tauri";
 
 export interface FileState {
   path: string;
@@ -39,7 +39,7 @@ interface AppContextType {
   setRightPanelOpen: (open: boolean) => void;
   setActiveSidebarTab: (tab: string) => void;
   setSidebarOpen: (open: boolean) => void;
-  setRootPath: (path: string | null) => void;
+  setRootPath: (path: string | null) => Promise<void>;
   setBottomPanelOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   handleOpenFolder: () => Promise<void>;
@@ -185,7 +185,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false);
-  const [rootPath, setRootPath] = useState<string | null>(null);
+  const [rootPath, _setRootPath] = useState<string | null>(null);
+
+  // Public `setRootPath` wrapper that syncs the Rust-side workspace guard
+  // BEFORE committing the React state. Every filesystem command (`read_file`,
+  // `write_file`, `read_directory`, `create_directory`, `delete_path`) runs a
+  // containment check against this root; returning early on failure avoids a
+  // window where components re-render with the new rootPath but the backend
+  // still guards against the old one (or no workspace at all), causing every
+  // fs call to be rejected until the sync catches up.
+  const setRootPath = useCallback(async (path: string | null): Promise<void> => {
+    if (isTauri()) {
+      try {
+        await safeInvoke("set_workspace_root", { path });
+      } catch (e) {
+        logger.error("[AppContext] Failed to sync workspace root with Rust:", e);
+        return;
+      }
+    }
+    _setRootPath(path);
+  }, []);
   const [locale, setLocaleState] = useState("en");
   const [terminalPath, setTerminalPath] = useState<string | null>(null);
 
@@ -612,12 +631,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         title: "Select Project Folder",
       });
       if (selected && typeof selected === "string") {
-        setRootPath(selected);
+        await setRootPath(selected);
       }
     } catch (err) {
       logger.error("Error opening folder dialog:", err);
     }
-  }, []);
+  }, [setRootPath]);
 
 
 
@@ -641,7 +660,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 3. Reset all React state to defaults
     setOpenFiles([]);
     setCurrentFile(null);
-    setRootPath(null);
+    await setRootPath(null);
     setChatSessions([]);
     setActiveSessionId(null);
     setAiSettings(DEFAULT_AI_SETTINGS);
@@ -658,7 +677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeout(() => {
         setIsInitialLoadComplete(true);
     }, 100);
-  }, [getSystemDefaultLocale, setLocale]);
+  }, [getSystemDefaultLocale, setLocale, setRootPath]);
 
   // Memoize the context value so unrelated provider re-renders (for example
   // an `isSettingsOpen` toggle or an `aiSettings` update) don't ship a fresh
@@ -745,6 +764,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLocale,
     isInitialLoadComplete,
     resetApp,
+    setRootPath,
   ]);
 
   return (
