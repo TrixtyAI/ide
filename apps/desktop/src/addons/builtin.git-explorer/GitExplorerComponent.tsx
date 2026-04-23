@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   Folder, File, ChevronRight, ChevronDown, RefreshCw, FolderOpen, Search,
   GitBranch, GitCommit, Upload, Plus, Sparkles, ChevronUp,
   FilePlus, FileX, FileEdit, Package, Terminal as TerminalIcon, Eye, Copy, ExternalLink, History, Trash2,
   Minus, ArrowDown, Download, GitMerge, Archive, RotateCcw, Undo2, Check, AlertTriangle
 } from "lucide-react";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { safeInvoke as invoke } from "@/api/tauri";
 import type { GitLogEntry, GitStashEntry } from "@/api/tauri";
 import { open, ask } from "@tauri-apps/plugin-dialog";
@@ -17,8 +18,16 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
 import pm from "picomatch";
+import { flattenTree, type FileEntry as FlatFileEntry } from "./flattenTree";
 
 interface FileEntry { name: string; path: string; is_dir: boolean; children?: FileEntry[]; }
+
+// Type-check that the local FileEntry shape matches the one the flatten helper
+// expects. If these ever drift, TypeScript will flag the mismatch here rather
+// than inside the Virtuoso render where the error message is noisier.
+type _FileEntryShapeCheck = FileEntry extends FlatFileEntry ? true : false;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _fileEntryShapeCheck: _FileEntryShapeCheck = true;
 interface SearchResult { file_path: string; file_name: string; line_number: number; content: string; }
 interface GitFileChange { status: string; file: string; }
 
@@ -81,6 +90,10 @@ const GitExplorerComponent: React.FC = () => {
   const branchOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const diffModalRef = useRef<HTMLDivElement | null>(null);
+  // Virtuoso imperative handle — used to scroll the selected file into view
+  // when `currentFile` changes (replaces whatever native scrollIntoView the
+  // recursive in-flow render gave us for free).
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
 
   useClickOutside(commitMenuRef, () => setCommitMenuOpen(false), commitMenuOpen);
 
@@ -219,6 +232,31 @@ const GitExplorerComponent: React.FC = () => {
     // repeated directory loading/re-expansion loops for the same selected file.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFile?.path, rootPath, loadDirectory]);
+
+  // Flat row list fed to `<Virtuoso>`. Recomputing this on every keystroke of
+  // unrelated state would defeat the point of virtualization, so it's memoized
+  // on the inputs that can actually change the visible sequence of rows.
+  const flatNodes = useMemo(
+    () => flattenTree(entries, expandedDirs, newEntry, rootPath),
+    [entries, expandedDirs, newEntry, rootPath],
+  );
+
+  // When the active editor tab changes, scroll the corresponding row into
+  // view. The recursive render used to get this for free from the browser's
+  // native scroll-into-view on selection; with Virtuoso the row may not even
+  // be mounted, so we drive it imperatively. Runs after the auto-reveal
+  // effect above has expanded ancestors (its `setExpandedDirs` updates
+  // `flatNodes` which retriggers this effect).
+  useEffect(() => {
+    if (!currentFile?.path || flatNodes.length === 0) return;
+    const idx = flatNodes.findIndex(
+      (n) => n.kind === "entry" && n.entry.path === currentFile.path,
+    );
+    if (idx < 0) return;
+    // `align: "center"` matches the common IDE pattern of keeping the active
+    // file near the vertical middle of the tree viewport.
+    virtuosoRef.current?.scrollToIndex({ index: idx, align: "center" });
+  }, [currentFile?.path, flatNodes]);
 
   const handleCreateEntry = async () => {
     if (!newEntry || !newEntryName.trim()) {
@@ -658,7 +696,7 @@ const GitExplorerComponent: React.FC = () => {
           </div>
         } />
         <div
-          className="flex-1 overflow-y-auto py-1 scrollbar-thin relative"
+          className="flex-1 min-h-0 relative"
           onContextMenu={(ev) => {
             if (ev.currentTarget === ev.target) {
               ev.preventDefault();
@@ -674,60 +712,63 @@ const GitExplorerComponent: React.FC = () => {
           }}
         >
           {!rootPath ? <Empty title={t('explorer.title')} icon={<Folder size={40} strokeWidth={1} />} /> : (
-            (function render(items: FileEntry[], level = 0): React.ReactNode {
-              return (
-                <>
-                  {items.map((e) => {
-                    const isActive = currentFile?.path === e.path;
+            // Virtualized tree: we pre-flatten the recursive `entries` into the
+            // list of currently-visible rows and hand it to react-virtuoso.
+            // Only the rows inside the viewport (+ an overscan buffer) get
+            // mounted, which is what fixes the 5k-file paint cost that used to
+            // happen on every expand / keystroke.
+            //
+            // `overscan` is generous on purpose: fast arrow-key or scrollwheel
+            // navigation through a large workspace should never flash empty
+            // rows, and the extra DOM budget is cheap relative to the full
+            // in-flow render we just deleted.
+            //
+            // ARIA: the scroller gets `role="tree"` via the `List` component
+            // override, and each row below gets `role="treeitem"` with the
+            // depth encoded as `aria-level`. The legacy render had no ARIA at
+            // all — this is a strict improvement.
+            <Virtuoso
+              ref={virtuosoRef}
+              style={{ height: "100%" }}
+              className="py-1 scrollbar-thin"
+              data={flatNodes}
+              overscan={200}
+              computeItemKey={(_index, node) =>
+                node.kind === "entry"
+                  ? `entry:${node.entry.path}`
+                  : `new-entry:${node.parentPath}`
+              }
+              components={{
+                List: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+                  function TreeList(props, ref) {
                     return (
-                      <div key={e.path}>
-                        <div
-                          onClick={() => handleEntryClick(e)}
-                          onContextMenu={(ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                            setContextMenu({ x: ev.clientX, y: ev.clientY, entry: e });
-                          }}
-                          style={{ paddingLeft: `${level * 14 + 12}px` }}
-                          className={`
-                            flex items-center py-[4px] hover:bg-white/[0.04] cursor-pointer text-[13px] gap-2 transition-colors group
-                            ${isActive ? 'bg-white/[0.08] text-white border-l-2 border-white/40' : 'text-[#999]'}
-                            ${contextMenu?.entry.path === e.path ? 'bg-white/[0.06] text-white' : ''}
-                          `}
-                        >
-                          {e.is_dir ? (expandedDirs[e.path] ? <ChevronDown size={13} className="text-[#555]" /> : <ChevronRight size={13} className="text-[#555]" />) : <div className="w-[13px]" />}
-                          {e.is_dir ? <Folder size={15} className={`${isActive ? 'text-white' : 'text-[#666]'}`} /> : <File size={15} className={`${isActive ? 'text-white' : 'text-[#444]'}`} />}
-                          <span className={`truncate text-[12px] ${isActive ? 'font-medium' : ''}`}>{e.name}</span>
-                        </div>
-
-                        {/* New Item Input Inline */}
-                        {newEntry && newEntry.parentPath === e.path && expandedDirs[e.path] && (
-                          <div style={{ paddingLeft: `${(level + 1) * 14 + 12}px` }} className="flex items-center py-1 gap-2">
-                            {newEntry.type === "file" ? <File size={13} className="text-[#444]" /> : <Folder size={13} className="text-[#666]" />}
-                            <input
-                              autoFocus
-                              value={newEntryName}
-                              onChange={(ev) => setNewEntryName(ev.target.value)}
-                              onKeyDown={(ev) => {
-                                if (ev.key === "Enter") handleCreateEntry();
-                                if (ev.key === "Escape") setNewEntry(null);
-                              }}
-                              onBlur={handleCreateEntry}
-                              aria-label={newEntry.type === "file" ? t('git.explorer.new_file') : t('git.explorer.new_folder')}
-                              className="bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white/20 w-full mr-2"
-                            />
-                          </div>
-                        )}
-
-                        {e.is_dir && expandedDirs[e.path] && e.children && render(e.children, level + 1)}
-                      </div>
+                      <div
+                        {...props}
+                        ref={ref}
+                        role="tree"
+                        aria-label={t('explorer.tree_label')}
+                      />
                     );
-                  })}
-
-                  {/* Handle new entry in the root */}
-                  {newEntry && newEntry.parentPath === rootPath && level === 0 && (
-                    <div style={{ paddingLeft: "12px" }} className="flex items-center py-1 gap-2">
-                      {newEntry.type === "file" ? <File size={13} className="text-[#444]" /> : <Folder size={13} className="text-[#666]" />}
+                  },
+                ),
+              }}
+              itemContent={(_index, node) => {
+                if (node.kind === "new-entry") {
+                  // Root-level input is narrower in the legacy render (w-32)
+                  // than the one under an expanded directory (w-full). Keep
+                  // the two widths so the visual matches pixel-for-pixel.
+                  const isRoot = node.level === 0;
+                  return (
+                    <div
+                      role="treeitem"
+                      aria-level={node.level + 1}
+                      aria-selected={false}
+                      style={{ paddingLeft: `${node.level * 14 + 12}px` }}
+                      className="flex items-center py-1 gap-2"
+                    >
+                      {node.type === "file"
+                        ? <File size={13} className="text-[#444]" />
+                        : <Folder size={13} className="text-[#666]" />}
                       <input
                         autoFocus
                         value={newEntryName}
@@ -737,14 +778,43 @@ const GitExplorerComponent: React.FC = () => {
                           if (ev.key === "Escape") setNewEntry(null);
                         }}
                         onBlur={handleCreateEntry}
-                        aria-label={newEntry.type === "file" ? t('git.explorer.new_file') : t('git.explorer.new_folder')}
-                        className="bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white/20 w-32"
+                        aria-label={node.type === "file" ? t('git.explorer.new_file') : t('git.explorer.new_folder')}
+                        className={`bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white/20 ${isRoot ? 'w-32' : 'w-full mr-2'}`}
                       />
                     </div>
-                  )}
-                </>
-              );
-            })(entries)
+                  );
+                }
+
+                const e = node.entry;
+                const level = node.level;
+                const isActive = currentFile?.path === e.path;
+                const isExpanded = e.is_dir ? !!expandedDirs[e.path] : undefined;
+                return (
+                  <div
+                    role="treeitem"
+                    aria-level={level + 1}
+                    aria-expanded={isExpanded}
+                    aria-selected={isActive}
+                    onClick={() => handleEntryClick(e)}
+                    onContextMenu={(ev) => {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      setContextMenu({ x: ev.clientX, y: ev.clientY, entry: e });
+                    }}
+                    style={{ paddingLeft: `${level * 14 + 12}px` }}
+                    className={`
+                      flex items-center py-[4px] hover:bg-white/[0.04] cursor-pointer text-[13px] gap-2 transition-colors group
+                      ${isActive ? 'bg-white/[0.08] text-white border-l-2 border-white/40' : 'text-[#999]'}
+                      ${contextMenu?.entry.path === e.path ? 'bg-white/[0.06] text-white' : ''}
+                    `}
+                  >
+                    {e.is_dir ? (expandedDirs[e.path] ? <ChevronDown size={13} className="text-[#555]" /> : <ChevronRight size={13} className="text-[#555]" />) : <div className="w-[13px]" />}
+                    {e.is_dir ? <Folder size={15} className={`${isActive ? 'text-white' : 'text-[#666]'}`} /> : <File size={15} className={`${isActive ? 'text-white' : 'text-[#444]'}`} />}
+                    <span className={`truncate text-[12px] ${isActive ? 'font-medium' : ''}`}>{e.name}</span>
+                  </div>
+                );
+              }}
+            />
           )}
         </div>
 

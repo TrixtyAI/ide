@@ -179,6 +179,7 @@ export function registerBuiltinTranslations() {
         'explorer.open_project': 'Open a project to begin',
         'explorer.open_button': 'Open Folder',
         'explorer.select_folder': 'Select Folder',
+        'explorer.tree_label': 'Explorer file tree',
 
         'panel.bottom.terminal': 'Terminal',
         'panel.bottom.terminal_tab': 'Terminal {{n}}',
@@ -591,6 +592,7 @@ export function registerBuiltinTranslations() {
         'explorer.open_project': 'Abre un proyecto para comenzar',
         'explorer.open_button': 'Abrir Carpeta',
         'explorer.select_folder': 'Seleccionar Carpeta',
+        'explorer.tree_label': 'Árbol de archivos del explorador',
 
         'panel.bottom.terminal': 'Terminal',
         'panel.bottom.terminal_tab': 'Terminal {{n}}',
