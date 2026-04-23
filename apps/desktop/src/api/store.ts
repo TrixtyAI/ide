@@ -143,6 +143,82 @@ class TrixtyStore {
     await this.store?.delete(key);
     await this.store?.save();
   }
+
+  /**
+   * Read a versioned bundle. Handles three shapes on disk:
+   *
+   * - **None** (first run / never written): returns `defaultValue`, does not
+   *   write anything.
+   * - **Legacy** (no `version` field — pre-versioning data): treats the
+   *   payload as `version: 0`, runs every registered migration up to
+   *   `currentVersion`, rewrites the envelope, returns the migrated value.
+   * - **Envelope** `{ version, data }`:
+   *   - `version === currentVersion` → return `data` unchanged.
+   *   - `version < currentVersion` → run `migrations[v]` for each step from
+   *     `version` to `currentVersion`, rewrite, return migrated value.
+   *   - `version > currentVersion` → the user downgraded; reset to
+   *     `defaultValue` with a warning. Silent data loss is worse than
+   *     asking the user to re-enter a few settings.
+   *
+   * Missing migrations at an intermediate version are tolerated: the value
+   * passes through unchanged for that step. That lets callers add a version
+   * bump without having to also ship a transformation if the change is
+   * additive (new optional field with a default).
+   */
+  async getVersioned<T>(
+    key: string,
+    currentVersion: number,
+    defaultValue: T,
+    migrations?: Record<number, (prev: unknown) => T>,
+  ): Promise<T> {
+    const raw = await this.get<unknown>(key, null);
+    if (raw === null || raw === undefined) return defaultValue;
+
+    const isEnvelope =
+      typeof raw === "object" &&
+      raw !== null &&
+      "version" in raw &&
+      typeof (raw as { version: unknown }).version === "number";
+
+    if (!isEnvelope) {
+      // Legacy payload. Treat as v0, migrate up, rewrite.
+      let current: T = raw as T;
+      for (let v = 0; v < currentVersion; v++) {
+        const mig = migrations?.[v];
+        if (mig) current = mig(current);
+      }
+      await this.setVersioned(key, current, currentVersion);
+      return current;
+    }
+
+    const envelope = raw as { version: number; data: T };
+
+    if (envelope.version === currentVersion) {
+      return envelope.data;
+    }
+
+    if (envelope.version > currentVersion) {
+      logger.warn(
+        `[Store] ${key} has version ${envelope.version}, newer than current ${currentVersion}. Resetting to defaults.`,
+      );
+      await this.setVersioned(key, defaultValue, currentVersion);
+      return defaultValue;
+    }
+
+    // envelope.version < currentVersion — run ladder.
+    let current: T = envelope.data;
+    for (let v = envelope.version; v < currentVersion; v++) {
+      const mig = migrations?.[v];
+      if (mig) current = mig(current);
+    }
+    await this.setVersioned(key, current, currentVersion);
+    return current;
+  }
+
+  /** Write a value wrapped in a version envelope. */
+  async setVersioned<T>(key: string, value: T, version: number): Promise<void> {
+    await this.set(key, { version, data: value });
+  }
 }
 
 export const trixtyStore = new TrixtyStore();
