@@ -57,6 +57,7 @@ const AiChatComponent: React.FC = () => {
     addMessageToSession,
     updateAISettings,
     aiSettings,
+    cloudEndpoint,
     editorSettings,
     systemSettings,
     locale
@@ -195,9 +196,15 @@ const AiChatComponent: React.FC = () => {
     // Sanitize the URL to avoid double slashes if endpoint has trailing slash
     const sanitizedUrl = url.replace(/([^:]\/)\/+/g, "$1");
 
+    const headers: Record<string, string> = {};
+    if (aiSettings.useCloudModel && aiSettings.cloudToken) {
+      headers["Authorization"] = `Bearer ${aiSettings.cloudToken}`;
+    }
+
     const result = await invoke("ollama_proxy", {
       method,
       url: sanitizedUrl,
+      headers,
       body: body || { type: 'version' } // Default to version if no body
     });
     return {
@@ -206,7 +213,7 @@ const AiChatComponent: React.FC = () => {
       json: async () => JSON.parse(result.body),
       text: async () => result.body
     };
-  }, []);
+  }, [aiSettings.useCloudModel, aiSettings.cloudToken]);
 
   // Fetch project tree
   useEffect(() => {
@@ -235,7 +242,8 @@ const AiChatComponent: React.FC = () => {
     const fetchModels = async () => {
       try {
         setOllamaStatus('checking');
-        const response = await proxyFetch(`${aiSettings.endpoint}/api/tags`);
+        const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+        const response = await proxyFetch(`${baseUrl}/api/tags`);
         const data = await response.json();
         if (cancelled) return;
         if (data.models) {
@@ -270,7 +278,7 @@ const AiChatComponent: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [aiSettings.endpoint, proxyFetch]);
+  }, [aiSettings.endpoint, aiSettings.useCloudModel, cloudEndpoint, proxyFetch]);
 
 
   useEffect(() => {
@@ -403,9 +411,10 @@ const AiChatComponent: React.FC = () => {
   };
 
   const unloadModel = async () => {
-    if (!selectedModel || !aiSettings.endpoint) return;
+    const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+    if (!selectedModel || !baseUrl) return;
     try {
-      await proxyFetch(`${aiSettings.endpoint}/api/generate`, "POST", {
+      await proxyFetch(`${baseUrl}/api/generate`, "POST", {
         type: 'generate',
         model: selectedModel,
         keep_alive: 0
@@ -550,7 +559,8 @@ const AiChatComponent: React.FC = () => {
         };
 
         try {
-            response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", body);
+            const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+            response = await proxyFetch(`${baseUrl}/api/chat`, "POST", body);
 
             // If failed because model doesn't support 'think', retry without it
             if (!response.ok && aiSettings.deepMode) {
@@ -558,7 +568,7 @@ const AiChatComponent: React.FC = () => {
                 if (response.status === 400 || (errorData.error && errorData.error.includes("think"))) {
                     logger.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
                   const reqBody = { ...body, think: false };
-                    response = await proxyFetch(`${aiSettings.endpoint}/api/chat`, "POST", reqBody);
+                    response = await proxyFetch(`${baseUrl}/api/chat`, "POST", reqBody);
                 }
             }
         } catch (err) {
@@ -715,11 +725,12 @@ const AiChatComponent: React.FC = () => {
         // Do nothing, user stopped intentionally
       } else {
         // Check for OOM / Connection lost
+        const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
         const isLikelyOOM = err instanceof Error && (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError"));
         const requestFailed = err instanceof Error && err.message?.includes("Ollama Request Failed");
         addMessageToSession(activeSessionId, {
           role: "ai",
-          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: aiSettings.endpoint }))
+          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: baseUrl }))
         });
       }
     } finally {
@@ -801,13 +812,15 @@ const AiChatComponent: React.FC = () => {
           {showModelMenu && (
             <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
+                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">
+                  {aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title')}
+                </span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
               </div>
               <div
                 role="listbox"
                 id="ai-model-listbox"
-                aria-label={t('ai.models.local_title')}
+                aria-label={aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title')}
                 onKeyDown={handleModelKeyDown}
                 className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
               >

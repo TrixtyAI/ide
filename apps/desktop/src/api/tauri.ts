@@ -35,7 +35,8 @@ export type OllamaRequest =
   | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean; keep_alive?: string | number }
   | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: string | number }
   | { type: 'tags' }
-  | { type: 'version' };
+  | { type: 'version' }
+  | { type: 'auth'; email?: string; password?: string };
 
 /**
  * Central registry of Tauri commands exposed to the frontend.
@@ -78,7 +79,7 @@ export interface TauriInvokeMap {
   "execute_command": { args: { command: string; args: string[]; cwd?: string | null }; return: string };
   "get_recursive_file_list": { args: { rootPath: string | null }; return: string[] };
   "get_system_health": { args: undefined; return: { cpu_usage: number; memory_usage: number } };
-  "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
+  "ollama_proxy": { args: { method: string; url: string; headers?: Record<string, string>; body?: OllamaRequest }; return: { status: number; body: string } };
   "check_update": { args: undefined; return: { version: string; body?: string | null } | null };
   "install_update": { args: undefined; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
@@ -115,6 +116,7 @@ export interface TauriInvokeMap {
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };
   "set_workspace_root": { args: { path: string | null }; return: void };
+  "get_cloud_config": { args: undefined; return: string };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
 }
 

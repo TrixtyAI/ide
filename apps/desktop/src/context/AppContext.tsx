@@ -56,6 +56,7 @@ interface AppContextType {
 
   // AI Settings
   aiSettings: AISettings;
+  cloudEndpoint: string;
   updateAISettings: (settings: Partial<AISettings>) => void;
 
   // Editor Appearance Settings
@@ -84,6 +85,8 @@ export interface AISettings {
   deepMode: boolean;
   keepAlive: number;
   loadOnStartup: boolean;
+  useCloudModel: boolean;
+  cloudToken: string;
 }
 
 export interface EditorSettings {
@@ -132,6 +135,8 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   deepMode: false,
   keepAlive: 5,
   loadOnStartup: false,
+  useCloudModel: false,
+  cloudToken: "",
 };
 
 const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -214,6 +219,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // AI Settings State
   const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
+  const [cloudEndpoint, setCloudEndpoint] = useState<string>("");
+
+  useEffect(() => {
+    safeInvoke('get_cloud_config').then(url => {
+      setCloudEndpoint(url as string);
+    });
+  }, []);
+
+  // Safety check: force local mode if cloud endpoint is invalid
+  useEffect(() => {
+    if (aiSettings.useCloudModel && (cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>")) {
+      setAiSettings(prev => ({ ...prev, useCloudModel: false }));
+    }
+  }, [cloudEndpoint, aiSettings.useCloudModel]);
 
   // Editor Settings State
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(DEFAULT_EDITOR_SETTINGS);
@@ -559,12 +578,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const index = prev.findIndex(f => f.path === path);
       if (index === -1) return prev;
       const newFiles = prev.slice(0, index + 1);
-      
+
       // If current file was to the right, switch to the target tab
       if (currentFile && prev.findIndex(f => f.path === currentFile.path) > index) {
         setCurrentFile(newFiles[index]);
       }
-      
+
       return newFiles;
     });
   }, [currentFile]);
@@ -572,12 +591,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const closeSaved = useCallback(() => {
     setOpenFiles((prev) => {
       const newFiles = prev.filter(f => f.isModified);
-      
+
       // If current file was closed, switch to the first remaining one
       if (currentFile && !currentFile.isModified) {
         setCurrentFile(newFiles.length > 0 ? newFiles[0] : null);
       }
-      
+
       return newFiles;
     });
   }, [currentFile]);
@@ -719,6 +738,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isSettingsOpen,
     setSettingsOpen: setIsSettingsOpen,
     aiSettings,
+    cloudEndpoint,
     updateAISettings,
     editorSettings,
     updateEditorSettings,
@@ -755,6 +775,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addMessageToSession,
     isSettingsOpen,
     aiSettings,
+    cloudEndpoint,
     updateAISettings,
     editorSettings,
     updateEditorSettings,

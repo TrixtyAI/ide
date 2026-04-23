@@ -6,12 +6,14 @@ import { useApp } from "@/context/AppContext";
 import { useL10n } from "@/hooks/useL10n";
 import {
   Bot,
-  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, AlertTriangle
+  BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, AlertTriangle, LogOut, Key
 } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { AuthModal } from "@/components/AuthModal";
+import { QuotaPanel } from "./QuotaPanel";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration';
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration' | 'quota';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
@@ -21,7 +23,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
     skills, activeSkills, toggleSkill, docs, activeDocs, toggleDoc,
     saveAgentFile, isLoading
   } = useAgent();
-  const { aiSettings, updateAISettings } = useApp();
+  const { aiSettings, cloudEndpoint, updateAISettings } = useApp();
   const { t } = useL10n();
 
   const getInitialContent = (tab: AgentSettingsProps['activeTab']) => {
@@ -36,6 +38,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   const [localContent, setLocalContent] = useState(() => getInitialContent(activeTab));
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const lastSyncedContentRef = useRef(localContent);
   const previousIsLoadingRef = useRef(isLoading);
@@ -77,8 +80,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
   const renderTabContent = () => {
     const projectRequiredTabs = ['manual', 'design', 'skills', 'documentations', 'memory'];
     if (!rootPath && projectRequiredTabs.includes(activeTab)) {
-      const errorMsg = activeTab === 'manual' ? t('agent.manual.no_project') : 
-                     (activeTab === 'design' ? t('agent.design.no_project') : 
+      const errorMsg = activeTab === 'manual' ? t('agent.manual.no_project') :
+        (activeTab === 'design' ? t('agent.design.no_project') :
                      (activeTab === 'skills' ? t('agent.skills.no_project') : t('agent.documentations.no_project')));
       return (
         <div className="flex flex-col items-center justify-center py-20 px-10 text-center animate-in fade-in duration-500">
@@ -222,12 +225,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 </div>
               ) : (
                 skills.map(skill => (
-                  <div 
+                  <div
                     key={skill.id}
                     onClick={() => toggleSkill(skill.id)}
                     className={`p-4 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      activeSkills.includes(skill.id) 
-                        ? "bg-blue-500/10 border-blue-500/30" 
+                      activeSkills.includes(skill.id)
+                        ? "bg-blue-500/10 border-blue-500/30"
                         : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
                     }`}
                   >
@@ -267,12 +270,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 </div>
               ) : (
                 docs.map(doc => (
-                  <div 
+                  <div
                     key={doc.id}
                     onClick={() => toggleDoc(doc.id)}
                     className={`p-4 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      activeDocs.includes(doc.id) 
-                        ? "bg-blue-500/10 border-blue-500/30" 
+                      activeDocs.includes(doc.id)
+                        ? "bg-blue-500/10 border-blue-500/30"
                         : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
                     }`}
                   >
@@ -330,7 +333,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   <span>24h</span>
                 </div>
                 <p id="agent-config-keepalive-desc" className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
-                
+
                 <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex gap-3">
                    <AlertCircle size={16} strokeWidth={1.5} className="text-amber-500 shrink-0 mt-0.5" />
                    <p className="text-[11px] text-amber-500/80 leading-relaxed italic">
@@ -372,9 +375,73 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   </div>
                 </div>
               </div>
+
+              <div className="h-px bg-white/5" />
+
+              {/* Cloud Model Toggle */}
+              <div className="space-y-4">
+                <div className={`flex items-center justify-between group ${(cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>") ? "opacity-50 grayscale pointer-events-none" : ""}`}>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[12px] font-bold text-white tracking-tight">{t('agent.configuration.usecloud_label')}</label>
+                    <p className="text-[11px] text-[#555] max-w-sm">
+                      {(cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>") 
+                        ? "Cloud service is currently unavailable. Please check back later."
+                        : t('agent.configuration.usecloud_desc')
+                      }
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => updateAISettings({ useCloudModel: !aiSettings.useCloudModel })}
+                    disabled={cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>"}
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${aiSettings.useCloudModel ? "bg-purple-600 shadow-lg shadow-purple-900/40" : "bg-[#1a1a1a] border border-white/5"
+                      }`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${aiSettings.useCloudModel ? "left-7" : "left-1"
+                      }`} />
+                  </button>
+                </div>
+
+                {aiSettings.useCloudModel && cloudEndpoint !== "" && cloudEndpoint !== "<cloud_endpoint>" && (
+                  <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
+                    <div className="pt-2">
+                      {aiSettings.cloudToken ? (
+                        <div className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                              <Key size={14} className="text-purple-400" />
+                            </div>
+                            <div>
+                              <p className="text-[12px] font-bold text-white">Authenticated</p>
+                              <p className="text-[10px] text-purple-400/80">Token is securely stored</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => updateAISettings({ cloudToken: '' })}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-red-500/20 text-[#888] hover:text-red-400 border border-[#333] hover:border-red-500/30 rounded-md transition-colors text-[11px] font-bold"
+                          >
+                            <LogOut size={12} />
+                            {t('auth.logout')}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowAuthModal(true)}
+                          className="w-full py-2.5 bg-[#1a1a1a] hover:bg-purple-600 border border-[#333] hover:border-purple-500 text-white text-[12px] font-bold rounded-lg transition-all flex items-center justify-center gap-2 group"
+                        >
+                          <Lock size={14} className="text-[#888] group-hover:text-white transition-colors" />
+                          {t('auth.signin_button')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
+            <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
           </div>
         );
+      case 'quota':
+        return <QuotaPanel />;
       case 'memory':
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">

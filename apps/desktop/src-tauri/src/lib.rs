@@ -98,6 +98,11 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 }
 
 #[tauri::command]
+fn get_cloud_config() -> String {
+    "<cloud_endpoint>".to_string()
+}
+
+#[tauri::command]
 async fn install_update(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     use tauri::Emitter;
     use tauri_plugin_updater::UpdaterExt;
@@ -1392,6 +1397,7 @@ fn is_metadata_or_link_local(host: &str) -> bool {
 async fn ollama_proxy(
     method: String,
     url: String,
+    headers: Option<std::collections::HashMap<String, String>>,
     body: Option<serde_json::Value>,
 ) -> Result<ProxyResponse, String> {
     validate_ollama_url(&url)?;
@@ -1402,6 +1408,12 @@ async fn ollama_proxy(
         "GET" => client.get(&url),
         _ => return Err(format!("Unsupported method: {}", method)),
     };
+
+    if let Some(h) = headers {
+        for (key, value) in h {
+            request = request.header(key, value);
+        }
+    }
 
     if let Some(json_body) = body {
         request = request.json(&json_body);
@@ -1609,6 +1621,7 @@ pub fn run() {
             watch_path,
             unwatch_all,
             set_workspace_root,
+            get_cloud_config,
             about::get_trixty_about_info
         ])
         .setup(|app| {

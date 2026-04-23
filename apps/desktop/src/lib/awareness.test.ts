@@ -33,6 +33,9 @@ const baseParams = {
       deepMode: false,
       keepAlive: 5,
       loadOnStartup: false,
+      useCloudModel: false,
+      cloudEndpoint: "http://backends-ollama-ihaeqz-bbb2b8-149-50-136-115.traefik.me",
+      cloudToken: "",
     },
     editor: {
       fontSize: 14,
