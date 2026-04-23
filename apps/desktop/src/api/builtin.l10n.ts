@@ -278,6 +278,8 @@ export function registerBuiltinTranslations() {
         'ai.approval.exec_args_label': 'Arguments (one per line)',
         'ai.approval.exec_args_placeholder': 'install\n--no-frozen-lockfile',
         'ai.approval.exec_cwd_label': 'Working directory',
+        'ai.reviewer.title': 'Reviewer',
+        'ai.reviewer.pending_hint': 'Pending approval — see the Reviewer panel on the right.',
 
         'ai.error.repeat_failure': 'I tried the same action twice and it kept failing. Stopping to avoid wasted tokens. Please review the last error and guide me.',
         'ai.plan.saved_notice': 'Plan saved to .agents/PLAN.md. Switch to Agent mode to execute.',
@@ -687,6 +689,8 @@ export function registerBuiltinTranslations() {
         'ai.approval.exec_args_label': 'Argumentos (uno por línea)',
         'ai.approval.exec_args_placeholder': 'install\n--no-frozen-lockfile',
         'ai.approval.exec_cwd_label': 'Directorio de trabajo',
+        'ai.reviewer.title': 'Revisor',
+        'ai.reviewer.pending_hint': 'Aprobación pendiente — revísalo en el panel Revisor a la derecha.',
 
         'ai.error.repeat_failure': 'Intenté la misma acción dos veces y siguió fallando. Me detengo para no gastar tokens. Revisa el último error y dame una pista.',
         'ai.plan.saved_notice': 'Plan guardado en .agents/PLAN.md. Cambia a modo Agente para ejecutarlo.',

@@ -53,6 +53,23 @@ interface AppContextType {
   deleteSession: (id: string) => void;
   switchSession: (id: string) => void;
   addMessageToSession: (sessionId: string, message: ChatMessage) => void;
+  /**
+   * Streaming hook: update the last message in a session when it is an
+   * assistant (`role: "ai"`) entry produced by the current stream. Used by
+   * the AI-chat panel to progressively render tokens without remounting
+   * the whole message list per delta. Callers typically push a placeholder
+   * AI message first (with `addMessageToSession`) and then pass deltas
+   * through here until the stream's `done` chunk arrives.
+   */
+  appendToLastAiMessage: (sessionId: string, delta: string) => void;
+  /**
+   * Finalizer counterpart to `appendToLastAiMessage`. Callers hand in the
+   * authoritative `text` / `thinking` from the stream's `done` chunk; the
+   * context mutates the last AI message in place. Both fields are optional
+   * so a turn that only adds a thinking trace doesn't have to re-supply
+   * the streamed text.
+   */
+  finalizeLastAiMessage: (sessionId: string, patch: { text?: string; thinking?: string }) => void;
 
   // AI Settings
   aiSettings: AISettings;
@@ -500,6 +517,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   }, []);
 
+  // Progressive update for streamed assistant responses. Only mutates the
+  // last message if it is an AI entry (placeholder already pushed by the
+  // streaming caller). Ignored otherwise so a delta arriving after the chat
+  // has moved on (session switch, new user message) cannot corrupt history.
+  const appendToLastAiMessage = useCallback((sessionId: string, delta: string) => {
+    if (!delta) return;
+    setChatSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      if (s.messages.length === 0) return s;
+      const last = s.messages[s.messages.length - 1];
+      if (last.role !== "ai") return s;
+      const updated: ChatMessage = { ...last, text: last.text + delta };
+      return {
+        ...s,
+        messages: [...s.messages.slice(0, -1), updated],
+        lastModified: Date.now(),
+      };
+    }));
+  }, []);
+
+  // Called at the end of a streamed turn to attach metadata (thinking trace,
+  // authoritative final text from the `done` chunk) to the placeholder
+  // bubble the streaming path has been appending to. If the last entry is
+  // not an AI message, or if the message has been replaced by the user in
+  // the meantime, this is a no-op — matching `appendToLastAiMessage`'s
+  // defensive semantics.
+  const finalizeLastAiMessage = useCallback(
+    (sessionId: string, patch: { text?: string; thinking?: string }) => {
+      setChatSessions(prev => prev.map(s => {
+        if (s.id !== sessionId) return s;
+        if (s.messages.length === 0) return s;
+        const last = s.messages[s.messages.length - 1];
+        if (last.role !== "ai") return s;
+        const updated: ChatMessage = {
+          ...last,
+          text: patch.text !== undefined ? patch.text : last.text,
+          thinking: patch.thinking !== undefined ? patch.thinking : last.thinking,
+        };
+        return {
+          ...s,
+          messages: [...s.messages.slice(0, -1), updated],
+          lastModified: Date.now(),
+        };
+      }));
+    },
+    [],
+  );
+
   const openTerminal = useCallback((path: string) => {
     setTerminalPath(prev => prev === path ? prev : path); // no-op if same path
     setIsBottomPanelOpen(true);
@@ -716,6 +781,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteSession,
     switchSession,
     addMessageToSession,
+    appendToLastAiMessage,
+    finalizeLastAiMessage,
     isSettingsOpen,
     setSettingsOpen: setIsSettingsOpen,
     aiSettings,
@@ -753,6 +820,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteSession,
     switchSession,
     addMessageToSession,
+    appendToLastAiMessage,
+    finalizeLastAiMessage,
     isSettingsOpen,
     aiSettings,
     updateAISettings,

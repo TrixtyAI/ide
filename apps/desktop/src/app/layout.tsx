@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import { ExtensionProvider } from "@/context/ExtensionContext";
 import { AgentProvider } from "@/context/AgentContext";
+import { ReviewProvider } from "@/context/ReviewContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import HtmlLangSync from "@/components/HtmlLangSync";
 
@@ -18,8 +19,10 @@ export default function RootLayout({
           <AppProvider>
             <AgentProvider>
               <ExtensionProvider>
-                <HtmlLangSync />
-                {children}
+                <ReviewProvider>
+                  <HtmlLangSync />
+                  {children}
+                </ReviewProvider>
               </ExtensionProvider>
             </AgentProvider>
           </AppProvider>

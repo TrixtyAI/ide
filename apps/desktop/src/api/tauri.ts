@@ -79,6 +79,8 @@ export interface TauriInvokeMap {
   "get_recursive_file_list": { args: { rootPath: string | null }; return: string[] };
   "get_system_health": { args: undefined; return: { cpu_usage: number; memory_usage: number } };
   "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
+  "ollama_proxy_stream": { args: { streamId: string; method: string; url: string; body: OllamaRequest }; return: void };
+  "ollama_proxy_cancel": { args: { streamId: string }; return: void };
   "check_update": { args: undefined; return: { version: string; body?: string | null } | null };
   "install_update": { args: undefined; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
