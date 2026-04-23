@@ -9,6 +9,8 @@ import TitleBar from "@/components/TitleBar";
 import UpdaterDialog from "@/components/UpdaterDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useApp } from "@/context/AppContext";
+import { useReview, isReviewerEligible } from "@/context/ReviewContext";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PluginManager } from "@/api/PluginManager";
 
 // Code-split heavy panels so Monaco, xterm, Marketplace, AI chat, and the
@@ -19,6 +21,11 @@ import { PluginManager } from "@/api/PluginManager";
 const EditorArea = dynamic(() => import("@/components/EditorArea"), { ssr: false });
 const BottomPanel = dynamic(() => import("@/components/BottomPanel"), { ssr: false });
 const RightPanelSlot = dynamic(() => import("@/components/slots/RightPanelSlot"), { ssr: false });
+// The Reviewer pulls in Monaco's DiffEditor through ToolApprovalPanel, so
+// keep it off the boot path. It only mounts when a destructive tool
+// approval is pending and the viewport has room, which is rare enough that
+// async-loading is an obvious win.
+const ReviewerPanel = dynamic(() => import("@/components/ReviewerPanel"), { ssr: false });
 const SettingsView = dynamic(() => import("@/components/SettingsView"), { ssr: false });
 // Onboarding only renders during first-run and pulls ~50 KB of framer-motion
 // behind it. Dynamic-load it so returning users never pay for the module.
@@ -321,6 +328,12 @@ export default function Home() {
             </ErrorBoundary>
           </div>
         )}
+
+        {/* Reviewer Panel — only mounts when there's a destructive tool
+            approval pending AND the viewport is wide enough to spare the
+            480 px column. On narrower windows the AI chat falls back to the
+            inline approval dialog so the approval UX never becomes unreachable. */}
+        <ReviewerColumn />
       </div>
 
       {/* Settings is a modal: only mount it when open so `next/dynamic` can
@@ -330,6 +343,25 @@ export default function Home() {
 
       {/* Updater notification — checks on mount, shows toast when update is available */}
       <UpdaterDialog />
+    </div>
+  );
+}
+
+// Factored out so the `useReview` / `useMediaQuery` subscriptions only drive
+// re-renders of this column, not the whole page tree. Render-noops when there
+// is no destructive tool to approve, or when the viewport is too narrow to
+// fit both the AI panel and the Reviewer without crushing the editor.
+function ReviewerColumn() {
+  const { pendingTool } = useReview();
+  const canDockReviewer = useMediaQuery("(min-width: 1100px)");
+  if (!pendingTool || !isReviewerEligible(pendingTool.name) || !canDockReviewer) {
+    return null;
+  }
+  return (
+    <div className="w-[480px] shrink-0 h-full">
+      <ErrorBoundary name="Reviewer Panel">
+        <ReviewerPanel />
+      </ErrorBoundary>
     </div>
   );
 }
