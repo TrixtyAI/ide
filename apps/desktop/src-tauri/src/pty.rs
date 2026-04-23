@@ -1,6 +1,8 @@
 use log::error;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use serde::Serialize;
 use std::{
+    collections::HashMap,
     io::{Read, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -102,13 +104,18 @@ fn split_utf8_safely(buf: &[u8]) -> usize {
 const EMIT_BUFFER_BYTES: usize = 16 * 1024;
 const EMIT_INTERVAL: Duration = Duration::from_millis(10);
 
-pub struct PtyState {
+/// A single live PTY session. The `PtySessions` map holds one per `session_id`
+/// so multiple terminal tabs can run concurrently without their output
+/// crossing over.
+pub struct PtyHandle {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub master: Box<dyn portable_pty::MasterPty + Send>,
-    /// Set by `kill_pty` (or the `Drop` impl) to tell the reader thread it
-    /// must stop emitting events. The thread checks this flag between
-    /// reads so bytes still in flight from a previous shell cannot land in
-    /// the tab of the next one.
+    /// Set by `kill_pty` (or the session-replacement path inside
+    /// `spawn_pty`) to tell the reader/emitter threads they must stop
+    /// forwarding events. The threads check this flag so bytes still in
+    /// flight from a previous shell cannot land in the tab of the next
+    /// one — critical now that multiple tabs share a single `pty-output`
+    /// event channel distinguished only by `session_id`.
     shutdown: Arc<AtomicBool>,
     /// Owned handles to the reader + emitter threads. Held in `Option`s so
     /// `shutdown_and_join` can take them out (joining consumes the handle)
@@ -117,14 +124,13 @@ pub struct PtyState {
     emitter_handle: Option<JoinHandle<()>>,
 }
 
-impl PtyState {
+impl PtyHandle {
     /// Flags the reader for shutdown and waits for both worker threads to
-    /// finish. Called explicitly by `spawn_pty` (when replacing an old
-    /// session) and `kill_pty` (when the user closes the terminal) so the
-    /// next session cannot receive stale `pty-output` events from the old
-    /// reader.
+    /// finish. Called by `spawn_pty` (when replacing an existing session
+    /// id), `kill_pty` (when the user closes a tab), and the per-session
+    /// teardown in `kill_all_ptys`.
     ///
-    /// Both callers always go through this path; there is no implicit
+    /// Callers always go through this path; there is no implicit
     /// `Drop`-based teardown, because `Drop` would have to run on
     /// `&mut self` and could not drop `master` before `handle.join()`,
     /// which would deadlock (the reader is blocked inside `read`, and
@@ -137,7 +143,7 @@ impl PtyState {
         // supported platforms; the reader thread exits, its `Sender`
         // drops, the emitter's `recv_timeout` returns `Disconnected`, and
         // both joins return promptly.
-        let PtyState {
+        let PtyHandle {
             master,
             reader_handle,
             emitter_handle,
@@ -151,6 +157,24 @@ impl PtyState {
             let _ = handle.join();
         }
     }
+}
+
+/// Tauri-managed state: one `PtyHandle` per live session, keyed on the
+/// frontend-supplied `session_id` (currently a UUID generated per tab).
+pub type PtySessions = Arc<Mutex<HashMap<String, PtyHandle>>>;
+
+pub fn new_pty_sessions() -> PtySessions {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Payload of the `pty-output` event. Every byte stream is tagged with the
+/// originating `session_id` so the frontend can route output to the right
+/// xterm instance without a separate event channel per tab.
+#[derive(Clone, Serialize)]
+struct PtyOutputPayload {
+    #[serde(rename = "sessionId")]
+    session_id: String,
+    data: String,
 }
 
 /// Strips ANSI escape sequences that have no legitimate reason to travel
@@ -234,16 +258,18 @@ fn skip_to_string_terminator<I: Iterator<Item = char>>(
 }
 
 /// Flushes the UTF-8-safe prefix of `combined` to the frontend as a single
-/// `pty-output` event. Returns `true` if a flush actually went over the
-/// bridge so callers can update their timestamp.
+/// `pty-output` event, tagged with `session_id` so the renderer can route
+/// it to the correct xterm instance. Returns `true` if a flush actually
+/// went over the bridge so callers can update their timestamp.
 ///
 /// Bytes that form a truncated UTF-8 codepoint at the very tail stay in
 /// `combined` for the next flush — same leftover-aware decoding the
 /// per-read loop used before this refactor. When `shutdown` is already
 /// set we drop the emit silently so a killed session cannot leak stale
-/// output into a freshly opened tab.
+/// output into another tab sharing the same event channel.
 fn flush_combined<R: Runtime>(
     app: &AppHandle<R>,
+    session_id: &str,
     combined: &mut Vec<u8>,
     shutdown: &AtomicBool,
 ) -> bool {
@@ -259,7 +285,13 @@ fn flush_combined<R: Runtime>(
         return false;
     }
     let chunk = String::from_utf8_lossy(&combined[..split]).into_owned();
-    let _ = app.emit("pty-output", chunk);
+    let _ = app.emit(
+        "pty-output",
+        PtyOutputPayload {
+            session_id: session_id.to_string(),
+            data: chunk,
+        },
+    );
     combined.drain(..split);
     true
 }
@@ -267,22 +299,30 @@ fn flush_combined<R: Runtime>(
 #[tauri::command]
 pub fn spawn_pty<R: Runtime>(
     app: AppHandle<R>,
-    state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
+    state: tauri::State<'_, PtySessions>,
+    #[allow(non_snake_case)] sessionId: String,
     cwd: Option<String>,
     rows: Option<u16>,
     cols: Option<u16>,
 ) -> Result<(), String> {
-    // Take any previous session out of the mutex *before* tearing it down.
-    // Holding the lock across `shutdown_and_join` would serialize the join
-    // with every other PTY command and could deadlock if the reader was
-    // trying to re-enter (e.g. via `emit`). Dropping `old` here flushes
-    // the old thread to completion with the lock released.
+    let session_id = sessionId;
+    if session_id.is_empty() {
+        return Err("session_id must not be empty".to_string());
+    }
+
+    // If a session with this id already exists, take it out and tear it
+    // down before creating the replacement. This path runs when a tab
+    // remounts (React strict mode or a fast reload) and re-invokes spawn
+    // with the same id. Holding the map lock across `shutdown_and_join`
+    // would serialize the join with every other PTY command and could
+    // deadlock if the reader was trying to re-enter via `emit`; taking
+    // ownership and dropping the guard first avoids that.
     let old = {
         let mut guard = state.lock().map_err(|e| e.to_string())?;
-        guard.take()
+        guard.remove(&session_id)
     };
-    if let Some(old_state) = old {
-        old_state.shutdown_and_join();
+    if let Some(old_handle) = old {
+        old_handle.shutdown_and_join();
     }
 
     let pty_system = native_pty_system();
@@ -367,6 +407,7 @@ pub fn spawn_pty<R: Runtime>(
 
     let shutdown = Arc::new(AtomicBool::new(false));
     let shutdown_for_emitter = shutdown.clone();
+    let session_id_for_emitter = session_id.clone();
 
     // Two-thread architecture:
     //
@@ -380,7 +421,8 @@ pub fn spawn_pty<R: Runtime>(
     //   whichever comes first. Preserves the UTF-8 leftover handling from
     //   the previous single-thread implementation via `split_utf8_safely`,
     //   so a multi-byte codepoint that straddles a read boundary still
-    //   arrives intact.
+    //   arrives intact. Every emit is tagged with `session_id` so the
+    //   renderer can dispatch to the right xterm tab.
     let (tx, rx) = mpsc::channel::<Vec<u8>>();
 
     let reader_handle = thread::spawn(move || {
@@ -416,24 +458,45 @@ pub fn spawn_pty<R: Runtime>(
                 Ok(bytes) => {
                     combined.extend_from_slice(&bytes);
                     if combined.len() >= EMIT_BUFFER_BYTES {
-                        flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                        flush_combined(
+                            &app,
+                            &session_id_for_emitter,
+                            &mut combined,
+                            &shutdown_for_emitter,
+                        );
                     }
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     // No new data for `EMIT_INTERVAL`; flush whatever is
                     // buffered so trickling output (e.g. a shell prompt
                     // after an idle pause) surfaces promptly.
-                    flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                    flush_combined(
+                        &app,
+                        &session_id_for_emitter,
+                        &mut combined,
+                        &shutdown_for_emitter,
+                    );
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
                     // Reader dropped its `Sender` — either EOF, error, or
                     // shutdown. One final flush, including any trailing
                     // truncated UTF-8 bytes (lossy at worst), so users
                     // still see the last prompt/output byte-for-byte.
-                    flush_combined(&app, &mut combined, &shutdown_for_emitter);
+                    flush_combined(
+                        &app,
+                        &session_id_for_emitter,
+                        &mut combined,
+                        &shutdown_for_emitter,
+                    );
                     if !combined.is_empty() && !shutdown_for_emitter.load(Ordering::Acquire) {
                         let tail = String::from_utf8_lossy(&combined).into_owned();
-                        let _ = app.emit("pty-output", tail);
+                        let _ = app.emit(
+                            "pty-output",
+                            PtyOutputPayload {
+                                session_id: session_id_for_emitter.clone(),
+                                data: tail,
+                            },
+                        );
                     }
                     break;
                 }
@@ -441,7 +504,7 @@ pub fn spawn_pty<R: Runtime>(
         }
     });
 
-    let pty_state = PtyState {
+    let handle = PtyHandle {
         writer: Arc::new(Mutex::new(writer)),
         master: pair.master,
         shutdown,
@@ -449,66 +512,87 @@ pub fn spawn_pty<R: Runtime>(
         emitter_handle: Some(emitter_handle),
     };
 
-    *state.lock().map_err(|e| {
-        let err = e.to_string();
-        error!("PTY state lock failed: {}", err);
-        err
-    })? = Some(pty_state);
+    state
+        .lock()
+        .map_err(|e| {
+            let err = e.to_string();
+            error!("PTY state lock failed: {}", err);
+            err
+        })?
+        .insert(session_id, handle);
 
     Ok(())
 }
 
 #[tauri::command]
 pub fn write_to_pty(
+    #[allow(non_snake_case)] sessionId: String,
     data: String,
-    state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
+    state: tauri::State<'_, PtySessions>,
 ) -> Result<(), String> {
     let sanitized = sanitize_pty_input(&data);
-    let guard = state.lock().map_err(|e| e.to_string())?;
-    if let Some(s) = guard.as_ref() {
-        let mut writer = s.writer.lock().map_err(|e| e.to_string())?;
-        writer
-            .write_all(sanitized.as_bytes())
-            .map_err(|e| e.to_string())?;
-        writer.flush().map_err(|e| e.to_string())?;
-    }
+    // Clone the `Arc<Mutex<writer>>` out with the map lock held only
+    // briefly, then release it before doing the I/O. Holding the outer
+    // lock across a `write_all` would serialize every PTY command against
+    // a single tab's flush latency.
+    let writer = {
+        let guard = state.lock().map_err(|e| e.to_string())?;
+        guard
+            .get(&sessionId)
+            .ok_or_else(|| format!("No PTY session with id {}", sessionId))?
+            .writer
+            .clone()
+    };
+    let mut writer = writer.lock().map_err(|e| e.to_string())?;
+    writer
+        .write_all(sanitized.as_bytes())
+        .map_err(|e| e.to_string())?;
+    writer.flush().map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn resize_pty(
+    #[allow(non_snake_case)] sessionId: String,
     rows: u16,
     cols: u16,
-    state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>,
+    state: tauri::State<'_, PtySessions>,
 ) -> Result<(), String> {
     let guard = state.lock().map_err(|e| e.to_string())?;
-    if let Some(s) = guard.as_ref() {
-        s.master
-            .resize(PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|e| e.to_string())?;
-    }
+    let handle = guard
+        .get(&sessionId)
+        .ok_or_else(|| format!("No PTY session with id {}", sessionId))?;
+    handle
+        .master
+        .resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
-/// Kills the currently active PTY session (if any). Flags the reader
-/// thread for shutdown, drops the master to unblock it, and joins the
-/// thread before returning so `spawn_pty` can safely reuse the slot.
+/// Kills the PTY session identified by `sessionId` (if any). Flags the
+/// reader thread for shutdown, drops the master to unblock it, and joins
+/// both worker threads before returning so `spawn_pty` can safely reuse
+/// the id and so no stale `pty-output` event can leak into a freshly
+/// opened tab. A missing id is treated as a no-op.
 #[tauri::command]
-pub fn kill_pty(state: tauri::State<'_, Arc<Mutex<Option<PtyState>>>>) -> Result<(), String> {
-    // Take the state out of the mutex *before* tearing it down. Joining
+pub fn kill_pty(
+    #[allow(non_snake_case)] sessionId: String,
+    state: tauri::State<'_, PtySessions>,
+) -> Result<(), String> {
+    // Take the handle out of the map *before* tearing it down. Joining
     // inside the lock would block every other PTY command and could
     // deadlock on a reader that re-enters via `emit`.
     let taken = {
         let mut guard = state.lock().map_err(|e| e.to_string())?;
-        guard.take()
+        guard.remove(&sessionId)
     };
-    if let Some(old_state) = taken {
-        old_state.shutdown_and_join();
+    if let Some(handle) = taken {
+        handle.shutdown_and_join();
     }
     Ok(())
 }
@@ -637,6 +721,40 @@ mod shell_selection_tests {
             |p| p == "/bin/bash",
         );
         assert_eq!(shell.path, "/bin/bash");
+    }
+}
+
+#[cfg(test)]
+mod payload_tests {
+    use super::PtyOutputPayload;
+
+    /// Contract test: the frontend listens to `pty-output` and filters on
+    /// `sessionId` (camelCase). Renaming the Rust field without updating the
+    /// renamed serde attribute would silently break every tab's output
+    /// routing, so pin the on-the-wire shape here.
+    #[test]
+    fn payload_serializes_with_camel_case_session_id() {
+        let payload = PtyOutputPayload {
+            session_id: "abc-123".to_string(),
+            data: "hello".to_string(),
+        };
+        let json = serde_json::to_string(&payload).expect("serialize payload");
+        assert!(
+            json.contains("\"sessionId\":\"abc-123\""),
+            "expected camelCase sessionId in {json}"
+        );
+        assert!(
+            !json.contains("\"session_id\""),
+            "snake_case field leaked: {json}"
+        );
+        assert!(json.contains("\"data\":\"hello\""), "data missing: {json}");
+    }
+
+    #[test]
+    fn new_pty_sessions_starts_empty() {
+        let sessions = super::new_pty_sessions();
+        let guard = sessions.lock().expect("lock sessions");
+        assert!(guard.is_empty());
     }
 }
 
