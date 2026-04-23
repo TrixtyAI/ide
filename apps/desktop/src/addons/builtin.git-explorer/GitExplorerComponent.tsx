@@ -803,11 +803,16 @@ const GitExplorerComponent: React.FC = () => {
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {isSearching ? <div className="flex justify-center p-6"><RefreshCw size={14} className="animate-spin text-[#444]" /></div> :
                searchResults.length > 0 ? searchResults.map((r, i) => (
+                // `content-visibility: auto` lets the browser skip render and
+                // layout for results currently off-screen; each card is ~60px
+                // tall (py-2.5 + two text lines) so the intrinsic-size hint
+                // keeps the scrollbar stable while the user scrubs through
+                // the full 200-result cap.
                 <button
                   key={i}
                   type="button"
                   onClick={() => handleSearchClick(r)}
-                  className="w-full text-left block px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-white/[0.03] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/30"
+                  className="w-full text-left block px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-white/[0.03] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/30 [content-visibility:auto] [contain-intrinsic-size:0_60px]"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <File size={11} className="text-[#555]" />
@@ -1191,7 +1196,21 @@ const GitExplorerComponent: React.FC = () => {
                       else if (line.startsWith("-") && !line.startsWith("---")) cls = "text-red-400/90";
                       else if (line.startsWith("@@")) cls = "text-blue-400/80";
                       else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("+++") || line.startsWith("---")) cls = "text-[#666]";
-                      return <div key={i} className={cls}>{line || " "}</div>;
+                      // Native CSS virtualization: the browser skips render and
+                      // layout for lines outside the viewport and uses the
+                      // intrinsic-size hint (~18px per line at text-[11px])
+                      // to approximate the scrollbar. Drops diff-render time
+                      // on multi-thousand-line diffs from seconds to tens of
+                      // ms and keeps keyboard scrolling / find-in-page working
+                      // because the DOM nodes remain in the tree.
+                      return (
+                        <div
+                          key={i}
+                          className={`${cls} [content-visibility:auto] [contain-intrinsic-size:0_18px]`}
+                        >
+                          {line || " "}
+                        </div>
+                      );
                     })}
                   </pre>
                 )}
