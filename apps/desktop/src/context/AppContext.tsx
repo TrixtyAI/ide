@@ -109,6 +109,19 @@ export interface ChatSession {
   lastModified: number;
 }
 
+// Schema versions for each persisted bundle. Bump when the shape of the
+// stored data changes, then add a migration function at
+// `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
+// A gap in the migration map is tolerated (additive changes with defaults);
+// the ladder just passes the value through at that step. Downgrades (stored
+// version > current) reset to defaults to avoid reading data we do not
+// understand.
+const CHATS_VERSION = 1;
+const AI_SETTINGS_VERSION = 1;
+const EDITOR_SETTINGS_VERSION = 1;
+const SYSTEM_SETTINGS_VERSION = 1;
+const LOCALE_VERSION = 1;
+
 const DEFAULT_AI_SETTINGS: AISettings = {
   temperature: 0.7,
   systemPrompt: "You are Trixty AI, an expert technical programming assistant. Help the user write clean, efficient, and secure code.",
@@ -261,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const oldSystemPrompt = trixty.l10n.t('ai.system_prompt');
 
     setLocaleState(newLocale);
-    await trixtyStore.set("trixty-locale", newLocale);
+    await trixtyStore.setVersioned("trixty-locale", newLocale, LOCALE_VERSION);
     trixty.l10n.setLocale(newLocale);
 
     // Update system prompt if it was the default one
@@ -294,7 +307,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logger.debug("[AppContext] Starting to load initial state from store...");
       try {
         // 1. Load AI Settings
-        const savedSettings = await trixtyStore.get<AISettings | null>("trixty-ai-settings", null);
+        const savedSettings = await trixtyStore.getVersioned<AISettings | null>(
+          "trixty-ai-settings",
+          AI_SETTINGS_VERSION,
+          null,
+        );
         logger.debug("[AppContext] AI Settings loaded:", !!savedSettings);
         if (savedSettings) {
           setAiSettings(prev => ({ ...prev, ...savedSettings }));
@@ -305,7 +322,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // 2. Load Chats
-        const savedChats = await trixtyStore.get<ChatSession[] | null>("trixty-chats", null);
+        const savedChats = await trixtyStore.getVersioned<ChatSession[] | null>(
+          "trixty-chats",
+          CHATS_VERSION,
+          null,
+        );
         logger.debug("[AppContext] Chats loaded:", savedChats?.length || 0);
         if (savedChats && savedChats.length > 0) {
           setChatSessions(savedChats);
@@ -316,7 +337,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // 3. Load Locale
-        const savedLocale = await trixtyStore.get<string | null>("trixty-locale", null);
+        const savedLocale = await trixtyStore.getVersioned<string | null>(
+          "trixty-locale",
+          LOCALE_VERSION,
+          null,
+        );
         logger.debug("[AppContext] Locale loaded:", savedLocale);
         if (savedLocale) {
           setLocale(savedLocale);
@@ -327,14 +352,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setLocale(detectedLocale);
         }
          // 4. Load Editor Settings
-        const savedEditorSettings = await trixtyStore.get<EditorSettings | null>("trixty-editor-settings", null);
+        const savedEditorSettings = await trixtyStore.getVersioned<EditorSettings | null>(
+          "trixty-editor-settings",
+          EDITOR_SETTINGS_VERSION,
+          null,
+        );
         logger.debug("[AppContext] Editor Settings loaded:", !!savedEditorSettings);
         if (savedEditorSettings) {
           setEditorSettings(prev => ({ ...prev, ...savedEditorSettings }));
         }
 
         // 5. Load System Settings
-        const savedSystemSettings = await trixtyStore.get<SystemSettings | null>("trixty-system-settings", null);
+        const savedSystemSettings = await trixtyStore.getVersioned<SystemSettings | null>(
+          "trixty-system-settings",
+          SYSTEM_SETTINGS_VERSION,
+          null,
+        );
         logger.debug("[AppContext] System Settings loaded:", !!savedSystemSettings);
         if (savedSystemSettings) {
           setSystemSettings(prev => ({ ...prev, ...savedSystemSettings }));
@@ -376,7 +409,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isInitialLoadComplete) return;
     if (chatSessions.length === 0) return;
     const handle = setTimeout(() => {
-      trixtyStore.set("trixty-chats", chatSessions);
+      trixtyStore.setVersioned("trixty-chats", chatSessions, CHATS_VERSION);
     }, PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [chatSessions, isInitialLoadComplete]);
@@ -384,7 +417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     const handle = setTimeout(() => {
-      trixtyStore.set("trixty-ai-settings", aiSettings);
+      trixtyStore.setVersioned("trixty-ai-settings", aiSettings, AI_SETTINGS_VERSION);
     }, PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [aiSettings, isInitialLoadComplete]);
@@ -392,7 +425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     const handle = setTimeout(() => {
-      trixtyStore.set("trixty-editor-settings", editorSettings);
+      trixtyStore.setVersioned("trixty-editor-settings", editorSettings, EDITOR_SETTINGS_VERSION);
     }, PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [editorSettings, isInitialLoadComplete]);
@@ -400,7 +433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     const handle = setTimeout(() => {
-      trixtyStore.set("trixty-system-settings", systemSettings);
+      trixtyStore.setVersioned("trixty-system-settings", systemSettings, SYSTEM_SETTINGS_VERSION);
     }, PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [systemSettings, isInitialLoadComplete]);
