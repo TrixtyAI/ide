@@ -323,7 +323,10 @@ export default function Home() {
         )}
       </div>
 
-      <SettingsView />
+      {/* Settings is a modal: only mount it when open so `next/dynamic` can
+          actually keep its chunk off the boot path. Referencing the component
+          unconditionally would execute the dynamic import on first render. */}
+      {isSettingsOpen && <SettingsView />}
 
       {/* Updater notification — checks on mount, shows toast when update is available */}
       <UpdaterDialog />
