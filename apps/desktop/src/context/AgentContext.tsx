@@ -30,18 +30,21 @@ interface AgentContextType {
   userContext: string;
   tools: string;
   memory: string;
+  plan: string;
   design: string;
   skills: SkillInfo[];
   activeSkills: string[];
   docs: DocInfo[];
   activeDocs: string[];
   isLoading: boolean;
-  
+
   refreshAgentData: () => Promise<void>;
   toggleSkill: (skillId: string) => void;
   toggleDoc: (docId: string) => void;
   saveAgentFile: (fileName: 'AGENTS.md' | 'USER.md' | 'MEMORY.md' | 'TOOLS.md' | 'DESIGN.md', content: string) => Promise<void>;
-  
+  setPlan: (content: string) => Promise<void>;
+  clearPlan: () => Promise<void>;
+
   aggregatedPrompt: string;
   chatMode: 'agent' | 'planner' | 'ask';
   setChatMode: (mode: 'agent' | 'planner' | 'ask') => void;
@@ -57,6 +60,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [userContext, setUserContext] = useState("");
   const [tools, setTools] = useState("");
   const [memory, setMemory] = useState("");
+  const [plan, setPlanState] = useState("");
   const [design, setDesign] = useState("");
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
@@ -205,6 +209,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setAgents("");
         setTools("");
         setMemory("");
+        setPlanState("");
         setSkills([]);
         return;
       }
@@ -222,14 +227,16 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setAgents("");
         setTools("");
         setMemory("");
+        setPlanState("");
         setSkills([]);
         return;
       }
 
-      const [agentsContent, toolsContent, memoryContent, designContent, discoveredSkills, discoveredDocs] = await Promise.all([
+      const [agentsContent, toolsContent, memoryContent, planContent, designContent, discoveredSkills, discoveredDocs] = await Promise.all([
         loadFile("AGENTS.md"),
         loadFile("TOOLS.md"),
         loadFile("MEMORY.md"),
+        loadFile("PLAN.md"),
         loadFile("DESIGN.md"),
         loadSkills(),
         loadDocs()
@@ -239,6 +246,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setAgents(agentsContent);
       setTools(toolsContent);
       setMemory(memoryContent);
+      setPlanState(planContent);
       setDesign(designContent);
       setSkills(discoveredSkills);
       setDocs(discoveredDocs);
@@ -317,6 +325,37 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [saveProjectSettings, activeSkills]);
 
+  // Persist the planner's active task checklist to `.agents/PLAN.md`.
+  // Kept separate from `saveAgentFile` because PLAN.md has a distinct
+  // lifecycle (task-scoped, transient) versus the other aggregated docs
+  // (project-scoped, long-lived). `clearPlan` deletes the file so stale
+  // plans don't bleed into future sessions.
+  const setPlan = useCallback(async (content: string) => {
+    if (!rootPath) return;
+    const path = `${rootPath}/.agents/PLAN.md`;
+    try {
+      await invoke("write_file", { path, content });
+      setPlanState(content);
+    } catch (err) {
+      logger.error("[AgentContext] Failed to save PLAN.md:", err);
+      throw err;
+    }
+  }, [rootPath]);
+
+  const clearPlan = useCallback(async () => {
+    setPlanState("");
+    if (!rootPath) return;
+    const path = `${rootPath}/.agents/PLAN.md`;
+    try {
+      // Best-effort delete. If the file never existed (user clicked Clear
+      // on an empty state) we still swallow the error — the UI has already
+      // cleared local state and the user gets the desired outcome.
+      await invoke("delete_path", { path }, { silent: true });
+    } catch (err) {
+      logger.warn("[AgentContext] PLAN.md delete failed (likely missing):", err);
+    }
+  }, [rootPath]);
+
   const saveAgentFile = useCallback(async (fileName: string, content: string) => {
     try {
       if (fileName === "USER.md") {
@@ -377,25 +416,32 @@ ${activeDocContents}\n\n`;
     }
 
     prompt += localDocContext;
-    
+
     if (userContext) {
       prompt += `### USER.md (User Context)\n${userContext}\n\n`;
     }
-    
+
+    // PLAN.md comes BEFORE MEMORY.md on purpose: when a planner-produced
+    // checklist is active, the agent should follow it even if older memory
+    // suggests a different path. Task-scoped decisions take precedence.
+    if (plan) {
+      prompt += `### PLAN.md (Active task checklist)\n${plan}\n\n`;
+    }
+
     if (memory) {
       prompt += `### MEMORY.md (Persistent Memory)\n${memory}\n\n`;
     }
-    
+
     if (tools) {
       prompt += `### TOOLS.md (Tool Rules)\n${tools}\n\n`;
     }
- 
+
     if (design) {
       prompt += `### DESIGN.md (Visual & Design Guidelines)\n${design}\n\n`;
     }
-    
+
     return prompt;
-  }, [agents, userContext, tools, memory, skills, activeSkills, design, localDocContext]);
+  }, [agents, userContext, tools, memory, plan, skills, activeSkills, design, localDocContext]);
 
   const getSystemPrompt = useCallback(() => {
     const base = aggregatedPrompt;
@@ -403,10 +449,11 @@ ${activeDocContents}\n\n`;
     if (chatMode === 'planner') {
       return `${base}
 ### AGENT MODE: PLANNER (Architect)
-- STICKY RULE: You MUST NOT execute any tools. 
+- STICKY RULE: You MUST NOT execute any tools.
 - YOUR GOAL: Break down the user's request into a high-level technical plan.
 - MEMORY MANAGEMENT: Include specific steps to update ".agents/MEMORY.md" in your plans whenever a structural decision or important change is proposed.
 - OUTPUT FORMAT: Use markers like "Implementation Plan" or "TODO List".
+- PLAN PERSISTENCE: When your plan is concrete (specific file paths, specific function names, verifiable acceptance criteria), emit the final plan as Markdown and explicitly include a fenced block tagged \`\`\`plan ... \`\`\` containing the checklist. The IDE will extract and persist it to .agents/PLAN.md automatically, making it visible to Agent mode on the next run.
 - HAND-OFF: When your plan is complete and valid, YOU MUST explicitly tell the user: "I have finished the plan. Please switch to Agent mode if you are ready to proceed with the automated execution."
 - BOUNDARY: If the user asks you to "do" or "write" code directly, remind them that you are in Planner mode and only design the strategy.`;
     }
@@ -427,6 +474,7 @@ ${localDocContext}
 ### AGENT MODE: AGENT (Execution)
 - YOUR GOAL: Execute the tasks using your available IDE tools.
 - MEMORY MANAGEMENT: You are responsible for maintaining ".agents/MEMORY.md". Update it autonomously using your file tools whenever you make an important technical decision, complete a task, or change the architecture. Keep it concise.
+- PLAN FOLLOW-THROUGH: If a PLAN.md section is in your context above, follow it step by step. Mark steps completed by updating PLAN.md via the write_file tool so progress is visible across sessions.
 - WORKFLOW: Synchronize with project files, execute commands, and fulfill the requested changes.
 - COMPLEXITY RULE: If a task seems too large or architectural, suggest switching to Planner mode before executing.`;
   }, [aggregatedPrompt, chatMode, localDocContext, userContext]);
@@ -440,6 +488,7 @@ ${localDocContext}
     userContext,
     tools,
     memory,
+    plan,
     design,
     skills,
     activeSkills,
@@ -450,6 +499,8 @@ ${localDocContext}
     toggleSkill,
     toggleDoc,
     saveAgentFile,
+    setPlan,
+    clearPlan,
     aggregatedPrompt,
     chatMode,
     setChatMode,
@@ -459,6 +510,7 @@ ${localDocContext}
     userContext,
     tools,
     memory,
+    plan,
     design,
     skills,
     activeSkills,
@@ -469,6 +521,8 @@ ${localDocContext}
     toggleSkill,
     toggleDoc,
     saveAgentFile,
+    setPlan,
+    clearPlan,
     aggregatedPrompt,
     chatMode,
     setChatMode,

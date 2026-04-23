@@ -266,6 +266,21 @@ export function registerBuiltinTranslations() {
         'ai.disclaimer': 'Trixty AI can make mistakes. Check important info.',
         'ai.chat_log_label': 'AI chat transcript',
 
+        'ai.approval.load_warning': 'Could not load the current file content. Showing an empty original side.',
+        'ai.approval.loading_diff': 'Loading diff preview...',
+        'ai.approval.memory_title': 'Proposed update to .agents/MEMORY.md',
+        'ai.approval.exec_warning': 'This command will run in your shell. Review carefully and edit if needed.',
+        'ai.approval.exec_command_label': 'Command',
+        'ai.approval.exec_args_label': 'Arguments (one per line)',
+        'ai.approval.exec_args_placeholder': 'install\n--no-frozen-lockfile',
+        'ai.approval.exec_cwd_label': 'Working directory',
+
+        'ai.error.repeat_failure': 'I tried the same action twice and it kept failing. Stopping to avoid wasted tokens. Please review the last error and guide me.',
+        'ai.plan.saved_notice': 'Plan saved to .agents/PLAN.md. Switch to Agent mode to execute.',
+        'ai.plan.active_indicator': 'PLAN active',
+        'ai.plan.clear_button': 'Clear plan',
+        'ai.plan.clear_tooltip': 'Delete .agents/PLAN.md and stop injecting it into the agent context.',
+
         'activitybar.label': 'Primary sidebar navigation',
         'tabbar.label': 'Open editor tabs',
         'tab.close_aria': 'Close {file}',
@@ -655,6 +670,21 @@ export function registerBuiltinTranslations() {
         'ai.status.badge.busy': 'Ocupado',
         'ai.disclaimer': 'Trixty AI puede cometer errores. Verifica info importante.',
         'ai.chat_log_label': 'Transcripción del chat de IA',
+
+        'ai.approval.load_warning': 'No se pudo cargar el contenido actual del archivo. Se muestra el original vacío.',
+        'ai.approval.loading_diff': 'Cargando vista previa del diff...',
+        'ai.approval.memory_title': 'Actualización propuesta a .agents/MEMORY.md',
+        'ai.approval.exec_warning': 'Este comando se ejecutará en tu shell. Revísalo con cuidado y edítalo si hace falta.',
+        'ai.approval.exec_command_label': 'Comando',
+        'ai.approval.exec_args_label': 'Argumentos (uno por línea)',
+        'ai.approval.exec_args_placeholder': 'install\n--no-frozen-lockfile',
+        'ai.approval.exec_cwd_label': 'Directorio de trabajo',
+
+        'ai.error.repeat_failure': 'Intenté la misma acción dos veces y siguió fallando. Me detengo para no gastar tokens. Revisa el último error y dame una pista.',
+        'ai.plan.saved_notice': 'Plan guardado en .agents/PLAN.md. Cambia a modo Agente para ejecutarlo.',
+        'ai.plan.active_indicator': 'PLAN activo',
+        'ai.plan.clear_button': 'Limpiar plan',
+        'ai.plan.clear_tooltip': 'Borra .agents/PLAN.md y deja de inyectarlo en el contexto del agente.',
 
         'activitybar.label': 'Navegación principal del panel lateral',
         'tabbar.label': 'Pestañas de editores abiertos',

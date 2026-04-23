@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock } from "lucide-react";
+import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock, ClipboardCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useAgent } from "@/context/AgentContext";
 import ReactMarkdown from "react-markdown";
@@ -10,10 +10,13 @@ import { useL10n } from "@/hooks/useL10n";
 import remarkGfm from "remark-gfm";
 import { safeInvoke as invoke, type OllamaRequest } from "@/api/tauri";
 import { IDE_TOOLS } from "./tools";
-import { getSystemInfo, detectProjectStack, generateAwarenessBlock } from "@/lib/awareness";
+import { getSystemInfo, detectProjectStack, generateAwarenessBlock, type SystemInfo, type ProjectStack } from "@/lib/awareness";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
+import { ToolApprovalPanel, type ApprovalResult } from "./ToolApprovalPanel";
+import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
+import { extractPlan } from "./planExtractor";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -60,7 +63,8 @@ const AiChatComponent: React.FC = () => {
   } = useApp();
   const {
     chatMode, setChatMode, getSystemPrompt,
-    skills, activeSkills, docs, activeDocs, refreshAgentData
+    skills, activeSkills, docs, activeDocs, refreshAgentData,
+    memory, plan, setPlan, clearPlan,
   } = useAgent();
   const { t } = useL10n();
 
@@ -79,7 +83,6 @@ const AiChatComponent: React.FC = () => {
     pendingToolRef.current = pendingTool;
   }, [pendingTool]);
   const menuRef = useRef<HTMLDivElement>(null);
-  const permissionDialogRef = useRef<HTMLDivElement>(null);
   const modelTriggerRef = useRef<HTMLButtonElement>(null);
   const modelOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeModelIndex, setActiveModelIndex] = useState(0);
@@ -91,23 +94,22 @@ const AiChatComponent: React.FC = () => {
   // Promise stranded by this resolution. Reads via a ref to keep the
   // callback identity stable without incurring stale-closure bugs — the
   // `setState` updater is pure, safe under React StrictMode.
-  const resolvePendingTool = useCallback((allowed: boolean) => {
+  //
+  // The resolver now carries `ApprovalResult` so the panel can return edited
+  // args (e.g. the user tweaked `execute_command` before approving). A
+  // denial still collapses to `{ allowed: false }` so callers don't branch
+  // on a separate boolean.
+  const resolvePendingTool = useCallback((result: ApprovalResult) => {
     const current = pendingToolRef.current;
     if (!current) return;
     const resolver = pendingResolversRef.current.get(current.id);
     if (!resolver) return;
     pendingResolversRef.current.delete(current.id);
-    resolver(allowed);
+    resolver(result);
     setPendingTool((prev) =>
       prev && prev.id === current.id ? null : prev,
     );
   }, []);
-
-  useFocusTrap({
-    active: pendingTool !== null,
-    containerRef: permissionDialogRef,
-    onEscape: () => resolvePendingTool(false),
-  });
 
   // When the model menu opens, seed `activeModelIndex` to the currently
   // selected model (or the first option) and move focus there. Deferred via
@@ -160,11 +162,11 @@ const AiChatComponent: React.FC = () => {
   // and leave the first Promise dangling forever. A Map keyed by call id
   // keeps each prompt independent; on unmount we resolve everything as
   // denied so pending awaiters don't leak past the component's lifetime.
-  const pendingResolversRef = useRef<Map<string, (allowed: boolean) => void>>(new Map());
+  const pendingResolversRef = useRef<Map<string, (result: ApprovalResult) => void>>(new Map());
   useEffect(() => {
     const resolvers = pendingResolversRef.current;
     return () => {
-      for (const resolver of resolvers.values()) resolver(false);
+      for (const resolver of resolvers.values()) resolver({ allowed: false });
       resolvers.clear();
     };
   }, []);
@@ -345,6 +347,11 @@ const AiChatComponent: React.FC = () => {
     return cleanRoot + p;
   };
 
+  // Returns either the raw tool result (success) or a structured
+  // `<tool_error>` XML block (failure). The structured block replaces the
+  // old free-form "Error executing tool X: ..." string so local models can
+  // latch onto a stable schema and, ideally, take the `hint` into account
+  // instead of re-issuing the same failing call.
   const executeToolInternal = async (name: string, args: Record<string, string | number | boolean | string[]>) => {
     try {
       switch (name) {
@@ -376,10 +383,14 @@ const AiChatComponent: React.FC = () => {
           } catch {}
           return "Memory updated successfully.";
         default:
-          return `Error: Unknown tool ${name}`;
+          return formatToolError({
+            code: 'INVALID_ARGS',
+            message: `Unknown tool '${name}'`,
+            hint: 'Only the documented IDE tools are callable. Re-read the tool list and try again.',
+          });
       }
     } catch (err: unknown) {
-      return `Error executing tool ${name}: ${err instanceof Error ? err.message : String(err)}`;
+      return formatToolError(classifyToolError(err, name, args));
     }
   };
 
@@ -404,6 +415,37 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
+  // Awareness cache. Previously `getSystemInfo()` + `detectProjectStack()`
+  // ran on every `handleSend`, hitting the Tauri bridge three or more times
+  // per message (read_directory + read_file + get_system_health). We cache
+  // the expensive bits keyed on [rootPath, systemSettings, locale] so the
+  // awareness block computes once per workspace switch and settings change,
+  // not per keystroke-triggered send.
+  const [cachedSystemInfo, setCachedSystemInfo] = useState<SystemInfo | null>(null);
+  const [cachedStack, setCachedStack] = useState<ProjectStack | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sys, stack] = await Promise.all([
+          getSystemInfo(),
+          detectProjectStack(rootPath),
+        ]);
+        if (cancelled) return;
+        setCachedSystemInfo(sys);
+        setCachedStack(stack);
+      } catch (err) {
+        logger.error("Awareness cache refresh failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // systemSettings participates because user-visible excludes and other
+    // flags bubble through it; recomputing on change keeps the awareness
+    // block honest without needing a manual refresh.
+  }, [rootPath, systemSettings]);
+
   const handleSend = async () => {
     if (!input.trim() || !selectedModel || isTyping || !activeSessionId || !activeSession) return;
 
@@ -420,9 +462,11 @@ const AiChatComponent: React.FC = () => {
       const workspaceContext = rootPath ? `Workspace Root: ${rootPath}\n` : "";
       const currentContext = currentFile ? `${t('ai.context.focused_file')}: ${currentFile.path}\n` : "";
 
-      // Fetch dynamic awareness data
-      const systemInfo = await getSystemInfo();
-      const projectStack = await detectProjectStack(rootPath);
+      // Use cached awareness. If the cache hasn't populated yet (first
+      // message after boot) fall back to a live fetch so we don't ship a
+      // half-empty block.
+      const systemInfo = cachedSystemInfo ?? await getSystemInfo();
+      const projectStack = cachedStack ?? await detectProjectStack(rootPath);
       const awarenessBlock = generateAwarenessBlock({
         system: systemInfo,
         stack: projectStack,
@@ -474,6 +518,14 @@ const AiChatComponent: React.FC = () => {
 
       let loop = true;
       let maxIterations = aiSettings.deepMode ? 15 : 5;
+      // Bounded repeat-failure detection. If the model calls the exact same
+      // tool with the exact same args twice in a row and both attempts
+      // surface a `<tool_error>` result, we break the loop and hand control
+      // back to the user instead of letting it spin until maxIterations
+      // exhausts — saving tokens and sparing the user an unbounded wait.
+      let lastFailureKey: string | null = null;
+      let consecutiveFailureCount = 0;
+      let abortedOnRepeat = false;
 
       while (loop && maxIterations > 0) {
         maxIterations--;
@@ -547,16 +599,23 @@ const AiChatComponent: React.FC = () => {
             const callId = toolCall.id || generatedId;
 
             let result;
+            // `effectiveArgs` holds the args actually passed to execution.
+            // For manual approval via ToolApprovalPanel this can differ from
+            // `toolArgs` when the user edits the command/args/cwd. We keep
+            // the original `toolArgs` in history (the model already saw
+            // them) but run against the edited version so the user's intent
+            // wins.
+            let effectiveArgs: ToolArgs = toolArgs;
             if (aiSettings.alwaysAllowTools) {
               result = await executeToolInternal(toolName, toolArgs);
             } else {
               // Manual permission needed. The dialog UI has a single slot, so
               // any older unresolved prompt is already invisible to the user;
               // we deny them here instead of letting their Promises dangle.
-              const permissionPromise = new Promise<boolean>((resolve) => {
+              const permissionPromise = new Promise<ApprovalResult>((resolve) => {
                 for (const [oldId, oldResolver] of pendingResolversRef.current) {
                   if (oldId !== callId) {
-                    oldResolver(false);
+                    oldResolver({ allowed: false });
                     pendingResolversRef.current.delete(oldId);
                   }
                 }
@@ -564,14 +623,15 @@ const AiChatComponent: React.FC = () => {
                 // id): resolve the prior resolver as denied before replacing,
                 // so no awaiter is left dangling.
                 const existing = pendingResolversRef.current.get(callId);
-                if (existing) existing(false);
+                if (existing) existing({ allowed: false });
                 pendingResolversRef.current.set(callId, resolve);
                 setPendingTool({ id: callId, name: toolName, args: toolArgs });
               });
 
-              const allowed = await permissionPromise;
-              if (allowed) {
-                result = await executeToolInternal(toolName, toolArgs);
+              const approval = await permissionPromise;
+              if (approval.allowed) {
+                effectiveArgs = approval.args;
+                result = await executeToolInternal(toolName, effectiveArgs);
               } else {
                 result = t('ai.error.user_denied');
               }
@@ -589,6 +649,34 @@ const AiChatComponent: React.FC = () => {
               text: resultStr,
               tool_id: callId
             });
+
+            // Repeat-failure detection. Keyed on the effective args so an
+            // edited second attempt is treated as distinct (the model /
+            // user changed course). Any success or any change of
+            // tool+args resets the counter.
+            const isFailure = typeof resultStr === 'string' && resultStr.startsWith('<tool_error');
+            const key = failureKey(toolName, effectiveArgs);
+            if (isFailure && key === lastFailureKey) {
+              consecutiveFailureCount += 1;
+            } else if (isFailure) {
+              lastFailureKey = key;
+              consecutiveFailureCount = 1;
+            } else {
+              lastFailureKey = null;
+              consecutiveFailureCount = 0;
+            }
+            if (consecutiveFailureCount >= 2) {
+              abortedOnRepeat = true;
+              break;
+            }
+          }
+          if (abortedOnRepeat) {
+            addMessageToSession(activeSessionId, {
+              role: 'warning',
+              text: t('ai.error.repeat_failure'),
+            });
+            loop = false;
+            break;
           }
           // Continue loop to get AI response for the tool results
         } else {
@@ -597,6 +685,28 @@ const AiChatComponent: React.FC = () => {
             text: message.content,
             thinking: message.thinking
           });
+
+          // Planner-mode post-processor. If the assistant's final message
+          // contains a fenced ```plan``` block, persist it to PLAN.md and
+          // surface a user-visible notice so the hand-off to Agent mode is
+          // discoverable. Swallow persistence errors (no workspace, disk
+          // full) with a logger.warn — the plan is still in the chat, so
+          // the user has a fallback.
+          if (chatMode === 'planner' && typeof message.content === 'string') {
+            const extracted = extractPlan(message.content);
+            if (extracted) {
+              try {
+                await setPlan(extracted);
+                addMessageToSession(activeSessionId, {
+                  role: 'warning',
+                  text: t('ai.plan.saved_notice'),
+                });
+              } catch (err) {
+                logger.warn('[AiChat] Failed to persist plan:', err);
+              }
+            }
+          }
+
           loop = false;
         }
       }
@@ -770,6 +880,26 @@ const AiChatComponent: React.FC = () => {
         </div>
       </div>
 
+      {/* PLAN active indicator. Visible whenever `.agents/PLAN.md` holds a
+          non-empty checklist so the user can tell the agent is following a
+          planner hand-off. The Clear button deletes the file and stops the
+          injection into the system prompt for future messages. */}
+      {plan && plan.trim().length > 0 && (
+        <div className="px-3 py-1.5 flex items-center justify-between gap-2 bg-blue-500/5 border-b border-blue-500/20 text-[11px] text-blue-200/80 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <ClipboardCheck size={12} className="shrink-0" />
+            <span className="font-semibold uppercase tracking-wider">{t('ai.plan.active_indicator')}</span>
+          </div>
+          <button
+            onClick={() => { clearPlan(); }}
+            title={t('ai.plan.clear_tooltip')}
+            className="text-[10px] text-blue-200/60 hover:text-white px-2 py-0.5 rounded hover:bg-white/10 transition-colors"
+          >
+            {t('ai.plan.clear_button')}
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-hidden relative flex flex-col">
 
 
@@ -891,42 +1021,19 @@ const AiChatComponent: React.FC = () => {
             </div>
           ))}
 
-          {/* Permission Request */}
+          {/* Permission Request — tool-aware panel that renders a diff for
+              write_file / remember, an editable form for execute_command,
+              and a compact card for read-only tools. Resolves the approval
+              promise with the possibly-edited args. */}
           {pendingTool && (
-            <div className="flex justify-start">
-              <div
-                ref={permissionDialogRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="permission-dialog-title"
-                tabIndex={-1}
-                className="bg-[#1a1a1a] border border-white/20 p-4 rounded-xl max-w-[90%] shadow-2xl animate-in slide-in-from-left-2 transition-all focus:outline-none"
-              >
-                <div className="flex items-center gap-2 mb-3 text-white font-semibold">
-                  <Sparkles size={16} className="text-white" />
-                  <span id="permission-dialog-title" className="text-xs uppercase tracking-tighter">{t('ai.tool_permission_title')}</span>
-                </div>
-                <div className="bg-black/40 p-3 rounded-lg border border-white/5 mb-4">
-                  <div className="text-[11px] text-white/90 font-mono mb-1">{pendingTool.name}</div>
-                  <pre className="text-[9px] text-white/40 overflow-x-auto max-h-32 scrollbar-none">
-                    {JSON.stringify(pendingTool.args, null, 2)}
-                  </pre>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => resolvePendingTool(true)}
-                    className="flex-1 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 active:scale-95 transition-all"
-                  >
-                    {t('ai.tool_allow')}
-                  </button>
-                  <button
-                    onClick={() => resolvePendingTool(false)}
-                    className="flex-1 py-2 bg-[#222] text-white text-xs font-bold rounded-lg hover:bg-[#333] active:scale-95 transition-all"
-                  >
-                    {t('ai.tool_deny')}
-                  </button>
-                </div>
-              </div>
+            <div className="flex justify-start w-full">
+              <ToolApprovalPanel
+                tool={pendingTool}
+                rootPath={rootPath}
+                memory={memory}
+                onResolve={resolvePendingTool}
+                t={t}
+              />
             </div>
           )}
           {isTyping && (

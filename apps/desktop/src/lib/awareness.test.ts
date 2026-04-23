@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateAwarenessBlock } from "./awareness";
+import { generateAwarenessBlock, inferProjectStack } from "./awareness";
 
 // Minimal, self-contained fixtures so the test does not depend on the shape
 // of `useApp()` or the real Tauri registries.
@@ -16,6 +16,11 @@ const baseParams = {
     packageManager: "pnpm" as const,
     frameworks: ["Next.js", "React"],
     isTypeScript: true,
+    testRunners: [],
+    linters: [],
+    formatters: [],
+    buildTools: [],
+    languages: [],
   },
   settings: {
     ai: {
@@ -118,5 +123,176 @@ describe("generateAwarenessBlock", () => {
     delete (params as { internetAccess?: string }).internetAccess;
     const out = generateAwarenessBlock(params);
     expect(out).toMatch(/Internet Access\*\*: Disabled/);
+  });
+
+  it("renders the new stack fields (languages, test runners, linters, formatters, build tools)", () => {
+    const out = generateAwarenessBlock({
+      ...baseParams,
+      stack: {
+        ...baseParams.stack,
+        languages: ["Rust", "Python"],
+        testRunners: ["vitest", "cargo"],
+        linters: ["eslint"],
+        formatters: ["prettier", "rustfmt"],
+        buildTools: ["turbo"],
+      },
+    });
+    expect(out).toMatch(/Languages\*\*: Rust, Python/);
+    expect(out).toMatch(/Test Runners\*\*: vitest, cargo/);
+    expect(out).toMatch(/Linters\*\*: eslint/);
+    expect(out).toMatch(/Formatters\*\*: prettier, rustfmt/);
+    expect(out).toMatch(/Build Tools\*\*: turbo/);
+  });
+
+  it("falls back to 'None detected' when stack arrays are empty", () => {
+    const out = generateAwarenessBlock(baseParams);
+    expect(out).toMatch(/Test Runners\*\*: None detected/);
+    expect(out).toMatch(/Linters\*\*: None detected/);
+    expect(out).toMatch(/Languages\*\*: None detected/);
+  });
+});
+
+describe("inferProjectStack", () => {
+  it("detects pnpm from pnpm-lock.yaml and TypeScript from tsconfig.json", () => {
+    const stack = inferProjectStack({
+      fileNames: ["pnpm-lock.yaml", "tsconfig.json", "package.json"],
+      packageJson: {},
+    });
+    expect(stack.packageManager).toBe("pnpm");
+    expect(stack.isTypeScript).toBe(true);
+  });
+
+  it("detects npm / yarn / bun lockfiles", () => {
+    expect(
+      inferProjectStack({ fileNames: ["package-lock.json"], packageJson: null })
+        .packageManager,
+    ).toBe("npm");
+    expect(
+      inferProjectStack({ fileNames: ["yarn.lock"], packageJson: null })
+        .packageManager,
+    ).toBe("yarn");
+    expect(
+      inferProjectStack({ fileNames: ["bun.lockb"], packageJson: null })
+        .packageManager,
+    ).toBe("bun");
+  });
+
+  it("detects frameworks from package.json dependencies", () => {
+    const stack = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: {
+        dependencies: { next: "^15", react: "^18" },
+        devDependencies: { tailwindcss: "^4" },
+      },
+    });
+    expect(stack.frameworks).toContain("Next.js");
+    expect(stack.frameworks).toContain("React");
+    expect(stack.frameworks).toContain("TailwindCSS");
+  });
+
+  it("detects vitest as the test runner", () => {
+    const stack = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: {
+        devDependencies: { vitest: "^2.1.9" },
+      },
+    });
+    expect(stack.testRunners).toContain("vitest");
+  });
+
+  it("detects playwright via either the scoped or unscoped package", () => {
+    const a = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: { devDependencies: { "@playwright/test": "^1" } },
+    });
+    const b = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: { devDependencies: { playwright: "^1" } },
+    });
+    expect(a.testRunners).toContain("playwright");
+    expect(b.testRunners).toContain("playwright");
+    // Deduped — we don't double-list playwright even if both were present.
+    const both = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: {
+        devDependencies: { "@playwright/test": "^1", playwright: "^1" },
+      },
+    });
+    expect(both.testRunners.filter((r) => r === "playwright")).toHaveLength(1);
+  });
+
+  it("detects linters and formatters (eslint, biome, prettier)", () => {
+    const stack = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: {
+        devDependencies: {
+          eslint: "^9",
+          prettier: "^3",
+          "@biomejs/biome": "^1",
+        },
+      },
+    });
+    expect(stack.linters).toContain("eslint");
+    expect(stack.linters).toContain("biome");
+    expect(stack.formatters).toContain("prettier");
+    expect(stack.formatters).toContain("biome");
+  });
+
+  it("detects build tools beyond next/vite (turbo, nx, webpack, rollup, esbuild)", () => {
+    const stack = inferProjectStack({
+      fileNames: ["package.json"],
+      packageJson: {
+        devDependencies: {
+          turbo: "^2",
+          nx: "^19",
+          webpack: "^5",
+          rollup: "^4",
+          esbuild: "^0.20",
+        },
+      },
+    });
+    expect(stack.buildTools).toEqual(
+      expect.arrayContaining(["turbo", "nx", "webpack", "rollup", "esbuild"]),
+    );
+  });
+
+  it("detects Rust via Cargo.toml and implies cargo + rustfmt", () => {
+    const stack = inferProjectStack({
+      fileNames: ["Cargo.toml", "src"],
+      packageJson: null,
+    });
+    expect(stack.languages).toContain("Rust");
+    expect(stack.testRunners).toContain("cargo");
+    expect(stack.formatters).toContain("rustfmt");
+  });
+
+  it("detects Python via pyproject.toml or requirements.txt", () => {
+    const a = inferProjectStack({
+      fileNames: ["pyproject.toml"],
+      packageJson: null,
+    });
+    const b = inferProjectStack({
+      fileNames: ["requirements.txt"],
+      packageJson: null,
+    });
+    expect(a.languages).toContain("Python");
+    expect(b.languages).toContain("Python");
+  });
+
+  it("detects Go via go.mod", () => {
+    const stack = inferProjectStack({
+      fileNames: ["go.mod", "main.go"],
+      packageJson: null,
+    });
+    expect(stack.languages).toContain("Go");
+  });
+
+  it("returns empty arrays and 'unknown' package manager for a bare directory", () => {
+    const stack = inferProjectStack({ fileNames: [], packageJson: null });
+    expect(stack.packageManager).toBe("unknown");
+    expect(stack.frameworks).toEqual([]);
+    expect(stack.testRunners).toEqual([]);
+    expect(stack.languages).toEqual([]);
+    expect(stack.isTypeScript).toBe(false);
   });
 });
