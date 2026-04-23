@@ -181,6 +181,10 @@ export function registerBuiltinTranslations() {
         'explorer.select_folder': 'Select Folder',
 
         'panel.bottom.terminal': 'Terminal',
+        'panel.bottom.terminal_tab': 'Terminal {{n}}',
+        'panel.bottom.terminal_tabs': 'Terminal tabs',
+        'panel.bottom.terminal_new_tab': 'New terminal',
+        'panel.bottom.terminal_close_tab': 'Close terminal',
 
         'panel.right.no_addons': 'No addons active',
         'panel.right.toggle': 'Toggle Secondary Sidebar (Ctrl+L)',
@@ -587,6 +591,10 @@ export function registerBuiltinTranslations() {
         'explorer.select_folder': 'Seleccionar Carpeta',
 
         'panel.bottom.terminal': 'Terminal',
+        'panel.bottom.terminal_tab': 'Terminal {{n}}',
+        'panel.bottom.terminal_tabs': 'Pestañas de terminal',
+        'panel.bottom.terminal_new_tab': 'Nueva terminal',
+        'panel.bottom.terminal_close_tab': 'Cerrar terminal',
 
         'panel.right.no_addons': 'Sin addons activos',
         'panel.right.toggle': 'Alternar Barra Lateral Secundaria (Ctrl+L)',

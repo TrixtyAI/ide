@@ -14,7 +14,7 @@ use extensions::*;
 use fs_guard::{new_workspace_state, resolve_within_workspace, set_workspace_root, WorkspaceState};
 use fs_watcher::{unwatch_all, watch_path, FsWatcherState};
 use log::{error, info, warn};
-use pty::{kill_pty, resize_pty, spawn_pty, write_to_pty, PtyState};
+use pty::{kill_pty, new_pty_sessions, resize_pty, spawn_pty, write_to_pty, PtySessions};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -1545,7 +1545,7 @@ pub fn run() {
                 .max_file_size(1_000_000) // 1MB
                 .build(),
         )
-        .manage(Arc::new(Mutex::new(None::<PtyState>)))
+        .manage::<PtySessions>(new_pty_sessions())
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
         })))

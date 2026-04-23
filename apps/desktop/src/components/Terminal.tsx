@@ -4,20 +4,35 @@ import React, { useEffect, useRef } from "react";
 import { Terminal as Xterm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
-import { safeInvoke as invoke } from "@/api/tauri";
-import { useApp } from "@/context/AppContext";
+import { safeInvoke as invoke, type PtyOutputEvent } from "@/api/tauri";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
 import "@xterm/xterm/css/xterm.css";
 
-const Terminal: React.FC = () => {
-  const { rootPath, terminalPath } = useApp();
+interface TerminalProps {
+  /**
+   * Unique id for this PTY session. Stable across the lifetime of the
+   * owning tab — BottomPanel mints a UUID when the tab is created and
+   * keeps it until the tab is closed.
+   */
+  sessionId: string;
+  /** Initial working directory. Unused after the first spawn. */
+  cwd?: string | null;
+  /**
+   * Whether this tab is the currently visible one. Inactive tabs stay
+   * mounted so their xterm buffer is preserved, but we only run
+   * `fit()` when active — fitting a tab whose container is `display:none`
+   * yields rows/cols of 0 and corrupts the shell's view of the window size.
+   */
+  isActive: boolean;
+}
+
+const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
   const { t } = useL10n();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
-  // 1. Initialize Xterm once on mount
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
@@ -67,16 +82,19 @@ const Terminal: React.FC = () => {
     fitAddonRef.current = fitAddon;
 
     term.onData((data) => {
-      invoke("write_to_pty", { data }).catch(e => logger.error("PTY write error:", e));
+      invoke("write_to_pty", { sessionId, data }).catch((e) =>
+        logger.error("PTY write error:", e),
+      );
     });
 
     const resizeObserver = new ResizeObserver(() => {
       if (terminalRef.current && terminalRef.current.clientWidth > 0) {
         fitAddon.fit();
         invoke("resize_pty", {
+          sessionId,
           rows: term.rows,
-          cols: term.cols
-        }).catch(e => logger.error("PTY resize error:", e));
+          cols: term.cols,
+        }).catch((e) => logger.error("PTY resize error:", e));
       }
     });
     resizeObserver.observe(terminalRef.current);
@@ -90,62 +108,41 @@ const Terminal: React.FC = () => {
       }
     }, 150);
 
-    return () => {
-      window.clearTimeout(initialFitTimer);
-      resizeObserver.disconnect();
-      term.dispose();
-      xtermRef.current = null;
-      fitAddonRef.current = null;
-      // Kill the Rust-side PTY so the child shell and reader thread don't leak
-      // when the component unmounts (e.g. the bottom panel is closed).
-      // `kill_pty` returns Ok even with no active PTY, so any rejection here is a
-      // real failure (IPC missing, mutex poisoned, etc.) and worth surfacing.
-      invoke("kill_pty").catch((e) => logger.error("PTY cleanup error:", e));
-    };
-  }, []);
-
-  // 2. Handle PTY session and path changes
-  useEffect(() => {
-    if (!xtermRef.current) return;
-
-    const targetPath = terminalPath || rootPath || undefined;
-
     let isCanceled = false;
     let unlisten: (() => void) | undefined;
 
     const setupPty = async () => {
       try {
-        // Kill any existing PTY before spawning a new one
-        await invoke("kill_pty").catch(() => { /* ignore if none active */ });
-
-        const u = await listen<string>("pty-output", (event) => {
+        const u = await listen<PtyOutputEvent>("pty-output", (event) => {
+          // Multiple tabs share one event channel; route by sessionId.
+          if (event.payload.sessionId !== sessionId) return;
           if (!isCanceled && xtermRef.current) {
-            xtermRef.current.write(event.payload);
+            xtermRef.current.write(event.payload.data);
           }
         });
-
         if (isCanceled) {
           u();
           return;
         }
-
         unlisten = u;
 
-        // Fit the terminal to its container before spawning so the shell
-        // starts with the correct rows/cols and avoids a reflow on the first prompt.
-        const term = xtermRef.current;
-        if (term && fitAddonRef.current && terminalRef.current?.clientWidth) {
-          fitAddonRef.current.fit();
+        // Pre-fit before spawning so the shell starts with the correct
+        // dimensions instead of reflowing on the first prompt.
+        if (terminalRef.current?.clientWidth) {
+          fitAddon.fit();
         }
 
         await invoke("spawn_pty", {
-          cwd: targetPath,
-          rows: term?.rows,
-          cols: term?.cols,
+          sessionId,
+          cwd: cwd ?? undefined,
+          rows: term.rows,
+          cols: term.cols,
         });
       } catch (err) {
         if (!isCanceled && xtermRef.current) {
-          xtermRef.current.writeln("\x1b[31m" + t('terminal.error_connect') + "\x1b[0m " + err);
+          xtermRef.current.writeln(
+            "\x1b[31m" + t("terminal.error_connect") + "\x1b[0m " + err,
+          );
         }
       }
     };
@@ -154,21 +151,46 @@ const Terminal: React.FC = () => {
 
     return () => {
       isCanceled = true;
+      window.clearTimeout(initialFitTimer);
+      resizeObserver.disconnect();
       if (unlisten) unlisten();
+      term.dispose();
+      xtermRef.current = null;
+      fitAddonRef.current = null;
+      // Tear down the Rust-side session. `kill_pty` is a no-op on unknown
+      // ids, so a double-unmount (StrictMode, fast refresh) is safe.
+      invoke("kill_pty", { sessionId }).catch((e) =>
+        logger.error("PTY cleanup error:", e),
+      );
     };
-    // Intentional deps: `terminalPath` and `rootPath` are primitive strings, so
-    // React's Object.is comparison re-runs only on a real value change (i.e. the
-    // user switches workspace or pins the terminal to a new folder). `t` is
-    // excluded on purpose: including it would respawn the PTY on every locale
-    // update, but localization changes should only affect future error text.
+    // Intentional deps: sessionId and cwd are captured at mount time. If
+    // either changes mid-life the tab owner (BottomPanel) remounts this
+    // component with a new key — we never re-run spawn for the same mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terminalPath, rootPath]);
+  }, [sessionId]);
+
+  // Re-fit when the tab becomes active: a tab hidden via `display:none`
+  // reports 0 width/height, so any fit attempted while inactive corrupts
+  // the shell's idea of the window size. We also resize the backend so
+  // the child shell sees the new dimensions immediately.
+  useEffect(() => {
+    if (!isActive) return;
+    const term = xtermRef.current;
+    const fit = fitAddonRef.current;
+    if (!term || !fit || !terminalRef.current?.clientWidth) return;
+    fit.fit();
+    invoke("resize_pty", {
+      sessionId,
+      rows: term.rows,
+      cols: term.cols,
+    }).catch((e) => logger.error("PTY resize error:", e));
+  }, [isActive, sessionId]);
 
   return (
     <div
       ref={terminalRef}
       role="region"
-      aria-label={t('panel.bottom.terminal')}
+      aria-label={t("panel.bottom.terminal")}
       className="w-full p-3 h-full"
     />
   );

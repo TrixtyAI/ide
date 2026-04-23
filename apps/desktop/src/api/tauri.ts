@@ -81,10 +81,10 @@ export interface TauriInvokeMap {
   "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
   "check_update": { args: undefined; return: { version: string; body?: string | null } | null };
   "install_update": { args: undefined; return: void };
-  "spawn_pty": { args: { cwd?: string; rows?: number; cols?: number }; return: void };
-  "write_to_pty": { args: { data: string }; return: void };
-  "resize_pty": { args: { rows: number; cols: number }; return: void };
-  "kill_pty": { args: undefined; return: void };
+  "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
+  "write_to_pty": { args: { sessionId: string; data: string }; return: void };
+  "resize_pty": { args: { sessionId: string; rows: number; cols: number }; return: void };
+  "kill_pty": { args: { sessionId: string }; return: void };
   "git_add": { args: { path: string; files: string[] }; return: void };
   "git_unstage": { args: { path: string; files: string[] }; return: void };
   "git_add_safe_directory": { args: { path: string }; return: void };
@@ -125,6 +125,17 @@ export interface TauriInvokeMap {
 export interface FsChangeEvent {
   path: string;
   kind: "created" | "modified" | "removed" | "renamed" | "other";
+}
+
+/**
+ * Payload emitted on the `pty-output` Tauri event. Multiple terminal tabs
+ * share this single event channel, so every consumer MUST filter on
+ * `sessionId` before writing to its xterm — otherwise output from tab A
+ * would appear in tab B.
+ */
+export interface PtyOutputEvent {
+  sessionId: string;
+  data: string;
 }
 
 /**
