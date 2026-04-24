@@ -117,6 +117,7 @@ export interface TauriInvokeMap {
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };
   "set_workspace_root": { args: { path: string | null }; return: void };
+  "take_initial_cli_workspace": { args: undefined; return: string | null };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
 }
 
