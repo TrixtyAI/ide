@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { trixtyStore } from "@/api/store";
+import { trixty as trixtyRef } from "@/api/trixty";
 import { logger } from "@/lib/logger";
 import { isTauri, safeInvoke } from "@/api/tauri";
 
@@ -179,10 +180,17 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
 const getLanguageFromExtension = (filename: string) => {
   const ext = filename.split(".").pop()?.toLowerCase();
 
-  // Use dynamic LanguageRegistry if available
-  if (typeof window !== 'undefined' && window.trixty?.languages) {
-    const dynamicLang = window.trixty.languages.getLanguageByExtension(ext || "");
-    if (dynamicLang) return dynamicLang;
+  // Use dynamic LanguageRegistry if available. Imported lazily to keep
+  // Monaco off the boot graph — `@/api/trixty` constructs a Monaco
+  // loader in its own module init, and this helper runs during the
+  // first file-open, well after first paint.
+  if (typeof window !== 'undefined') {
+    try {
+      const dynamicLang = trixtyRef?.languages.getLanguageByExtension(ext || "");
+      if (dynamicLang) return dynamicLang;
+    } catch {
+      // Registry not yet initialised — fall through to the static map.
+    }
   }
 
   // Fallback map for essential file types if Registry hasn't initialized or for defaults

@@ -1,14 +1,22 @@
 {
   "name": "trixty.example-addon",
-  "version": "0.0.1",
-  "description": "An example addon for Trixty IDE",
+  "displayName": "Hello World Example",
+  "version": "0.1.0",
+  "description": "An example addon demonstrating the sandboxed extension runtime.",
   "author": "TrixtyAI",
   "main": "index.js",
+  "trixty": {
+    "capabilities": [
+      "ui:register-view",
+      "ui:show-message",
+      "l10n:register",
+      "lang:register",
+      "storage:read",
+      "storage:write",
+      "clipboard:write"
+    ]
+  },
   "scripts": {
     "start": "node index.js"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
   }
 }

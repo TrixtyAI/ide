@@ -42,6 +42,23 @@ jobs:
           pnpm install --no-frozen-lockfile 2>&1 | Tee-Object -FilePath logs/install.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Sandbox Worker Bundle Up-to-date
+        id: worker_bundle
+        # Regenerate the sandbox worker IIFE and fail if it diverges from
+        # what the PR committed. The sandbox worker is shipped as a
+        # pre-compiled string (see scripts/build-extension-worker.mjs) so
+        # the file must be rebuilt after any edit to
+        # `extensionWorkerBootstrap.ts` or its dependencies.
+        run: |
+          pnpm --filter @trixty/desktop run build:worker 2>&1 | Tee-Object -FilePath logs/worker-bundle.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $diff = git status --porcelain apps/desktop/src/api/sandbox/extensionWorkerSource.generated.ts
+          if ($diff) {
+            Write-Host "::error::extensionWorkerSource.generated.ts is stale. Run `pnpm --filter @trixty/desktop run build:worker` and commit the result."
+            git diff apps/desktop/src/api/sandbox/extensionWorkerSource.generated.ts | Tee-Object -FilePath logs/worker-bundle-diff.log
+            exit 1
+          }
+
       - name: Lint (Desktop)
         id: lint
         run: |
@@ -82,6 +99,7 @@ jobs:
         if: always()
         run: |
           "install=${{ steps.install.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
+          "worker_bundle=${{ steps.worker_bundle.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
           "lint=${{ steps.lint.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
           "typecheck=${{ steps.typecheck.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
           "clippy=${{ steps.clippy.outcome }}" | Out-File -FilePath logs/status.env -Append -Encoding utf8
