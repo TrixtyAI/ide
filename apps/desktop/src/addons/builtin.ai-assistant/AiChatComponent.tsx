@@ -205,7 +205,7 @@ const AiChatComponent: React.FC = () => {
       method,
       url: sanitizedUrl,
       headers,
-      body: body || { type: 'version' } // Default to version if no body
+      body: body || {}
     });
     return {
       ok: result.status >= 200 && result.status < 300,
@@ -415,9 +415,8 @@ const AiChatComponent: React.FC = () => {
     if (!selectedModel || !baseUrl) return;
     try {
       await proxyFetch(`${baseUrl}/api/generate`, "POST", {
-        type: 'generate',
         model: selectedModel,
-        keep_alive: 0
+        ...(aiSettings.useCloudModel ? {} : { keep_alive: 0 })
       });
     } catch (err) {
       logger.error("Failed to unload model:", err);
@@ -540,8 +539,6 @@ const AiChatComponent: React.FC = () => {
         maxIterations--;
         let response;
         const body: OllamaRequest = {
-            type: 'chat',
-
             model: selectedModel,
             messages: history,
             stream: false,
@@ -555,7 +552,7 @@ const AiChatComponent: React.FC = () => {
               temperature: aiSettings.temperature,
               num_predict: aiSettings.maxTokens,
             },
-            keep_alive: `${aiSettings.keepAlive || 5}m`,
+            ...(aiSettings.useCloudModel ? {} : { keep_alive: `${aiSettings.keepAlive || 5}m` })
         };
 
         try {

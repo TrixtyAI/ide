@@ -99,7 +99,7 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 
 #[tauri::command]
 fn get_cloud_config() -> String {
-    "<cloud_endpoint>".to_string()
+    "".to_string()
 }
 
 #[tauri::command]
@@ -1416,7 +1416,9 @@ async fn ollama_proxy(
     }
 
     if let Some(json_body) = body {
-        request = request.json(&json_body);
+        if method == "POST" {
+            request = request.json(&json_body);
+        }
     }
 
     let response = request.send().await.map_err(|e| e.to_string())?;

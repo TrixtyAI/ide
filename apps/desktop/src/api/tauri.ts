@@ -31,12 +31,7 @@ export interface DirEntry {
   children?: DirEntry[];
 }
 
-export type OllamaRequest =
-  | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean; keep_alive?: string | number }
-  | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: string | number }
-  | { type: 'tags' }
-  | { type: 'version' }
-  | { type: 'auth'; email?: string; password?: string };
+export type OllamaRequest = Record<string, unknown>;
 
 /**
  * Central registry of Tauri commands exposed to the frontend.
@@ -150,13 +145,13 @@ export const isTauri = (): boolean => {
 
 /**
  * A safe wrapper around Tauri's 'invoke' command.
- * 
- * If running in a browser environment where Tauri internals are missing, 
- * it will log a warning and return a meaningful default or reject gracefully, 
+ *
+ * If running in a browser environment where Tauri internals are missing,
+ * it will log a warning and return a meaningful default or reject gracefully,
  * preventing the application from crashing.
  */
 export async function safeInvoke<K extends keyof TauriInvokeMap>(
-  cmd: K, 
+  cmd: K,
   args?: TauriInvokeMap[K]["args"],
   options: { silent?: boolean } = {}
 ): Promise<TauriInvokeMap[K]["return"]> {

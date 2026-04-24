@@ -53,13 +53,13 @@ export const QuotaPanel: React.FC = () => {
             method: 'GET',
             url: authUrl,
             headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-            body: { type: 'version' }
+            body: {}
           }),
           safeInvoke('ollama_proxy', {
             method: 'GET',
             url: quotaUrl,
             headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-            body: { type: 'version' }
+            body: {}
           })
         ]);
 
@@ -185,11 +185,65 @@ export const QuotaPanel: React.FC = () => {
           </div>
         ))}
 
-        {quotas.length === 0 && (
-          <p className="text-[12px] text-[#666] italic text-center py-4">
-            No quota limitations found for your current plan.
-          </p>
-        )}
+      {profile && (profile.role === 'free' || !profile.planId) && (
+        <div className="mt-8 p-6 bg-gradient-to-br from-purple-600/20 to-blue-600/10 border border-purple-500/30 rounded-2xl shadow-xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Zap size={80} strokeWidth={1} />
+          </div>
+          <div className="relative z-10">
+            <h4 className="text-lg font-bold text-white mb-2">Upgrade to PRO</h4>
+            <p className="text-xs text-[#aaa] mb-6 max-w-sm leading-relaxed">
+              Unlock higher quotas, faster response times, and early access to our most advanced coding models.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await safeInvoke('ollama_proxy', {
+                      method: 'POST',
+                      url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
+                      headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
+                      body: { planId: 'PRO', provider: 'mercadopago' }
+                    });
+                    if (res.status >= 200 && res.status < 300) {
+                      const { url } = JSON.parse(res.body);
+                      const { open } = await import('@tauri-apps/plugin-shell');
+                      await open(url);
+                    }
+                  } catch (err) {
+                    logger.error('Checkout error:', err);
+                  }
+                }}
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-50 text-white hover:text-black text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95"
+              >
+                Pay with Mercado Pago
+              </button>
+              <button
+                 onClick={async () => {
+                  try {
+                    const res = await safeInvoke('ollama_proxy', {
+                      method: 'POST',
+                      url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
+                      headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
+                      body: { planId: 'PRO', provider: 'paypal' }
+                    });
+                    if (res.status >= 200 && res.status < 300) {
+                      const { url } = JSON.parse(res.body);
+                      const { open } = await import('@tauri-apps/plugin-shell');
+                      await open(url);
+                    }
+                  } catch (err) {
+                    logger.error('Checkout error:', err);
+                  }
+                }}
+                className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+              >
+                PayPal (USD)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

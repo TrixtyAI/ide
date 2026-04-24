@@ -36,7 +36,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       const response = await safeInvoke('ollama_proxy', {
         method: 'POST',
         url: fullUrl,
-        body: { type: 'auth', email, password }
+        body: { email, password }
       });
 
       if (response.status >= 200 && response.status < 300) {
@@ -45,7 +45,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           const loginResponse = await safeInvoke('ollama_proxy', {
             method: 'POST',
             url: `${baseUrl.replace(/\/+$/, '')}/auth/login`,
-            body: { type: 'auth', email, password }
+            body: { email, password }
           });
 
           if (loginResponse.status >= 200 && loginResponse.status < 300) {
