@@ -37,7 +37,7 @@ export const BillingPanel: React.FC = () => {
 
     try {
       const baseUrl = cloudEndpoint.replace(/\/+$/, '');
-      
+
       const [profileRes, plansRes] = await Promise.all([
         safeInvoke('ollama_proxy', {
           method: 'GET',
@@ -119,7 +119,7 @@ export const BillingPanel: React.FC = () => {
 
   const currentPlan = profile?.planId;
   const isPro = profile?.role === 'admin' || profile?.role === 'maintainer' || (currentPlan && currentPlan.name !== 'FREE');
-  
+
   // Filter out the plan the user currently has
   const otherPlans = availablePlans.filter(p => p._id !== currentPlan?._id);
 
@@ -159,12 +159,12 @@ export const BillingPanel: React.FC = () => {
              </div>
           )}
           {otherPlans.map((plan) => (
-            <div 
+            <div
               key={plan._id}
               onClick={() => setSelectedPlan(plan)}
               className={`p-6 border rounded-2xl cursor-pointer transition-all relative overflow-hidden group ${
-                selectedPlan?._id === plan._id 
-                  ? 'bg-purple-500/10 border-purple-500 shadow-lg shadow-purple-900/20' 
+                selectedPlan?._id === plan._id
+                  ? 'bg-purple-500/10 border-purple-500 shadow-lg shadow-purple-900/20'
                   : 'bg-[#111] border-white/5 hover:border-white/10'
               }`}
             >
@@ -189,7 +189,7 @@ export const BillingPanel: React.FC = () => {
               {selectedPlan?._id === plan._id && (
                 <div className="mt-6 pt-6 border-t border-purple-500/20 animate-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                    {(plan.features || ['Access to AI Models', 'Standard Support']).map((feature, i) => (
+                    {(plan.features || ['More Quota']).map((feature, i) => (
                       <div key={i} className="flex items-center gap-2 text-[12px] text-[#aaa]">
                         <CheckCircle2 size={14} className="text-purple-500" />
                         {feature}
@@ -201,7 +201,7 @@ export const BillingPanel: React.FC = () => {
                     <p className="text-[10px] text-[#555] font-bold uppercase tracking-widest text-center mb-4">
                       {plan.price === 0 ? 'Ready to switch back?' : 'Select Payment Method'}
                     </p>
-                    
+
                     {plan.price === 0 ? (
                        <button
                         onClick={(e) => { e.stopPropagation(); handleDowngrade(plan._id); }}
