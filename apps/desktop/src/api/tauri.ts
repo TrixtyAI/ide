@@ -113,6 +113,7 @@ export interface TauriInvokeMap {
   "git_push": { args: { path: string }; return: string };
   "search_in_project": { args: { query: string; rootPath: string; filesExclude?: string[] }; return: SearchResult[] };
   "read_extension_script": { args: { id: string }; return: string };
+  "read_extension_manifest": { args: { id: string }; return: string };
   "perform_web_search": { args: { query: string }; return: string };
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };

@@ -294,20 +294,19 @@ export const trixty = {
     agent: new AgentRegistry()
 };
 
-// Global Window interface extensions for Trixty
+// Global Window interface extension — keep only `__TAURI_INTERNALS__`
+// (set by Tauri itself). `window.trixty`, `window.React`, and
+// `window.LucideIcons` were previously exposed so dynamically eval'd
+// extensions could reach them from the main-thread global scope.
+//
+// That escape hatch was the root cause of issue #108 (unrestricted RCE
+// at the IDE-process level). With the sandbox landing, third-party
+// extensions run inside a Web Worker and talk to the host exclusively
+// through the capability-gated bridge. The host's own code imports
+// `trixty` from this module directly, so nothing inside the app needs
+// these globals any more.
 declare global {
   interface Window {
-    trixty: typeof trixty;
-    React: typeof React;
-    LucideIcons: typeof import("lucide-react");
     __TAURI_INTERNALS__?: unknown;
   }
-}
-
-// Make it globally available on the window object for dynamic parsed addons
-if (typeof window !== "undefined") {
-  window.trixty = trixty;
-  window.React = React;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  window.LucideIcons = require("lucide-react");
 }

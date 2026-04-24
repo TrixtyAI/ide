@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "node ../../scripts/build-extension-worker.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -46,6 +47,7 @@
     "@types/picomatch": "^4.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.21.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",

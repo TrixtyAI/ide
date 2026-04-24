@@ -2004,6 +2004,7 @@ pub fn run() {
             is_extension_active,
             toggle_extension_state,
             read_extension_script,
+            read_extension_manifest,
             get_recursive_file_list,
             execute_command,
             get_system_health,
