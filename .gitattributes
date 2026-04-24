@@ -1,0 +1,4 @@
+# Bundled worker source is emitted with LF by esbuild; pin eol so
+# `core.autocrlf` on Windows runners doesn't rewrite it on checkout
+# and flag the regenerated file as dirty in CI.
+apps/desktop/src/api/sandbox/extensionWorkerSource.generated.ts text eol=lf
