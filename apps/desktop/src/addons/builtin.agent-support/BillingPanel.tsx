@@ -10,7 +10,8 @@ interface CloudProfile {
   id: string;
   email: string;
   role: string;
-  planId?: any;
+  planId?: PlanInfo;
+  planExpiresAt?: string;
 }
 
 interface PlanInfo {
@@ -140,8 +141,27 @@ export const BillingPanel: React.FC = () => {
           </div>
         </div>
         <div className="text-right relative z-10">
-          <p className="text-[10px] text-[#555] font-bold uppercase tracking-widest leading-none mb-1">Billing Status</p>
-          <p className={`text-sm font-bold ${isPro ? 'text-green-400' : 'text-blue-400'}`}>Active</p>
+          <div className="mb-4">
+            <p className="text-[10px] text-[#555] font-bold uppercase tracking-widest leading-none mb-1">Billing Status</p>
+            <p className={`text-sm font-bold ${isPro ? 'text-green-400' : 'text-blue-400'}`}>Active</p>
+          </div>
+          
+          {profile?.planExpiresAt && isPro && (
+            <div className="pt-3 border-t border-white/5">
+              <p className="text-[10px] text-[#555] font-bold uppercase tracking-widest leading-none mb-1">Plan Ends On</p>
+              <p className="text-[12px] text-white/80 font-bold">
+                {new Date(profile.planExpiresAt).toLocaleDateString(undefined, { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+              <div className="mt-1 flex items-center justify-end gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-purple-500 animate-pulse" />
+                <p className="text-[9px] text-purple-400/70 font-medium">Auto-downgrade to FREE after this date</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
