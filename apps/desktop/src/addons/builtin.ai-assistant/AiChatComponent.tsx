@@ -60,7 +60,8 @@ const AiChatComponent: React.FC = () => {
     cloudEndpoint,
     editorSettings,
     systemSettings,
-    locale
+    locale,
+    setSettingsOpen
   } = useApp();
   const {
     chatMode, setChatMode, getSystemPrompt,
@@ -751,7 +752,28 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
-  if (ollamaStatus === 'not_found') {
+  if (aiSettings.useCloudModel && !aiSettings.cloudToken) {
+    return (
+      <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
+        <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mb-6 border border-purple-500/20 shadow-2xl shadow-purple-500/5">
+          <Lock size={40} className="text-purple-400 opacity-80" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Cloud Authentication Required</h2>
+        <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
+          Sign in to your Trixty account to access cloud-hosted AI models and advanced agent features.
+        </p>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-500 active:scale-95 transition-all shadow-lg shadow-purple-900/20"
+        >
+          <Lock size={16} />
+          Go to Settings
+        </button>
+      </div>
+    );
+  }
+
+  if (ollamaStatus === 'not_found' && !aiSettings.useCloudModel) {
     return (
       <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/5">
