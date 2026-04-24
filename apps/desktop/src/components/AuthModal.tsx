@@ -77,7 +77,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       } else {
         try {
           const errData = JSON.parse(response.body);
-          setError(errData.error || errData.message || t('auth.error'));
+          setError(errData.error || errData.message || errData.details || t('auth.error'));
         } catch {
           setError(`HTTP Error: ${response.status}`);
         }

@@ -203,7 +203,7 @@ export const QuotaPanel: React.FC = () => {
                       method: 'POST',
                       url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
                       headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                      body: { planId: 'PRO', provider: 'mercadopago' }
+                      body: { planId: '660000000000000000000002', provider: 'mercadopago' }
                     });
                     if (res.status >= 200 && res.status < 300) {
                       const { url } = JSON.parse(res.body);
@@ -225,7 +225,7 @@ export const QuotaPanel: React.FC = () => {
                       method: 'POST',
                       url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
                       headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                      body: { planId: 'PRO', provider: 'paypal' }
+                      body: { planId: '660000000000000000000002', provider: 'paypal' }
                     });
                     if (res.status >= 200 && res.status < 300) {
                       const { url } = JSON.parse(res.body);
