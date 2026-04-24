@@ -37,7 +37,8 @@ const SettingsView: React.FC = () => {
     updateSystemSettings,
     isSettingsOpen,
     setSettingsOpen,
-    resetApp
+    resetApp,
+    aiSettings
   } = useApp();
   const { t } = useL10n();
   const [activeCategory, setActiveCategory] = useState("general");
@@ -92,8 +93,11 @@ Node.js: ${systemInfo.node_version}
         { id: "agent:skills", label: t('agent.tab.skills') },
         { id: "agent:documentations", label: t('agent.tab.documentations') },
         { id: "agent:memory", label: t('agent.tab.memory') },
+        ...(aiSettings.useCloudModel ? [
+          { id: "agent:quota", label: t('agent.tab.quota') },
+          { id: "agent:billing", label: "Billing & Plans" }
+        ] : []),
         { id: "agent:configuration", label: t('agent.tab.configuration') },
-        { id: "agent:quota", label: t('agent.tab.quota') },
       ]
     },
     { id: "application", label: t('settings.application'), icon: Globe },
@@ -115,10 +119,10 @@ Node.js: ${systemInfo.node_version}
         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
            <div className="mb-8">
              <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-               {t(`agent.${currentSub}.title`)}
+               {currentSub === 'billing' ? 'Billing & Subscription' : t(`agent.${currentSub}.title`)}
              </h3>
              <p className="text-[12px] text-[#666] mt-1.5 leading-relaxed max-w-xl">
-               {t(`agent.${currentSub}.desc`)}
+               {currentSub === 'billing' ? 'Manage your subscription plans, view current status, and upgrade your account.' : t(`agent.${currentSub}.desc`)}
              </p>
            </div>
           <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration' | 'quota')} />

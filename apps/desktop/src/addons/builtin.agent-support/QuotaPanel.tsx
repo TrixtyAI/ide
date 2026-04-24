@@ -1,111 +1,87 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useL10n } from '@/hooks/useL10n';
 import { safeInvoke } from '@/api/tauri';
-import { AlertCircle, RefreshCw, Server, User, Zap } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { Zap, RefreshCw, AlertCircle } from 'lucide-react';
 
-interface UserProfile {
-  id: string;
-  email: string;
-  role: string;
-  planId?: string;
-}
-
-interface QuotaData {
+interface QuotaInfo {
   model: string;
   limit: number;
-  used: number;
   remaining: number;
+  ttlMs: number;
   segmentsTotal: number;
   segmentsFilled: number;
-  ttlMs: number;
   warning: boolean;
 }
 
 export const QuotaPanel: React.FC = () => {
-  const { aiSettings, cloudEndpoint } = useApp();
+  const { cloudEndpoint, aiSettings } = useApp();
   const { t } = useL10n();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [quotas, setQuotas] = useState<QuotaData[]>([]);
+  const [quotas, setQuotas] = useState<QuotaInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchQuotas = async () => {
+    if (!aiSettings.cloudToken || !cloudEndpoint) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const res = await safeInvoke('ollama_proxy', {
+        method: 'GET',
+        url: `${cloudEndpoint.replace(/\/+$/, '')}/api/quota`,
+        headers: { Authorization: `Bearer ${aiSettings.cloudToken}` }
+      });
+
+      if (res.status === 200) {
+        const data = JSON.parse(res.body);
+        // Transform API data to UI structure
+        const transformed: QuotaInfo[] = Object.entries(data).map(([model, info]: [string, any]) => {
+          const limit = info.limit || 0;
+          const remaining = info.remaining || 0;
+          const segmentsTotal = 15;
+          const segmentsFilled = limit > 0 ? Math.ceil((remaining / limit) * segmentsTotal) : 0;
+          
+          return {
+            model,
+            limit,
+            remaining,
+            ttlMs: info.ttlMs || 0,
+            segmentsTotal,
+            segmentsFilled,
+            warning: remaining < (limit * 0.2)
+          };
+        });
+        setQuotas(transformed);
+      } else {
+        const err = JSON.parse(res.body);
+        setError(err.error || 'Failed to fetch quotas');
+      }
+    } catch (err) {
+      logger.error('Quota fetch error:', err);
+      setError('Connection failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
+    fetchQuotas();
+  }, [aiSettings.cloudToken, cloudEndpoint]);
 
-    const fetchQuotaData = async () => {
-      if (!aiSettings.useCloudModel || !aiSettings.cloudToken) {
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const baseUrl = cloudEndpoint;
-        const authUrl = `${baseUrl.replace(/\/+$/, '')}/auth/me`;
-        const quotaUrl = `${baseUrl.replace(/\/+$/, '')}/api/quota`;
-
-        const [profileRes, quotaRes] = await Promise.all([
-          safeInvoke('ollama_proxy', {
-            method: 'GET',
-            url: authUrl,
-            headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-            body: {}
-          }),
-          safeInvoke('ollama_proxy', {
-            method: 'GET',
-            url: quotaUrl,
-            headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-            body: {}
-          })
-        ]);
-
-        if (cancelled) return;
-
-        if (profileRes.status >= 200 && profileRes.status < 300) {
-          const data = JSON.parse(profileRes.body);
-          setProfile(data.user || data);
-        } else {
-          throw new Error('Failed to fetch user profile.');
-        }
-
-        if (quotaRes.status >= 200 && quotaRes.status < 300) {
-          const data = JSON.parse(quotaRes.body);
-          setQuotas(data.quotas || []);
-        } else {
-          throw new Error('Failed to fetch quota data.');
-        }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          logger.error('Quota fetch error:', err);
-          setError((err as Error).message || 'Failed to load quotas.');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchQuotaData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [aiSettings.useCloudModel, cloudEndpoint, aiSettings.cloudToken]);
-
-  if (!aiSettings.useCloudModel || !aiSettings.cloudToken) {
+  if (!aiSettings.cloudToken) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-10 text-center animate-in fade-in duration-500">
+      <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-500">
         <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mb-6">
-          <Server size={32} strokeWidth={1.5} className="text-purple-500/50" />
+          <Zap size={32} strokeWidth={1.5} className="text-purple-500/50" />
         </div>
-        <h4 className="text-white font-bold text-lg mb-2">{t('agent.quota.title')}</h4>
+        <h4 className="text-white font-bold text-lg mb-2">{t('agent.quota.no_cloud')}</h4>
         <p className="text-[13px] text-[#666] max-w-sm leading-relaxed">
-          {t('agent.quota.unauthorized')}
+          {t('agent.quota.no_cloud_desc')}
         </p>
       </div>
     );
@@ -115,7 +91,7 @@ export const QuotaPanel: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20">
         <RefreshCw size={24} className="animate-spin text-purple-500/50" />
-        <p className="text-[10px] text-[#444] font-bold uppercase tracking-widest">{t('agent.quota.loading')}</p>
+        <p className="text-[10px] text-[#444] font-bold uppercase tracking-widest">{t('common.loading')}</p>
       </div>
     );
   }
@@ -131,23 +107,12 @@ export const QuotaPanel: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {profile && (
-        <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shrink-0">
-              <User size={24} strokeWidth={1.5} className="text-purple-400" />
-            </div>
-            <div>
-              <h4 className="text-white font-bold text-sm leading-tight">{profile.email}</h4>
-              <p className="text-[11px] text-purple-400/80 font-mono mt-1 uppercase tracking-widest">
-                Role: {profile.role}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
+        {quotas.length === 0 && (
+           <div className="p-10 border border-dashed border-white/5 rounded-2xl text-center">
+              <p className="text-[12px] text-[#555]">No quota data available for your current models.</p>
+           </div>
+        )}
         {quotas.map((quota, idx) => (
           <div key={idx} className="bg-[#111] border border-white/5 rounded-xl p-5 shadow-lg">
             <div className="flex items-center justify-between mb-4">
@@ -184,66 +149,6 @@ export const QuotaPanel: React.FC = () => {
             )}
           </div>
         ))}
-
-      {profile && (profile.role === 'free' || !profile.planId) && (
-        <div className="mt-8 p-6 bg-gradient-to-br from-purple-600/20 to-blue-600/10 border border-purple-500/30 rounded-2xl shadow-xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Zap size={80} strokeWidth={1} />
-          </div>
-          <div className="relative z-10">
-            <h4 className="text-lg font-bold text-white mb-2">Upgrade to PRO</h4>
-            <p className="text-xs text-[#aaa] mb-6 max-w-sm leading-relaxed">
-              Unlock higher quotas, faster response times, and early access to our most advanced coding models.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await safeInvoke('ollama_proxy', {
-                      method: 'POST',
-                      url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
-                      headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                      body: { planId: '660000000000000000000002', provider: 'mercadopago' }
-                    });
-                    if (res.status >= 200 && res.status < 300) {
-                      const { url } = JSON.parse(res.body);
-                      const { open } = await import('@tauri-apps/plugin-shell');
-                      await open(url);
-                    }
-                  } catch (err) {
-                    logger.error('Checkout error:', err);
-                  }
-                }}
-                className="px-6 py-2 bg-purple-600 hover:bg-purple-50 text-white hover:text-black text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95"
-              >
-                Pay with Mercado Pago
-              </button>
-              <button
-                 onClick={async () => {
-                  try {
-                    const res = await safeInvoke('ollama_proxy', {
-                      method: 'POST',
-                      url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
-                      headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                      body: { planId: '660000000000000000000002', provider: 'paypal' }
-                    });
-                    if (res.status >= 200 && res.status < 300) {
-                      const { url } = JSON.parse(res.body);
-                      const { open } = await import('@tauri-apps/plugin-shell');
-                      await open(url);
-                    }
-                  } catch (err) {
-                    logger.error('Checkout error:', err);
-                  }
-                }}
-                className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold rounded-xl transition-all active:scale-95"
-              >
-                PayPal (USD)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 
 #[tauri::command]
 fn get_cloud_config() -> String {
-    "".to_string()
+    "https://ollama.unsetsoft.com".to_string()
 }
 
 #[tauri::command]
