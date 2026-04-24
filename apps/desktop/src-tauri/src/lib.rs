@@ -1,4 +1,5 @@
 mod about;
+mod cli;
 mod error;
 mod fs_atomic;
 mod fs_guard;
@@ -6,6 +7,7 @@ mod fs_watcher;
 mod http;
 mod pty;
 
+use cli::CliWorkspace;
 use error::redact_user_paths;
 
 mod extensions;
@@ -19,6 +21,7 @@ use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
@@ -140,6 +143,45 @@ async fn install_update(app: tauri::AppHandle, window: tauri::Window) -> Result<
     }
 }
 // ============================================================
+
+/// Managed state slot that holds the absolute workspace path supplied on the
+/// command line (`tide .`, `TrixtyIDE --path /repo`). `None` when the app was
+/// launched without a path, or when the supplied path failed validation.
+///
+/// The frontend reads this exactly once during `AppContext` initial load and
+/// uses it to override the "no workspace open" cold-start state. We take the
+/// value out on read so a subsequent manual "Open Folder" can't accidentally
+/// be clobbered by a stale CLI path on reload — it's a one-shot bootstrap
+/// hint, not persistent state.
+///
+/// Wrapped in a newtype (rather than a bare `Arc<Mutex<Option<PathBuf>>>`
+/// alias) because Tauri's managed-state registry is keyed by concrete type:
+/// `WorkspaceState` from `fs_guard` and the CLI hint both need to coexist,
+/// and an alias collision would panic at startup.
+pub struct InitialCliWorkspace(Arc<Mutex<Option<PathBuf>>>);
+
+fn new_initial_cli_workspace(path: Option<PathBuf>) -> InitialCliWorkspace {
+    InitialCliWorkspace(Arc::new(Mutex::new(path)))
+}
+
+/// Returns (and consumes) the CLI-supplied workspace path. The frontend
+/// invokes this once during initial load; subsequent calls return `None`.
+///
+/// Consuming the value avoids a subtle footgun: if a user manually opens a
+/// different folder and then reloads the webview (Ctrl+R in dev, hot-reload
+/// in Next.js), re-reading the CLI path would silently jump them back to
+/// the path they originally launched with. One-shot delivery matches the
+/// intent — the CLI path is a startup hint, not a sticky default.
+#[tauri::command]
+fn take_initial_cli_workspace(
+    state: tauri::State<'_, InitialCliWorkspace>,
+) -> Result<Option<String>, String> {
+    let mut guard = state
+        .0
+        .lock()
+        .map_err(|e| format!("CLI workspace state lock failed: {}", e))?;
+    Ok(guard.take().map(|p| p.to_string_lossy().into_owned()))
+}
 
 struct SystemState {
     sys: System,
@@ -1841,6 +1883,41 @@ fn delete_path(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Parse the workspace path from argv BEFORE handing control to Tauri. We
+    // want the resulting `PathBuf` in managed state by the time the setup
+    // hook and the `take_initial_cli_workspace` command fire; reading argv
+    // inside `.setup()` would work too, but keeping it at the top keeps the
+    // data flow easy to follow ("CLI arg → managed state → frontend read").
+    let cli_workspace = cli::parse_cli_workspace();
+    let initial_cli_workspace = match &cli_workspace {
+        CliWorkspace::Path(p) => Some(p.clone()),
+        CliWorkspace::Empty => None,
+        CliWorkspace::Invalid { raw, reason } => {
+            // Log and fall back to a normal startup rather than aborting.
+            // Raw input is redacted because it can contain the user's home
+            // path; the reason string is already redacted in `cli.rs`.
+            warn!(
+                "Ignoring invalid CLI workspace argument {}: {}",
+                redact_user_paths(raw),
+                reason
+            );
+            None
+        }
+    };
+
+    // Pre-populate the `WorkspaceState` guard with the CLI path so the
+    // earliest `read_file` / `read_directory` calls from the frontend
+    // (extension loader, bootstrap probes) don't fail the containment
+    // check before `setRootPath` has run on the React side. The frontend
+    // will re-call `set_workspace_root` with the same path once it picks
+    // up the value, which is a no-op re-canonicalisation.
+    let workspace_state = new_workspace_state();
+    if let Some(ref path) = initial_cli_workspace {
+        if let Ok(mut guard) = workspace_state.lock() {
+            *guard = Some(path.clone());
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -1878,7 +1955,8 @@ pub fn run() {
             sys: System::new_all(),
         })))
         .manage(Arc::new(Mutex::new(FsWatcherState::new())))
-        .manage::<WorkspaceState>(new_workspace_state())
+        .manage::<WorkspaceState>(workspace_state)
+        .manage::<InitialCliWorkspace>(new_initial_cli_workspace(initial_cli_workspace))
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -1939,6 +2017,7 @@ pub fn run() {
             watch_path,
             unwatch_all,
             set_workspace_root,
+            take_initial_cli_workspace,
             about::get_trixty_about_info
         ])
         .setup(|app| {

@@ -409,6 +409,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setSystemSettings(prev => ({ ...prev, ...savedSystemSettings }));
         }
 
+        // 6. If the user launched via `tide <path>` (or `TrixtyIDE --path
+        // <path>`), Rust has already validated and canonicalised that
+        // path. Take it out of managed state here — `take_initial_cli_workspace`
+        // is a one-shot consumer, so a subsequent webview reload won't
+        // re-apply a stale CLI value on top of a manually-picked folder.
+        // We wire it through `setRootPath` (not the private setter) so the
+        // Rust-side workspace-guard resync runs with the frontend's
+        // canonical form.
+        if (isTauri()) {
+          try {
+            const cliPath = await safeInvoke("take_initial_cli_workspace");
+            if (cliPath) {
+              logger.debug("[AppContext] Opening CLI-supplied workspace:", cliPath);
+              await setRootPath(cliPath);
+            }
+          } catch (e) {
+            // Non-fatal: the user can still open a folder manually.
+            logger.warn("[AppContext] Failed to read CLI workspace path:", e);
+          }
+        }
+
         setIsInitialLoadComplete(true);
         logger.debug("[AppContext] Initial load complete.");
       } catch (err) {
@@ -419,7 +440,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     loadInitialState();
-  }, [createSession, setLocale, getSystemDefaultLocale]);
+  }, [createSession, setLocale, getSystemDefaultLocale, setRootPath]);
 
   // Global: Remove default context menu
   useEffect(() => {
