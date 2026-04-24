@@ -43,7 +43,7 @@ export const QuotaPanel: React.FC = () => {
         const transformed: QuotaInfo[] = Object.entries(data).map(([model, info]: [string, any]) => {
           const limit = info.limit || 0;
           const remaining = info.remaining || 0;
-          const segmentsTotal = 15;
+          const segmentsTotal = limit >= 1000 ? 24 : 12;
           const segmentsFilled = limit > 0 ? Math.ceil((remaining / limit) * segmentsTotal) : 0;
           
           return {
@@ -120,22 +120,23 @@ export const QuotaPanel: React.FC = () => {
                 <Zap size={16} className={quota.warning ? "text-amber-500" : "text-purple-400"} />
                 <h5 className="text-[14px] font-bold text-white tracking-tight">{quota.model}</h5>
               </div>
-              <span className="text-[12px] font-mono text-[#888]">
-                {quota.remaining} / {quota.limit} left
-              </span>
             </div>
 
-            <div className="flex gap-1 h-3">
+            <div className={`flex ${quota.limit >= 1000 ? 'gap-0.5' : 'gap-1'} h-1.5`}>
               {Array.from({ length: quota.segmentsTotal }).map((_, i) => {
                 const isFilled = i < quota.segmentsFilled;
                 const colorClass = isFilled
-                  ? (quota.warning ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]")
+                  ? (quota.warning 
+                      ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" 
+                      : (quota.limit >= 1000 
+                          ? "bg-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.7)]" 
+                          : "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]"))
                   : "bg-white/5";
 
                 return (
                   <div
                     key={i}
-                    className={`flex-1 rounded-sm transition-all duration-500 ${colorClass}`}
+                    className={`flex-1 rounded-full transition-all duration-700 ${colorClass}`}
                   />
                 );
               })}
