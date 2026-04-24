@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock, ClipboardCheck } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useFiles } from "@/context/FilesContext";
+import { useChat } from "@/context/ChatContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useAgent } from "@/context/AgentContext";
 import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import ReactMarkdown from "react-markdown";
@@ -41,11 +45,10 @@ type OllamaChatMessage =
 
 
 const AiChatComponent: React.FC = () => {
+  const { setRightPanelOpen } = useUI();
+  const { rootPath } = useWorkspace();
+  const { openFiles, currentFile } = useFiles();
   const {
-    setRightPanelOpen,
-    rootPath,
-    openFiles,
-    currentFile,
     chatSessions,
     activeSessionId,
     createSession,
@@ -54,12 +57,14 @@ const AiChatComponent: React.FC = () => {
     addMessageToSession,
     appendToLastAiMessage,
     finalizeLastAiMessage,
-    updateAISettings,
+  } = useChat();
+  const {
     aiSettings,
+    updateAISettings,
     editorSettings,
     systemSettings,
-    locale
-  } = useApp();
+    locale,
+  } = useSettings();
   const {
     chatMode, setChatMode, getSystemPrompt,
     skills, activeSkills, docs, activeDocs, refreshAgentData,

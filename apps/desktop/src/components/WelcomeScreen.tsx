@@ -2,12 +2,14 @@
 
 import React from "react";
 import { FolderOpen, Terminal } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useUI } from "@/context/UIContext";
 import { useL10n } from "@/hooks/useL10n";
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const WelcomeScreen: React.FC = () => {
-  const { handleOpenFolder, setBottomPanelOpen } = useApp();
+  const { handleOpenFolder } = useWorkspace();
+  const { setBottomPanelOpen } = useUI();
   const { t } = useL10n();
   const shortcuts = [
     //{ label: t('welcome.shortcut.new_project'), keys: ["Ctrl", "Alt", "N"], icon: Plus, action: () => { } },

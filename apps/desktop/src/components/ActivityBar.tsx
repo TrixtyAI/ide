@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Settings, Package } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
+import { useFiles } from "@/context/FilesContext";
 import { trixty, WebviewView } from "@/api/trixty";
 import { useL10n } from "@/hooks/useL10n";
 import Tooltip from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 
 const ActivityBar: React.FC = () => {
-  const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, setSidebarOpen, openFile, setSettingsOpen } = useApp();
+  const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, setSidebarOpen, setSettingsOpen } = useUI();
+  const { openFile } = useFiles();
   const [plugins, setPlugins] = useState<WebviewView[]>([]);
   const { t } = useL10n();
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { X, FileCode, FileText, FileJson, FileType, Package, CircleOff, ArrowRight, FileCheck, Trash2 } from "lucide-react";
-import { useApp, FileState } from "@/context/AppContext";
+import { useFiles, FileState } from "@/context/FilesContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu, { ContextMenuItem } from "./ui/ContextMenu";
 
@@ -14,7 +14,7 @@ export const tabIdFor = (path: string): string =>
   `tab-${path.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 
 const TabBar: React.FC = () => {
-  const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useApp();
+  const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useFiles();
   const { t } = useL10n();
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetPath: string } | null>(null);
 

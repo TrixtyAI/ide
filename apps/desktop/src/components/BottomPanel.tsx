@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Terminal from "./Terminal";
 import { Plus, X, Terminal as TerminalIcon } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
 import { useL10n } from "@/hooks/useL10n";
 
 interface TerminalTab {
@@ -24,7 +25,8 @@ const newSessionId = (): string => {
 };
 
 const BottomPanel: React.FC = () => {
-  const { setBottomPanelOpen, rootPath, terminalPath } = useApp();
+  const { setBottomPanelOpen, terminalPath } = useUI();
+  const { rootPath } = useWorkspace();
   const { t } = useL10n();
 
   // Seed with a single tab whose cwd resolves at mount time. Subsequent

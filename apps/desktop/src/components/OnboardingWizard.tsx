@@ -17,7 +17,7 @@ import {
   Settings2
 } from "lucide-react";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
-import { useApp } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useL10n } from "@/hooks/useL10n";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useTauriWindow } from "@/hooks/useTauriWindow";
@@ -39,7 +39,7 @@ const OnboardingWizard: React.FC = () => {
     updateEditorSettings,
     systemSettings,
     updateSystemSettings,
-  } = useApp();
+  } = useSettings();
   const { t } = useL10n();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(0);

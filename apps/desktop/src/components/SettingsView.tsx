@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useApp } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
+import { useUI } from "@/context/UIContext";
+import { useResetApp } from "@/context/useResetApp";
 import { useL10n } from "@/hooks/useL10n";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
@@ -35,10 +37,9 @@ const SettingsView: React.FC = () => {
     setLocale,
     systemSettings,
     updateSystemSettings,
-    isSettingsOpen,
-    setSettingsOpen,
-    resetApp
-  } = useApp();
+  } = useSettings();
+  const { isSettingsOpen, setSettingsOpen } = useUI();
+  const resetApp = useResetApp();
   const { t } = useL10n();
   const [activeCategory, setActiveCategory] = useState("general");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
