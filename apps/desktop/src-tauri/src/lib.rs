@@ -1561,6 +1561,7 @@ fn split_ndjson_lines(buffer: &mut String, chunk: &str) -> Vec<Result<serde_json
 /// failure is surfaced as an `ollama-stream` `error` event, not through the
 /// command's return value (which has already resolved).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 async fn ollama_proxy_stream(
     app: tauri::AppHandle,
     streams: tauri::State<'_, OllamaStreams>,
