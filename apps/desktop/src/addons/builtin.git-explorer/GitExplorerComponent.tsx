@@ -11,7 +11,10 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { safeInvoke as invoke } from "@/api/tauri";
 import type { GitLogEntry, GitStashEntry } from "@/api/tauri";
 import { open, ask } from "@tauri-apps/plugin-dialog";
-import { useApp } from "@/context/AppContext";
+import { useFiles } from "@/context/FilesContext";
+import { useUI } from "@/context/UIContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useL10n } from "@/hooks/useL10n";
 import ContextMenu from "@/components/ui/ContextMenu";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -50,7 +53,10 @@ function relativeParts(unixSeconds: number): { unit: "s" | "m" | "h" | "d" | "mo
 }
 
 const GitExplorerComponent: React.FC = () => {
-  const { openFile, activeSidebarTab, rootPath, setRootPath, openTerminal, currentFile, closeFile, aiSettings, systemSettings } = useApp();
+  const { openFile, currentFile, closeFile } = useFiles();
+  const { activeSidebarTab, openTerminal } = useUI();
+  const { rootPath, setRootPath } = useWorkspace();
+  const { aiSettings, systemSettings } = useSettings();
   const { t } = useL10n();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);

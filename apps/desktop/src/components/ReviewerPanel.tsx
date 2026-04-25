@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ClipboardCheck } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
 import { useAgent } from "@/context/AgentContext";
 import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import { useL10n } from "@/hooks/useL10n";
@@ -21,7 +21,7 @@ import { ToolApprovalPanel } from "@/addons/builtin.ai-assistant/ToolApprovalPan
  * component when the viewport can actually afford the extra column.
  */
 const ReviewerPanel: React.FC = () => {
-  const { rootPath } = useApp();
+  const { rootPath } = useWorkspace();
   const { memory } = useAgent();
   const { pendingTool, resolvePendingTool } = useReview();
   const { t } = useL10n();

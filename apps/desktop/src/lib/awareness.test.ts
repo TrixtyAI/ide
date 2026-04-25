@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { generateAwarenessBlock, inferProjectStack } from "./awareness";
 
 // Minimal, self-contained fixtures so the test does not depend on the shape
-// of `useApp()` or the real Tauri registries.
+// of the settings providers or the real Tauri registries.
 const baseParams = {
   system: {
     os_name: "Windows",

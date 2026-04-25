@@ -8,7 +8,10 @@ import WelcomeScreen from "@/components/WelcomeScreen";
 import TitleBar from "@/components/TitleBar";
 import UpdaterDialog from "@/components/UpdaterDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
+import { useFiles } from "@/context/FilesContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PluginManager } from "@/api/PluginManager";
@@ -40,6 +43,10 @@ export default function Home() {
     setActiveSidebarTab,
     isBottomPanelOpen,
     setBottomPanelOpen,
+    setSettingsOpen,
+    isSettingsOpen,
+  } = useUI();
+  const {
     openFiles,
     openFile,
     currentFile,
@@ -47,11 +54,9 @@ export default function Home() {
     closeFile,
     closeSaved,
     closeAll,
-    handleOpenFolder,
     saveCurrentFile,
-    setSettingsOpen,
-    isSettingsOpen,
-  } = useApp();
+  } = useFiles();
+  const { handleOpenFolder } = useWorkspace();
 
   // Tracks a pending `Ctrl+K` leader for two-step chords (`Ctrl+K U`,
   // `Ctrl+K W`). The TTL matches the VS Code default: if the second key
@@ -272,7 +277,7 @@ export default function Home() {
     closeAll,
   ]);
 
-  const { systemSettings, isInitialLoadComplete } = useApp();
+  const { systemSettings, isInitialLoadComplete } = useSettings();
 
   if (!isInitialLoadComplete) {
     return <div className="bg-surface-0 w-screen h-screen" />;

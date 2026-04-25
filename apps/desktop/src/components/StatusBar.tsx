@@ -2,7 +2,7 @@
 
 import React from "react";
 import { GitBranch, Wifi, Bell, Cloud, RefreshCw } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useFiles } from "@/context/FilesContext";
 import { useL10n } from "@/hooks/useL10n";
 
 // StatusBar items are informational surfaces today (no click handlers). The
@@ -13,7 +13,7 @@ import { useL10n } from "@/hooks/useL10n";
 // language switcher, notifications panel), the corresponding item should be
 // converted to a proper `<button>` at that point.
 const StatusBar: React.FC = () => {
-  const { currentFile } = useApp();
+  const { currentFile } = useFiles();
   const { t } = useL10n();
 
   return (

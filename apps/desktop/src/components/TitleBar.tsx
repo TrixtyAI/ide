@@ -2,13 +2,17 @@
 
 import React from "react";
 import { Minus, Square, X, Copy, PanelRight } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useFiles } from "@/context/FilesContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useUI } from "@/context/UIContext";
 import { useL10n } from "@/hooks/useL10n";
 import { useTauriWindow } from "@/hooks/useTauriWindow";
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const TitleBar: React.FC = () => {
-  const { currentFile, rootPath, isRightPanelOpen, setRightPanelOpen } = useApp();
+  const { currentFile } = useFiles();
+  const { rootPath } = useWorkspace();
+  const { isRightPanelOpen, setRightPanelOpen } = useUI();
   const { isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
   const { t } = useL10n();
 

@@ -1,5 +1,5 @@
 import { safeInvoke as invoke, DirEntry } from "@/api/tauri";
-import { AISettings, EditorSettings, SystemSettings } from "@/context/AppContext";
+import { AISettings, EditorSettings, SystemSettings } from "@/context/SettingsContext";
 import { logger } from "@/lib/logger";
 
 export interface SystemInfo {
