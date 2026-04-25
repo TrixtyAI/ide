@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useSettings } from "@/context/SettingsContext";
 import { useL10n } from "@/hooks/useL10n";
-import { Key, Eye, EyeOff, Plus, Trash2, Globe, Sparkles, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2, Sparkles, AlertCircle } from "lucide-react";
 import { PROVIDERS } from "../builtin.ai-assistant/providerConfig";
 
 export const ProvidersPanel: React.FC = () => {
