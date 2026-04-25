@@ -108,6 +108,11 @@ pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliWorkspace {
         return CliWorkspace::Empty;
     };
 
+    // Ignore deep link URLs
+    if raw.starts_with("tide://") {
+        return CliWorkspace::Empty;
+    }
+
     resolve_workspace_path(&raw, cwd.as_deref())
 }
 

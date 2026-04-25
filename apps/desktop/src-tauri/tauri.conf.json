@@ -52,6 +52,11 @@
         "https://github.com/TrixtyAI/ide/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZENjJGRDY0ODk4MjA5MEQKUldRTkNZS0paUDFpL1RTS3hzZm5RWCt0aUR5ckhYSjU4NUZ1VFUvVzBMZXlVMnVNVkxVZHFBc3IK"
+    },
+    "deep-link": {
+      "schemes": [
+        "tide"
+      ]
     }
   },
   "bundle": {
