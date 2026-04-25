@@ -94,7 +94,10 @@ Node.js: ${systemInfo.node_version}
         { id: "agent:skills", label: t('agent.tab.skills') },
         { id: "agent:documentations", label: t('agent.tab.documentations') },
         { id: "agent:memory", label: t('agent.tab.memory') },
-        ...(aiSettings.useCloudModel ? [
+        ...(aiSettings.allowProviderKeys ? [
+          { id: "agent:providers", label: t('agent.tab.providers') }
+        ] : []),
+        ...(aiSettings.useCloudModel && !aiSettings.allowProviderKeys ? [
           { id: "agent:quota", label: t('agent.tab.quota') },
           { id: "agent:billing", label: "Billing & Plans" }
         ] : []),

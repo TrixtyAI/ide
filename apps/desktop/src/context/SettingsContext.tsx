@@ -22,6 +22,18 @@ export interface AISettings {
   loadOnStartup: boolean;
   useCloudModel: boolean;
   cloudToken: string;
+  // Provider mode
+  allowProviderKeys: boolean;
+  activeProvider: 'gemini' | 'openrouter' | null;
+  providerKeys: {
+    gemini: string;
+    openrouter: string;
+  };
+  providerModels: {
+    gemini: string[];
+    openrouter: string[];
+  };
+  selectedProviderModel: string;
 }
 
 export interface EditorSettings {
@@ -52,7 +64,7 @@ interface SettingsContextType {
 // Schema versions for each persisted bundle. Bump when the shape of the
 // stored data changes, then add a migration function at
 // `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
-const AI_SETTINGS_VERSION = 1;
+const AI_SETTINGS_VERSION = 2;
 const EDITOR_SETTINGS_VERSION = 1;
 const SYSTEM_SETTINGS_VERSION = 1;
 const LOCALE_VERSION = 1;
@@ -69,6 +81,11 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   loadOnStartup: false,
   useCloudModel: false,
   cloudToken: "",
+  allowProviderKeys: false,
+  activeProvider: null,
+  providerKeys: { gemini: '', openrouter: '' },
+  providerModels: { gemini: [], openrouter: [] },
+  selectedProviderModel: '',
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -155,6 +172,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           "trixty-ai-settings",
           AI_SETTINGS_VERSION,
           null,
+          {
+            1: (prev: unknown) => {
+              const p = prev as Record<string, unknown>;
+              return {
+                ...p,
+                allowProviderKeys: false,
+                activeProvider: null,
+                providerKeys: { gemini: '', openrouter: '' },
+                providerModels: { gemini: [] as string[], openrouter: [] as string[] },
+                selectedProviderModel: '',
+              } as AISettings;
+            }
+          }
         );
         if (savedSettings) {
           setAiSettings((prev) => ({ ...prev, ...savedSettings }));

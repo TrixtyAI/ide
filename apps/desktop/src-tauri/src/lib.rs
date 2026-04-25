@@ -1561,6 +1561,7 @@ fn split_ndjson_lines(buffer: &mut String, chunk: &str) -> Vec<Result<serde_json
 /// failure is surfaced as an `ollama-stream` `error` event, not through the
 /// command's return value (which has already resolved).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 async fn ollama_proxy_stream(
     app: tauri::AppHandle,
     streams: tauri::State<'_, OllamaStreams>,
@@ -1569,6 +1570,7 @@ async fn ollama_proxy_stream(
     url: String,
     headers: Option<HashMap<String, String>>,
     body: Option<serde_json::Value>,
+    raw_mode: Option<bool>,
 ) -> Result<(), String> {
     use tauri::Emitter;
 
@@ -1658,6 +1660,7 @@ async fn ollama_proxy_stream(
         let mut response = response;
         let mut buffer = String::new();
         let mut sent_done = false;
+        let is_raw = raw_mode.unwrap_or(false);
 
         // Main chunk pump. `response.chunk().await` yields `Ok(Some(bytes))`
         // for each new body fragment, `Ok(None)` at EOF, or `Err(..)` on
@@ -1698,7 +1701,22 @@ async fn ollama_proxy_stream(
             // invalid byte almost certainly means the proxy is mangling
             // the stream, and emitting U+FFFD is less bad than dropping
             // the whole chunk.
-            let text = String::from_utf8_lossy(&chunk).into_owned();
+            let text = String::from_utf8_lossy(&chunk);
+
+            if is_raw {
+                let _ = app_for_task.emit(
+                    "ollama-stream",
+                    OllamaStreamPayload {
+                        stream_id: stream_id_for_task.clone(),
+                        kind: "delta",
+                        content: Some(text.to_string()),
+                        message: None,
+                        error: None,
+                    },
+                );
+                continue;
+            }
+
             let lines = split_ndjson_lines(&mut buffer, &text);
             for line in lines {
                 match line {
