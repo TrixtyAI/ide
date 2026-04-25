@@ -390,7 +390,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                     </div>
                   </div>
                 )}
-              </div>
+
 
               {!aiSettings.useCloudModel && !aiSettings.allowProviderKeys && (
                 <div className="space-y-10 pt-8 border-t border-white/5 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -494,6 +494,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
             />
           </div>
         );
+      default:
+        return null;
     }
   };
 
