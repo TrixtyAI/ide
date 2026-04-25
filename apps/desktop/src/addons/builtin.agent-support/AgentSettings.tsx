@@ -13,9 +13,10 @@ import { logger } from "@/lib/logger";
 import { AuthModal } from "@/components/AuthModal";
 import { QuotaPanel } from "./QuotaPanel";
 import { BillingPanel } from "./BillingPanel";
+import { ProvidersPanel } from "./ProvidersPanel";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration' | 'quota' | 'billing';
+  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration' | 'quota' | 'billing' | 'providers';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
@@ -98,7 +99,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
       );
     }
 
-    switch (activeTab) {
+      case 'providers': return <ProvidersPanel />;
       // ... (rest of the switch stays the same)
       case 'profile':
         return (
@@ -309,8 +310,27 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <section className="space-y-8 max-w-lg">
+              {/* Allow Provider Keys Switch */}
+              <div className="flex items-center justify-between group p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[12px] font-bold text-white tracking-tight">{t('agent.configuration.allowprovider_label')}</label>
+                  <p className="text-[11px] text-[#555] max-w-sm">
+                    {t('agent.configuration.allowprovider_desc')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateAISettings({ allowProviderKeys: !aiSettings.allowProviderKeys })}
+                  className={`w-12 h-6 rounded-full relative transition-all duration-300 ${aiSettings.allowProviderKeys ? "bg-blue-600 shadow-lg shadow-blue-900/40" : "bg-[#1a1a1a] border border-white/5"
+                    }`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${aiSettings.allowProviderKeys ? "left-7" : "left-1"
+                    }`} />
+                </button>
+              </div>
+
               {/* Cloud Model Toggle */}
-              <div className="space-y-4">
+              {!aiSettings.allowProviderKeys && (
+                <div className="space-y-4">
                 <div className={`flex items-center justify-between group ${(cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>") ? "opacity-50 grayscale pointer-events-none" : ""}`}>
                   <div className="flex flex-col gap-1">
                     <label className="text-[12px] font-bold text-white tracking-tight">{t('agent.configuration.usecloud_label')}</label>
@@ -332,7 +352,11 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   </button>
                 </div>
 
-                {aiSettings.useCloudModel && cloudEndpoint !== "" && cloudEndpoint !== "<cloud_endpoint>" && (
+                </div>
+              )}
+
+              {/* Cloud Model Details */}
+              {aiSettings.useCloudModel && !aiSettings.allowProviderKeys && cloudEndpoint !== "" && cloudEndpoint !== "<cloud_endpoint>" && (
                   <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
                     <div className="pt-2">
                       {aiSettings.cloudToken ? (
@@ -368,7 +392,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 )}
               </div>
 
-              {!aiSettings.useCloudModel && (
+              {!aiSettings.useCloudModel && !aiSettings.allowProviderKeys && (
                 <div className="space-y-10 pt-8 border-t border-white/5 animate-in fade-in slide-in-from-top-4 duration-500">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1 h-4 bg-blue-500 rounded-full" />

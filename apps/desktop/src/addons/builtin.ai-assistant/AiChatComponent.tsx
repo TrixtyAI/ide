@@ -24,6 +24,9 @@ import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
 import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
+import { PROVIDERS } from "./providerConfig";
+import { streamGeminiChat, streamOpenRouterChat } from "./providerAdapter";
+import { Key } from "lucide-react";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -233,6 +236,28 @@ const AiChatComponent: React.FC = () => {
   // without taking a dependency on it.
   useEffect(() => {
     let cancelled = false;
+
+    // Provider mode: models are manually configured
+    if (aiSettings.allowProviderKeys && aiSettings.activeProvider) {
+      const pId = aiSettings.activeProvider;
+      const providerModels = aiSettings.providerModels[pId] || [];
+      const syntheticModels: OllamaModel[] = providerModels.map(m => ({
+        name: m,
+        size: 0,
+        details: { family: pId, parameter_size: '---', quantization_level: '---' }
+      }));
+      
+      setModels(syntheticModels);
+      setOllamaStatus('connected');
+      
+      if (syntheticModels.length > 0) {
+        setSelectedModel((prev) => 
+          prev && syntheticModels.some(m => m.name === prev) ? prev : syntheticModels[0].name
+        );
+      }
+      return;
+    }
+
     const fetchModels = async () => {
       try {
         setOllamaStatus('checking');
@@ -272,7 +297,7 @@ const AiChatComponent: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [aiSettings.endpoint, aiSettings.useCloudModel, cloudEndpoint, proxyFetch]);
+  }, [aiSettings.endpoint, aiSettings.useCloudModel, aiSettings.allowProviderKeys, aiSettings.activeProvider, aiSettings.providerModels, cloudEndpoint, proxyFetch]);
 
 
   useEffect(() => {
@@ -584,10 +609,31 @@ const AiChatComponent: React.FC = () => {
 
         let streamResult: Awaited<ReturnType<typeof streamOllamaChat>>;
         try {
-          streamResult = await streamOllamaChat(chatUrl, body, (delta) => {
-            pushPlaceholderOnce();
-            appendToLastAiMessage(activeSessionId, delta);
-          }, controller.signal, chatHeaders);
+          const isProviderMode = aiSettings.allowProviderKeys && aiSettings.activeProvider;
+          const providerKey = isProviderMode ? aiSettings.providerKeys[aiSettings.activeProvider!] : '';
+          const options = {
+            temperature: aiSettings.temperature,
+            maxTokens: aiSettings.maxTokens,
+            think: aiSettings.deepMode,
+            tools: body.tools
+          };
+
+          if (isProviderMode && aiSettings.activeProvider === 'gemini') {
+            streamResult = await streamGeminiChat(providerKey, selectedModel, history, options, (delta) => {
+              pushPlaceholderOnce();
+              appendToLastAiMessage(activeSessionId, delta);
+            }, controller.signal);
+          } else if (isProviderMode && aiSettings.activeProvider === 'openrouter') {
+            streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, options, (delta) => {
+              pushPlaceholderOnce();
+              appendToLastAiMessage(activeSessionId, delta);
+            }, controller.signal);
+          } else {
+            streamResult = await streamOllamaChat(chatUrl, body, (delta) => {
+              pushPlaceholderOnce();
+              appendToLastAiMessage(activeSessionId, delta);
+            }, controller.signal, chatHeaders);
+          }
 
           // If the model rejected `think`, retry once without it. Matches the
           // one-shot behaviour from before streaming landed.
@@ -598,11 +644,24 @@ const AiChatComponent: React.FC = () => {
             // Wipe the partially-streamed placeholder so the retry starts from
             // a clean bubble instead of appending to the prior failed attempt.
             placeholderPushed = false;
-            const reqBody = { ...body, think: false };
-            streamResult = await streamOllamaChat(chatUrl, reqBody, (delta) => {
-              pushPlaceholderOnce();
-              appendToLastAiMessage(activeSessionId, delta);
-            }, controller.signal, chatHeaders);
+            
+            if (isProviderMode && aiSettings.activeProvider === 'gemini') {
+              streamResult = await streamGeminiChat(providerKey, selectedModel, history, { ...options, think: false }, (delta) => {
+                pushPlaceholderOnce();
+                appendToLastAiMessage(activeSessionId, delta);
+              }, controller.signal);
+            } else if (isProviderMode && aiSettings.activeProvider === 'openrouter') {
+              streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, { ...options, think: false }, (delta) => {
+                pushPlaceholderOnce();
+                appendToLastAiMessage(activeSessionId, delta);
+              }, controller.signal);
+            } else {
+              const reqBody = { ...body, think: false };
+              streamResult = await streamOllamaChat(chatUrl, reqBody, (delta) => {
+                pushPlaceholderOnce();
+                appendToLastAiMessage(activeSessionId, delta);
+              }, controller.signal, chatHeaders);
+            }
           }
         } catch (err) {
           throw err;
@@ -822,7 +881,32 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
-  if (aiSettings.useCloudModel && !aiSettings.cloudToken) {
+  const isProviderActive = aiSettings.allowProviderKeys && aiSettings.activeProvider;
+  const providerKey = isProviderActive ? aiSettings.providerKeys[aiSettings.activeProvider!] : '';
+  const providerModels = isProviderActive ? aiSettings.providerModels[aiSettings.activeProvider!] : [];
+
+  if (aiSettings.allowProviderKeys && (!aiSettings.activeProvider || !providerKey || providerModels.length === 0)) {
+    return (
+      <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
+        <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6 border border-amber-500/20 shadow-2xl shadow-amber-500/5">
+          <Key size={40} className="text-amber-400 opacity-80" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">{t('ai.provider.not_configured.title')}</h2>
+        <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
+          {t('ai.provider.not_configured.desc')}
+        </p>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white text-xs font-bold rounded-xl hover:bg-amber-500 active:scale-95 transition-all shadow-lg shadow-amber-900/20"
+        >
+          <Key size={16} />
+          Go to Settings
+        </button>
+      </div>
+    );
+  }
+
+  if (aiSettings.useCloudModel && !aiSettings.cloudToken && !aiSettings.allowProviderKeys) {
     return (
       <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mb-6 border border-purple-500/20 shadow-2xl shadow-purple-500/5">
@@ -902,7 +986,9 @@ const AiChatComponent: React.FC = () => {
             <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">
-                  {aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title')}
+                  {aiSettings.allowProviderKeys && aiSettings.activeProvider 
+                    ? t('ai.models.provider_title', { provider: PROVIDERS[aiSettings.activeProvider].name })
+                    : (aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title'))}
                 </span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
               </div>
