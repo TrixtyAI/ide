@@ -3,7 +3,6 @@ import { OpenRouter } from '@openrouter/sdk';
 import { listen } from "@tauri-apps/api/event";
 import { safeInvoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
-import { ChatMessage } from "@/context/ChatContext";
 import { OllamaStreamFinalMessage } from "./ollamaStream";
 
 /**
