@@ -103,7 +103,9 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 
 #[tauri::command]
 fn get_cloud_config() -> String {
-    "https://ollama.unsetsoft.com".to_string()
+    option_env!("TRIXTY_CLOUD_ENDPOINT")
+        .unwrap_or("")
+        .to_string()
 }
 
 #[tauri::command]
