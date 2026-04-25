@@ -106,7 +106,7 @@ fn get_cloud_config() -> String {
     // Use option_env! to get the variable at compile time.
     // If not present (e.g. local dev), it falls back to the default.
     option_env!("CLOUD_CONFIG_URL")
-        .unwrap_or("http://localhost:11434")
+        .unwrap_or("https://ollama.unsetsoft.com")
         .to_string()
 }
 
