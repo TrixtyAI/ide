@@ -1,4 +1,4 @@
-import { GoogleGenAI, SchemaType } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { OpenRouter } from '@openrouter/sdk';
 import { listen } from "@tauri-apps/api/event";
 import { safeInvoke } from "@/api/tauri";
