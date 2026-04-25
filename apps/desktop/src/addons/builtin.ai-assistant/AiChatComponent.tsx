@@ -619,12 +619,12 @@ const AiChatComponent: React.FC = () => {
           };
 
           if (isProviderMode && aiSettings.activeProvider === 'gemini') {
-            streamResult = await streamGeminiChat(providerKey, selectedModel, history, options, (delta) => {
+            streamResult = await streamGeminiChat(providerKey, selectedModel, history, { ...options, tools: options.tools as unknown[] }, (delta) => {
               pushPlaceholderOnce();
               appendToLastAiMessage(activeSessionId, delta);
             }, controller.signal);
           } else if (isProviderMode && aiSettings.activeProvider === 'openrouter') {
-            streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, options, (delta) => {
+            streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, { ...options, tools: options.tools as unknown[] }, (delta) => {
               pushPlaceholderOnce();
               appendToLastAiMessage(activeSessionId, delta);
             }, controller.signal);
@@ -646,12 +646,12 @@ const AiChatComponent: React.FC = () => {
             placeholderPushed = false;
             
             if (isProviderMode && aiSettings.activeProvider === 'gemini') {
-              streamResult = await streamGeminiChat(providerKey, selectedModel, history, { ...options, think: false }, (delta) => {
+              streamResult = await streamGeminiChat(providerKey, selectedModel, history, { ...options, think: false, tools: options.tools as unknown[] }, (delta) => {
                 pushPlaceholderOnce();
                 appendToLastAiMessage(activeSessionId, delta);
               }, controller.signal);
             } else if (isProviderMode && aiSettings.activeProvider === 'openrouter') {
-              streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, { ...options, think: false }, (delta) => {
+              streamResult = await streamOpenRouterChat(providerKey, selectedModel, history, { ...options, think: false, tools: options.tools as unknown[] }, (delta) => {
                 pushPlaceholderOnce();
                 appendToLastAiMessage(activeSessionId, delta);
               }, controller.signal);

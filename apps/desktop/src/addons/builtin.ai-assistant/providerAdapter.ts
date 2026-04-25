@@ -25,9 +25,15 @@ function createProxyFetch() {
 
     if (init?.body) {
       try {
-        body = JSON.parse(init.body as string);
+        if (typeof init.body === 'string') {
+          body = JSON.parse(init.body);
+        } else {
+          // If it's a non-string BodyInit, we don't try to parse it for proxying
+          // as our proxy command expects a JSON object.
+          body = null;
+        }
       } catch {
-        body = init.body;
+        body = null;
       }
     }
 
@@ -123,15 +129,15 @@ export async function streamGeminiChat(
   abortSignal: AbortSignal,
 ) {
   try {
-    const ai = new GoogleGenAI(apiKey);
+    const ai = new (GoogleGenAI as any)({ apiKey });
     // Custom fetch for proxy support
     (ai as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
-    const geminiModel = ai.models.get(model);
     const contents = toGeminiContents(messages);
     const systemMsg = messages.find(m => m.role === 'system');
 
-    const result = await geminiModel.generateContentStream({
+    const result = await ai.models.generateContentStream({
+      model,
       contents,
       systemInstruction: systemMsg ? systemMsg.content || systemMsg.text : undefined,
       config: {
@@ -178,7 +184,7 @@ export async function streamOpenRouterChat(
     // Custom fetch for proxy support
     (openRouter as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
-    const stream = await openRouter.chat.completions.create({
+    const stream = await (openRouter as any).chat.completions.create({
       model,
       messages: toOpenAIMessages(messages) as never,
       temperature: options.temperature,

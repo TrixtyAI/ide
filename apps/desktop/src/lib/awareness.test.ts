@@ -36,6 +36,11 @@ const baseParams = {
       useCloudModel: false,
       cloudEndpoint: "http://backends-ollama-ihaeqz-bbb2b8-149-50-136-115.traefik.me",
       cloudToken: "",
+      allowProviderKeys: false,
+      activeProvider: null,
+      providerKeys: { gemini: '', openrouter: '' },
+      providerModels: { gemini: [], openrouter: [] },
+      selectedProviderModel: '',
     },
     editor: {
       fontSize: 14,

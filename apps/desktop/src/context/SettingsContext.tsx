@@ -173,14 +173,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           AI_SETTINGS_VERSION,
           null,
           {
-            1: (prev: Record<string, unknown>) => ({
-              ...prev,
-              allowProviderKeys: false,
-              activeProvider: null,
-              providerKeys: { gemini: '', openrouter: '' },
-              providerModels: { gemini: [], openrouter: [] },
-              selectedProviderModel: '',
-            })
+            1: (prev: unknown) => {
+              const p = prev as Record<string, unknown>;
+              return {
+                ...p,
+                allowProviderKeys: false,
+                activeProvider: null,
+                providerKeys: { gemini: '', openrouter: '' },
+                providerModels: { gemini: [] as string[], openrouter: [] as string[] },
+                selectedProviderModel: '',
+              } as AISettings;
+            }
           }
         );
         if (savedSettings) {
