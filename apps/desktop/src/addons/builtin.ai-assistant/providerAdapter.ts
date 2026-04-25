@@ -129,7 +129,9 @@ export async function streamGeminiChat(
   abortSignal: AbortSignal,
 ) {
   try {
-    const ai = new (GoogleGenAI as any)({ apiKey });
+    const ai = new (GoogleGenAI as unknown as new (opt: { apiKey: string }) => { 
+      models: { generateContentStream: (p: unknown) => Promise<{ stream: AsyncIterable<{ text: () => string }> }> }
+    })({ apiKey });
     // Custom fetch for proxy support
     (ai as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
@@ -184,7 +186,9 @@ export async function streamOpenRouterChat(
     // Custom fetch for proxy support
     (openRouter as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
-    const stream = await (openRouter as any).chat.completions.create({
+    const stream = await (openRouter as unknown as { 
+      chat: { completions: { create: (p: unknown) => Promise<AsyncIterable<{ choices: { delta: { content?: string } }[] }>> } } 
+    }).chat.completions.create({
       model,
       messages: toOpenAIMessages(messages) as never,
       temperature: options.temperature,
