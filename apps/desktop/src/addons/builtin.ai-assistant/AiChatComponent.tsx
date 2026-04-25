@@ -543,6 +543,10 @@ const AiChatComponent: React.FC = () => {
       // whether the user put a trailing slash on the endpoint setting.
       const chatBaseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
       const chatUrl = `${chatBaseUrl}/api/chat`.replace(/([^:]\/)\/+/g, "$1");
+      const chatHeaders: Record<string, string> | undefined =
+        aiSettings.useCloudModel && aiSettings.cloudToken
+          ? { Authorization: `Bearer ${aiSettings.cloudToken}` }
+          : undefined;
 
       while (loop && maxIterations > 0) {
         maxIterations--;
@@ -583,7 +587,7 @@ const AiChatComponent: React.FC = () => {
           streamResult = await streamOllamaChat(chatUrl, body, (delta) => {
             pushPlaceholderOnce();
             appendToLastAiMessage(activeSessionId, delta);
-          }, controller.signal);
+          }, controller.signal, chatHeaders);
 
           // If the model rejected `think`, retry once without it. Matches the
           // one-shot behaviour from before streaming landed.
@@ -598,7 +602,7 @@ const AiChatComponent: React.FC = () => {
             streamResult = await streamOllamaChat(chatUrl, reqBody, (delta) => {
               pushPlaceholderOnce();
               appendToLastAiMessage(activeSessionId, delta);
-            }, controller.signal);
+            }, controller.signal, chatHeaders);
           }
         } catch (err) {
           throw err;

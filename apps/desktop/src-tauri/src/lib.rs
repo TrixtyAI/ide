@@ -1567,6 +1567,7 @@ async fn ollama_proxy_stream(
     stream_id: String,
     method: String,
     url: String,
+    headers: Option<HashMap<String, String>>,
     body: Option<serde_json::Value>,
 ) -> Result<(), String> {
     use tauri::Emitter;
@@ -1601,6 +1602,11 @@ async fn ollama_proxy_stream(
             "GET" => client.get(&url),
             _ => unreachable!("method validated above"),
         };
+        if let Some(hdrs) = headers {
+            for (k, v) in hdrs {
+                request = request.header(k, v);
+            }
+        }
         if let Some(json_body) = body {
             // Ollama distinguishes streaming vs one-shot by the `stream`
             // field in the request body. Force `stream: true` so the server
