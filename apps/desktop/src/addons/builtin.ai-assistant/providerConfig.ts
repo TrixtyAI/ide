@@ -5,7 +5,7 @@ export interface ProviderMeta {
   name: string;
   color: string;       // badge/accent color
   placeholder: string; // model ID example hint
-  icon: any;
+  icon: React.ElementType;
 }
 
 export const PROVIDERS: Record<string, ProviderMeta> = {

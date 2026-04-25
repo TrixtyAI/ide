@@ -3,7 +3,13 @@ import { OpenRouter } from '@openrouter/sdk';
 import { listen } from "@tauri-apps/api/event";
 import { safeInvoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
-import { OllamaStreamFinalMessage } from "./ollamaStream";
+import { OllamaStreamFinalMessage, OllamaStreamEvent } from "./ollamaStream";
+
+interface ProviderMessage {
+  role: string;
+  content?: string;
+  text?: string;
+}
 
 /**
  * Creates a standard 'fetch' implementation that routes through the Tauri Rust proxy.
@@ -15,7 +21,7 @@ function createProxyFetch() {
     const targetUrl = url.toString();
     const method = init?.method || 'GET';
     const headers = init?.headers ? (init.headers as Record<string, string>) : {};
-    let body: any = null;
+    let body: Record<string, unknown> | null = null;
 
     if (init?.body) {
       try {
@@ -25,14 +31,14 @@ function createProxyFetch() {
       }
     }
 
-    const isStream = body?.stream === true || targetUrl.includes('stream') || (init?.headers as any)?.Accept?.includes('text/event-stream');
+    const isStream = body?.stream === true || targetUrl.includes('stream') || (init?.headers as Record<string, string>)?.Accept?.includes('text/event-stream');
 
     if (isStream) {
       const streamId = `stream_${Math.random().toString(36).slice(2, 11)}`;
       
       const readable = new ReadableStream({
         async start(controller) {
-          const unlisten = await listen("ollama-stream", (event: any) => {
+          const unlisten = await listen<OllamaStreamEvent>("ollama-stream", (event) => {
             const payload = event.payload;
             if (payload.streamId !== streamId) return;
 
@@ -89,7 +95,7 @@ function createProxyFetch() {
 
 // --- TRANSFORMERS ---
 
-function toGeminiContents(messages: any[]) {
+function toGeminiContents(messages: ProviderMessage[]) {
   // Filter out system messages as they go into systemInstruction
   return messages
     .filter(msg => msg.role !== 'system')
@@ -99,7 +105,7 @@ function toGeminiContents(messages: any[]) {
     }));
 }
 
-function toOpenAIMessages(messages: any[]) {
+function toOpenAIMessages(messages: ProviderMessage[]) {
   return messages.map(msg => ({
     role: msg.role === 'ai' ? 'assistant' : msg.role,
     content: msg.content || msg.text || ''
@@ -111,16 +117,15 @@ function toOpenAIMessages(messages: any[]) {
 export async function streamGeminiChat(
   apiKey: string,
   model: string,
-  messages: any[],
-  options: { temperature: number; maxTokens: number; tools?: any[]; think?: boolean },
+  messages: ProviderMessage[],
+  options: { temperature: number; maxTokens: number; tools?: unknown[]; think?: boolean },
   onDelta: (content: string) => void,
   abortSignal: AbortSignal,
 ) {
   try {
-    const ai = new GoogleGenAI({ 
-      apiKey,
-      fetch: createProxyFetch() as any
-    });
+    const ai = new GoogleGenAI(apiKey);
+    // Custom fetch for proxy support
+    (ai as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
     const geminiModel = ai.models.get(model);
     const contents = toGeminiContents(messages);
@@ -151,29 +156,31 @@ export async function streamGeminiChat(
     };
 
     return { ok: true, status: 200, message: finalMessage };
-  } catch (err: any) {
-    logger.error("[Gemini Adapter] Stream error:", err);
-    return { ok: false, status: 500, errorText: err.message };
+  } catch (err: unknown) {
+    const error = err as Error;
+    logger.error("[Gemini Adapter] Stream error:", error);
+    return { ok: false, status: 500, errorText: error.message };
   }
 }
 
 export async function streamOpenRouterChat(
   apiKey: string,
   model: string,
-  messages: any[],
-  options: { temperature: number; maxTokens: number; tools?: any[]; think?: boolean },
+  messages: ProviderMessage[],
+  options: { temperature: number; maxTokens: number; tools?: unknown[]; think?: boolean },
   onDelta: (content: string) => void,
   abortSignal: AbortSignal,
 ) {
   try {
     const openRouter = new OpenRouter({
       apiKey,
-      fetch: createProxyFetch() as any
     });
+    // Custom fetch for proxy support
+    (openRouter as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
     const stream = await openRouter.chat.completions.create({
       model,
-      messages: toOpenAIMessages(messages) as any,
+      messages: toOpenAIMessages(messages) as never,
       temperature: options.temperature,
       max_tokens: options.maxTokens,
       stream: true,
@@ -195,8 +202,9 @@ export async function streamOpenRouterChat(
     };
 
     return { ok: true, status: 200, message: finalMessage };
-  } catch (err: any) {
-    logger.error("[OpenRouter Adapter] Stream error:", err);
-    return { ok: false, status: 500, errorText: err.message };
+  } catch (err: unknown) {
+    const error = err as Error;
+    logger.error("[OpenRouter Adapter] Stream error:", error);
+    return { ok: false, status: 500, errorText: error.message };
   }
 }

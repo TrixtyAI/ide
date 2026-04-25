@@ -99,8 +99,8 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
       );
     }
 
+    switch (activeTab) {
       case 'providers': return <ProvidersPanel />;
-      // ... (rest of the switch stays the same)
       case 'profile':
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">

@@ -173,7 +173,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           AI_SETTINGS_VERSION,
           null,
           {
-            1: (prev: any) => ({
+            1: (prev: Record<string, unknown>) => ({
               ...prev,
               allowProviderKeys: false,
               activeProvider: null,
