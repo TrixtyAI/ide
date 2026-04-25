@@ -232,7 +232,7 @@ export const BillingPanel: React.FC = () => {
                         Downgrade to FREE Plan
                       </button>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-3">
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
@@ -241,7 +241,7 @@ export const BillingPanel: React.FC = () => {
                                 method: 'POST',
                                 url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
                                 headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                                body: { planId: plan._id, provider: 'mercadopago' }
+                                body: { planId: plan._id, provider: 'cobrar' }
                               });
                               if (res.status >= 200 && res.status < 300) {
                                 const { url } = JSON.parse(res.body);
@@ -252,37 +252,11 @@ export const BillingPanel: React.FC = () => {
                               logger.error('Checkout error:', err);
                             }
                           }}
-                          className="p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all flex items-center justify-center gap-3 group/btn active:scale-95 shadow-lg shadow-blue-900/20"
+                          className="max-w-[280px] w-full mx-auto p-4 bg-black hover:bg-[#111] text-white rounded-xl transition-all flex items-center justify-center gap-3 group/cobrar active:scale-[0.98] shadow-lg shadow-black/20 border border-white/10 relative"
                         >
-                          <CreditCard size={18} />
-                          <span className="text-[13px] font-bold">Mercado Pago</span>
-                          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                        </button>
-
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const res = await safeInvoke('ollama_proxy', {
-                                method: 'POST',
-                                url: `${cloudEndpoint.replace(/\/+$/, '')}/billing/checkout`,
-                                headers: { Authorization: `Bearer ${aiSettings.cloudToken}` },
-                                body: { planId: plan._id, provider: 'paypal' }
-                              });
-                              if (res.status >= 200 && res.status < 300) {
-                                const { url } = JSON.parse(res.body);
-                                const { open } = await import('@tauri-apps/plugin-shell');
-                                await open(url);
-                              }
-                            } catch (err) {
-                              logger.error('Checkout error:', err);
-                            }
-                          }}
-                          className="p-4 bg-purple-600 hover:bg-purple-50 text-white rounded-xl transition-all flex items-center justify-center gap-3 group/btn active:scale-95 shadow-lg shadow-purple-900/20"
-                        >
-                          <CreditCard size={18} />
-                          <span className="text-[13px] font-bold">PayPal</span>
-                          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                          <CreditCard size={18} className="transition-transform group-hover/cobrar:scale-110" />
+                          <span className="text-[13px] font-black uppercase tracking-wider">Pay with CobrAR</span>
+                          <ArrowRight size={16} className="absolute right-6 opacity-0 -translate-x-2 group-hover/cobrar:opacity-100 group-hover/cobrar:translate-x-0 transition-all" />
                         </button>
                       </div>
                     )}
