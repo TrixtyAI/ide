@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { trixtyStore } from "@/api/store";
+import { safeInvoke } from "@/api/tauri";
 import { logger } from "@/lib/logger";
 
 export interface SystemSettings {
@@ -19,6 +20,8 @@ export interface AISettings {
   deepMode: boolean;
   keepAlive: number;
   loadOnStartup: boolean;
+  useCloudModel: boolean;
+  cloudToken: string;
 }
 
 export interface EditorSettings {
@@ -31,6 +34,7 @@ export interface EditorSettings {
 
 interface SettingsContextType {
   aiSettings: AISettings;
+  cloudEndpoint: string;
   editorSettings: EditorSettings;
   systemSettings: SystemSettings;
   locale: string;
@@ -63,6 +67,8 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   deepMode: false,
   keepAlive: 5,
   loadOnStartup: false,
+  useCloudModel: false,
+  cloudToken: "",
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -94,10 +100,34 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
+  const [cloudEndpoint, setCloudEndpoint] = useState<string>("");
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(DEFAULT_EDITOR_SETTINGS);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [locale, setLocaleState] = useState("en");
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  // Fetch the cloud endpoint URL once at boot from the Tauri backend so the
+  // chat client can route requests to the hosted Ollama proxy when the user
+  // toggles cloud mode. The backend resolves it from build config and may
+  // return an empty string or the placeholder `<cloud_endpoint>` if no cloud
+  // endpoint is wired in for this build.
+  useEffect(() => {
+    safeInvoke("get_cloud_config").then((url) => {
+      setCloudEndpoint(url ?? "");
+    }).catch((err) => {
+      logger.error("[SettingsContext] Failed to load cloud endpoint:", err);
+    });
+  }, []);
+
+  // Safety net: if the user has cloud mode on but the endpoint isn't actually
+  // configured (empty string or unsubstituted placeholder) force the toggle
+  // back to local. Without this, the chat client would attempt to POST to an
+  // invalid URL on every send.
+  useEffect(() => {
+    if (aiSettings.useCloudModel && (cloudEndpoint === "" || cloudEndpoint === "<cloud_endpoint>")) {
+      setAiSettings((prev) => ({ ...prev, useCloudModel: false }));
+    }
+  }, [cloudEndpoint, aiSettings.useCloudModel]);
 
   const setLocale = useCallback(async (newLocale: string) => {
     const { trixty } = await import("@/api/trixty");
@@ -234,6 +264,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const value = useMemo(() => ({
     aiSettings,
+    cloudEndpoint,
     editorSettings,
     systemSettings,
     locale,
@@ -246,6 +277,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setInitialLoadComplete,
   }), [
     aiSettings,
+    cloudEndpoint,
     editorSettings,
     systemSettings,
     locale,

@@ -246,6 +246,7 @@ export function registerBuiltinTranslations() {
         'ai.update.available': 'Update Available',
         'ai.update.button': 'Update',
         'ai.models.local_title': 'Local Models',
+        'ai.models.cloud_title': 'Cloud Models',
         'ai.models.found': '{count} found',
         'ai.status.interacting': 'Interacting with system...',
         'ai.status.tool_result': 'Tool Result',
@@ -399,6 +400,12 @@ export function registerBuiltinTranslations() {
         'agent.common.saving': 'Saving...',
         'agent.common.saved': 'Saved!',
         'agent.tab.configuration': 'Configuration',
+        'agent.tab.quota': 'Quota',
+        
+        'agent.quota.title': 'Usage Quotas',
+        'agent.quota.desc': 'Monitor your AI usage and plan limits.',
+        'agent.quota.unauthorized': 'Please enable Cloud Mode and sign in to view your quotas.',
+        'agent.quota.loading': 'Loading usage data...',
 
         'tab.close': 'Close',
         'tab.close_others': 'Close Others',
@@ -415,7 +422,24 @@ export function registerBuiltinTranslations() {
         'agent.configuration.loadonstartup_desc': 'Automatically load the selected model when Trixty starts.',
         'agent.configuration.loadonstartup_warning': 'Warning: This may cause system slowdown and increase Trixty\'s initial loading time while the model is being loaded into memory.',
         'agent.configuration.loadonstartup_ping_desc': 'Trixty will trigger a background ping to load models upon application initialization.',
-        'agent.configuration.keepalive_unit': 'minutes'
+        'agent.configuration.keepalive_unit': 'minutes',
+        'agent.configuration.usecloud_label': 'Use Cloud Model',
+        'agent.configuration.usecloud_desc': 'Route Ollama API requests through the Trixty SaaS Proxy.',
+        'agent.configuration.cloudendpoint_label': 'Cloud Endpoint',
+        'agent.configuration.cloudtoken_label': 'Cloud Token (Bearer)',
+        
+        'auth.login_title': 'Sign In to Trixty Cloud',
+        'auth.register_title': 'Create Account',
+        'auth.email_label': 'Email Address',
+        'auth.password_label': 'Password',
+        'auth.submit_login': 'Sign In',
+        'auth.submit_register': 'Register',
+        'auth.logout': 'Logout',
+        'auth.signin_button': 'Sign In / Register',
+        'auth.switch_to_register': 'Need an account? Register here.',
+        'auth.switch_to_login': 'Already have an account? Sign in.',
+        'auth.success': 'Success',
+        'auth.error': 'Error'
     });
 
     // SPANISH
@@ -657,7 +681,8 @@ export function registerBuiltinTranslations() {
         'ai.system_prompt': 'Eres Trixty, una IA femenina experta, concisa y técnica. Ayuda al usuario a escribir código limpio y eficiente. \n\nREGLAS IMPORTANTES DE HERRAMIENTAS:\n1. Las herramientas son funciones discretas; llámalas individualmente.\n2. NO puedes llamar a una herramienta desde dentro de otra (ej. no uses execute_command para intentar llamar a read_file o get_workspace_structure).\n3. Los comandos de shell se ejecutan en un entorno estándar del SO y NO tienen acceso a tus funciones de herramientas internas.',
         'ai.update.available': 'Actualización disponible',
         'ai.update.button': 'Actualizar',
-        'ai.models.local_title': 'Modelos locales',
+        'ai.models.local_title': 'Modelos Locales',
+        'ai.models.cloud_title': 'Modelos en la Nube',
         'ai.models.found': '{count} encontrados',
         'ai.status.interacting': 'Interactuando con el sistema...',
         'ai.status.tool_result': 'Resultado de herramienta',
@@ -811,6 +836,12 @@ export function registerBuiltinTranslations() {
         'agent.common.saving': 'Guardando...',
         'agent.common.saved': '¡Guardado!',
         'agent.tab.configuration': 'Configuración',
+        'agent.tab.quota': 'Cuota',
+        
+        'agent.quota.title': 'Cuotas de Uso',
+        'agent.quota.desc': 'Monitoriza el uso de IA y los límites de tu plan.',
+        'agent.quota.unauthorized': 'Activa el Modo Nube e inicia sesión para ver tus cuotas.',
+        'agent.quota.loading': 'Cargando datos de uso...',
 
         'tab.close': 'Cerrar',
         'tab.close_others': 'Cerrar Otros',
@@ -827,6 +858,23 @@ export function registerBuiltinTranslations() {
         'agent.configuration.loadonstartup_desc': 'Carga automáticamente el modelo seleccionado al abrir Trixty.',
         'agent.configuration.loadonstartup_warning': 'Aviso: Esto puede provocar ralentización del sistema y hacer que Trixty tarde más en cargar mientras el modelo se sube a la memoria.',
         'agent.configuration.loadonstartup_ping_desc': 'Trixty enviará una señal en segundo plano para cargar los modelos al iniciar la aplicación.',
-        'agent.configuration.keepalive_unit': 'minutos'
+        'agent.configuration.keepalive_unit': 'minutos',
+        'agent.configuration.usecloud_label': 'Usar Modelo en la Nube',
+        'agent.configuration.usecloud_desc': 'Enrutar peticiones de la API de Ollama a través del Proxy SaaS de Trixty.',
+        'agent.configuration.cloudendpoint_label': 'Endpoint de la Nube',
+        'agent.configuration.cloudtoken_label': 'Token de la Nube (Bearer)',
+        
+        'auth.login_title': 'Iniciar Sesión en Trixty Cloud',
+        'auth.register_title': 'Crear Cuenta',
+        'auth.email_label': 'Correo Electrónico',
+        'auth.password_label': 'Contraseña',
+        'auth.submit_login': 'Iniciar Sesión',
+        'auth.submit_register': 'Registrarse',
+        'auth.logout': 'Cerrar Sesión',
+        'auth.signin_button': 'Iniciar Sesión / Registro',
+        'auth.switch_to_register': '¿No tienes cuenta? Regístrate aquí.',
+        'auth.switch_to_login': '¿Ya tienes una cuenta? Inicia sesión.',
+        'auth.success': 'Éxito',
+        'auth.error': 'Error'
     });
 }

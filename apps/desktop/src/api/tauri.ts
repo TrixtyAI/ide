@@ -31,11 +31,7 @@ export interface DirEntry {
   children?: DirEntry[];
 }
 
-export type OllamaRequest =
-  | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean; keep_alive?: string | number }
-  | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: string | number }
-  | { type: 'tags' }
-  | { type: 'version' };
+export type OllamaRequest = Record<string, unknown>;
 
 /**
  * Central registry of Tauri commands exposed to the frontend.
@@ -78,8 +74,8 @@ export interface TauriInvokeMap {
   "execute_command": { args: { command: string; args: string[]; cwd?: string | null }; return: string };
   "get_recursive_file_list": { args: { rootPath: string | null }; return: string[] };
   "get_system_health": { args: undefined; return: { cpu_usage: number; memory_usage: number } };
-  "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
-  "ollama_proxy_stream": { args: { streamId: string; method: string; url: string; body: OllamaRequest }; return: void };
+  "ollama_proxy": { args: { method: string; url: string; headers?: Record<string, string>; body?: OllamaRequest }; return: { status: number; body: string } };
+  "ollama_proxy_stream": { args: { streamId: string; method: string; url: string; headers?: Record<string, string>; body: OllamaRequest }; return: void };
   "ollama_proxy_cancel": { args: { streamId: string }; return: void };
   "check_update": { args: undefined; return: { version: string; body?: string | null } | null };
   "install_update": { args: undefined; return: void };
@@ -118,6 +114,7 @@ export interface TauriInvokeMap {
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };
   "set_workspace_root": { args: { path: string | null }; return: void };
+  "get_cloud_config": { args: undefined; return: string };
   "take_initial_cli_workspace": { args: undefined; return: string | null };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
 }
@@ -152,13 +149,13 @@ export const isTauri = (): boolean => {
 
 /**
  * A safe wrapper around Tauri's 'invoke' command.
- * 
- * If running in a browser environment where Tauri internals are missing, 
- * it will log a warning and return a meaningful default or reject gracefully, 
+ *
+ * If running in a browser environment where Tauri internals are missing,
+ * it will log a warning and return a meaningful default or reject gracefully,
  * preventing the application from crashing.
  */
 export async function safeInvoke<K extends keyof TauriInvokeMap>(
-  cmd: K, 
+  cmd: K,
   args?: TauriInvokeMap[K]["args"],
   options: { silent?: boolean } = {}
 ): Promise<TauriInvokeMap[K]["return"]> {

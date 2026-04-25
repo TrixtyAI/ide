@@ -105,6 +105,7 @@ export async function streamOllamaChat(
   body: OllamaRequest,
   onDelta: (content: string) => void,
   abortSignal: AbortSignal,
+  headers?: Record<string, string>,
 ): Promise<{ ok: boolean; status: number; message?: OllamaStreamFinalMessage; errorText?: string }> {
   if (!isTauri()) {
     throw new Error("streamOllamaChat requires the Tauri runtime");
@@ -166,6 +167,7 @@ export async function streamOllamaChat(
       streamId,
       method: "POST",
       url,
+      headers,
       body,
     });
     await settled;

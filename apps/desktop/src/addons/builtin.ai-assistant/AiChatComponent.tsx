@@ -45,7 +45,7 @@ type OllamaChatMessage =
 
 
 const AiChatComponent: React.FC = () => {
-  const { setRightPanelOpen } = useUI();
+  const { setRightPanelOpen, setSettingsOpen } = useUI();
   const { rootPath } = useWorkspace();
   const { openFiles, currentFile } = useFiles();
   const {
@@ -60,6 +60,7 @@ const AiChatComponent: React.FC = () => {
   } = useChat();
   const {
     aiSettings,
+    cloudEndpoint,
     updateAISettings,
     editorSettings,
     systemSettings,
@@ -189,10 +190,16 @@ const AiChatComponent: React.FC = () => {
     // Sanitize the URL to avoid double slashes if endpoint has trailing slash
     const sanitizedUrl = url.replace(/([^:]\/)\/+/g, "$1");
 
+    const headers: Record<string, string> = {};
+    if (aiSettings.useCloudModel && aiSettings.cloudToken) {
+      headers["Authorization"] = `Bearer ${aiSettings.cloudToken}`;
+    }
+
     const result = await invoke("ollama_proxy", {
       method,
       url: sanitizedUrl,
-      body: body || { type: 'version' } // Default to version if no body
+      headers,
+      body: body || {}
     });
     return {
       ok: result.status >= 200 && result.status < 300,
@@ -200,7 +207,7 @@ const AiChatComponent: React.FC = () => {
       json: async () => JSON.parse(result.body),
       text: async () => result.body
     };
-  }, []);
+  }, [aiSettings.useCloudModel, aiSettings.cloudToken]);
 
   // Fetch project tree
   useEffect(() => {
@@ -229,7 +236,8 @@ const AiChatComponent: React.FC = () => {
     const fetchModels = async () => {
       try {
         setOllamaStatus('checking');
-        const response = await proxyFetch(`${aiSettings.endpoint}/api/tags`);
+        const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+        const response = await proxyFetch(`${baseUrl}/api/tags`);
         const data = await response.json();
         if (cancelled) return;
         if (data.models) {
@@ -264,7 +272,7 @@ const AiChatComponent: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [aiSettings.endpoint, proxyFetch]);
+  }, [aiSettings.endpoint, aiSettings.useCloudModel, cloudEndpoint, proxyFetch]);
 
 
   useEffect(() => {
@@ -405,12 +413,12 @@ const AiChatComponent: React.FC = () => {
   };
 
   const unloadModel = async () => {
-    if (!selectedModel || !aiSettings.endpoint) return;
+    const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+    if (!selectedModel || !baseUrl) return;
     try {
-      await proxyFetch(`${aiSettings.endpoint}/api/generate`, "POST", {
-        type: 'generate',
+      await proxyFetch(`${baseUrl}/api/generate`, "POST", {
         model: selectedModel,
-        keep_alive: 0
+        ...(aiSettings.useCloudModel ? {} : { keep_alive: 0 })
       });
     } catch (err) {
       logger.error("Failed to unload model:", err);
@@ -533,13 +541,16 @@ const AiChatComponent: React.FC = () => {
       // same collapse for the one-shot path; we mirror it here so the
       // streaming command receives the exact same URL shape regardless of
       // whether the user put a trailing slash on the endpoint setting.
-      const chatUrl = `${aiSettings.endpoint}/api/chat`.replace(/([^:]\/)\/+/g, "$1");
+      const chatBaseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+      const chatUrl = `${chatBaseUrl}/api/chat`.replace(/([^:]\/)\/+/g, "$1");
+      const chatHeaders: Record<string, string> | undefined =
+        aiSettings.useCloudModel && aiSettings.cloudToken
+          ? { Authorization: `Bearer ${aiSettings.cloudToken}` }
+          : undefined;
 
       while (loop && maxIterations > 0) {
         maxIterations--;
         const body: OllamaRequest = {
-            type: 'chat',
-
             model: selectedModel,
             messages: history,
             // The streaming helper sets `stream: true` on the wire; we leave
@@ -556,7 +567,7 @@ const AiChatComponent: React.FC = () => {
               temperature: aiSettings.temperature,
               num_predict: aiSettings.maxTokens,
             },
-            keep_alive: `${aiSettings.keepAlive || 5}m`,
+            ...(aiSettings.useCloudModel ? {} : { keep_alive: `${aiSettings.keepAlive || 5}m` })
         };
 
         // Push a placeholder assistant bubble. Tool-call-only turns overwrite
@@ -576,7 +587,7 @@ const AiChatComponent: React.FC = () => {
           streamResult = await streamOllamaChat(chatUrl, body, (delta) => {
             pushPlaceholderOnce();
             appendToLastAiMessage(activeSessionId, delta);
-          }, controller.signal);
+          }, controller.signal, chatHeaders);
 
           // If the model rejected `think`, retry once without it. Matches the
           // one-shot behaviour from before streaming landed.
@@ -591,7 +602,7 @@ const AiChatComponent: React.FC = () => {
             streamResult = await streamOllamaChat(chatUrl, reqBody, (delta) => {
               pushPlaceholderOnce();
               appendToLastAiMessage(activeSessionId, delta);
-            }, controller.signal);
+            }, controller.signal, chatHeaders);
           }
         } catch (err) {
           throw err;
@@ -782,11 +793,12 @@ const AiChatComponent: React.FC = () => {
         // Do nothing, user stopped intentionally
       } else {
         // Check for OOM / Connection lost
+        const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
         const isLikelyOOM = err instanceof Error && (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError"));
         const requestFailed = err instanceof Error && err.message?.includes("Ollama Request Failed");
         addMessageToSession(activeSessionId, {
           role: "ai",
-          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: aiSettings.endpoint }))
+          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: baseUrl }))
         });
       }
     } finally {
@@ -810,7 +822,28 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
-  if (ollamaStatus === 'not_found') {
+  if (aiSettings.useCloudModel && !aiSettings.cloudToken) {
+    return (
+      <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
+        <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mb-6 border border-purple-500/20 shadow-2xl shadow-purple-500/5">
+          <Lock size={40} className="text-purple-400 opacity-80" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Cloud Authentication Required</h2>
+        <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
+          Sign in to your Trixty account to access cloud-hosted AI models and advanced agent features.
+        </p>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-500 active:scale-95 transition-all shadow-lg shadow-purple-900/20"
+        >
+          <Lock size={16} />
+          Go to Settings
+        </button>
+      </div>
+    );
+  }
+
+  if (ollamaStatus === 'not_found' && !aiSettings.useCloudModel) {
     return (
       <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/5">
@@ -868,13 +901,15 @@ const AiChatComponent: React.FC = () => {
           {showModelMenu && (
             <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
+                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">
+                  {aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title')}
+                </span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
               </div>
               <div
                 role="listbox"
                 id="ai-model-listbox"
-                aria-label={t('ai.models.local_title')}
+                aria-label={aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title')}
                 onKeyDown={handleModelKeyDown}
                 className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
               >
