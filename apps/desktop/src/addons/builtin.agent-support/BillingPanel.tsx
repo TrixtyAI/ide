@@ -72,6 +72,39 @@ export const BillingPanel: React.FC = () => {
     fetchData();
   }, [aiSettings.cloudToken, cloudEndpoint]);
 
+  // Real-time updates listener
+  useEffect(() => {
+    if (!aiSettings.cloudToken || !cloudEndpoint) return;
+
+    const baseUrl = cloudEndpoint.replace(/\/+$/, '');
+    const url = `${baseUrl}/billing/stream?token=${aiSettings.cloudToken}`;
+    
+    logger.debug('[BillingPanel] Connecting to real-time updates:', url);
+    const eventSource = new EventSource(url);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'PLAN_UPDATED') {
+          logger.info('[BillingPanel] Plan updated in real-time. Refreshing data...');
+          fetchData();
+        }
+      } catch (err) {
+        logger.error('[BillingPanel] SSE message error:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      logger.error('[BillingPanel] SSE connection error:', err);
+      eventSource.close();
+    };
+
+    return () => {
+      logger.debug('[BillingPanel] Closing real-time connection');
+      eventSource.close();
+    };
+  }, [aiSettings.cloudToken, cloudEndpoint]);
+
   const handleDowngrade = async (planId: string) => {
     setIsProcessing(true);
     try {
