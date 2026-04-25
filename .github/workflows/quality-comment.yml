@@ -51,6 +51,7 @@ jobs:
 
             const steps = [
               { id: 'install', name: 'Dependencies', log: 'logs/install.log' },
+              { id: 'worker_bundle', name: 'Sandbox Worker Bundle', log: 'logs/worker-bundle.log' },
               { id: 'lint', name: 'Lint', log: 'logs/lint.log' },
               { id: 'typecheck', name: 'Typecheck', log: 'logs/typecheck.log' },
               { id: 'clippy', name: 'Clippy', log: 'logs/clippy.log' },

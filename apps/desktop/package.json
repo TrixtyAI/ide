@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "node ../../scripts/build-extension-worker.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -36,6 +37,7 @@
     "react-icons": "^5.6.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.10.0",
+    "react-virtuoso": "^4.14.1",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0"
   },
@@ -46,6 +48,7 @@
     "@types/picomatch": "^4.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.25.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",

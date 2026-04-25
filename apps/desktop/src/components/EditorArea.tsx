@@ -4,7 +4,8 @@ import React, { useCallback, useMemo, useRef, useSyncExternalStore } from "react
 import dynamic from "next/dynamic";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import { useApp } from "@/context/AppContext";
+import { useFiles } from "@/context/FilesContext";
+import { useSettings } from "@/context/SettingsContext";
 import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -118,7 +119,8 @@ function usePrefersReducedMotion(): boolean {
 }
 
 const EditorArea: React.FC = () => {
-  const { currentFile, updateFileContent, openFiles, editorSettings } = useApp();
+  const { currentFile, updateFileContent, openFiles } = useFiles();
+  const { editorSettings } = useSettings();
   const { t } = useL10n();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);

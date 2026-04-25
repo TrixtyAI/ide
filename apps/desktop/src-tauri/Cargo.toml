@@ -7,12 +7,28 @@ license = "UPL-1.0"
 repository = "https://github.com/TrixtyAI/ide"
 edition = "2021"
 rust-version = "1.77.2"
+default-run = "TrixtyIDE"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# `tide` is a tiny terminal launcher that spawns the main TrixtyIDE binary
+# with the workspace path supplied by the user (see `src/bin/tide.rs`). It
+# is intentionally decoupled from the `app_lib` crate so it doesn't pull in
+# Tauri, tokio, reqwest, etc. — a single-purpose ~200-line process that
+# resolves an install path and execs the IDE.
+[[bin]]
+name = "TrixtyIDE"
+path = "src/main.rs"
+
+[[bin]]
+name = "tide"
+path = "src/bin/tide.rs"
+
 
 [build-dependencies]
 tauri-build = { version = "2.5.6", features = [] }

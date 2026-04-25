@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSettings } from '@/context/SettingsContext';
 import { useL10n } from '@/hooks/useL10n';
 import { safeInvoke } from '@/api/tauri';
 import { logger } from '@/lib/logger';
@@ -18,13 +18,13 @@ interface QuotaInfo {
 }
 
 export const QuotaPanel: React.FC = () => {
-  const { cloudEndpoint, aiSettings } = useApp();
+  const { cloudEndpoint, aiSettings } = useSettings();
   const { t } = useL10n();
   const [quotas, setQuotas] = useState<QuotaInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuotas = async () => {
+  const fetchQuotas = useCallback(async () => {
     if (!aiSettings.cloudToken || !cloudEndpoint) {
       setIsLoading(false);
       return;
@@ -38,14 +38,14 @@ export const QuotaPanel: React.FC = () => {
       });
 
       if (res.status === 200) {
-        const data = JSON.parse(res.body);
+        const data = JSON.parse(res.body) as Record<string, { limit?: number; remaining?: number; ttlMs?: number }>;
         // Transform API data to UI structure
-        const transformed: QuotaInfo[] = Object.entries(data).map(([model, info]: [string, any]) => {
+        const transformed: QuotaInfo[] = Object.entries(data).map(([model, info]) => {
           const limit = info.limit || 0;
           const remaining = info.remaining || 0;
           const segmentsTotal = limit >= 1000 ? 24 : 12;
           const segmentsFilled = limit > 0 ? Math.ceil((remaining / limit) * segmentsTotal) : 0;
-          
+
           return {
             model,
             limit,
@@ -67,11 +67,11 @@ export const QuotaPanel: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [aiSettings.cloudToken, cloudEndpoint]);
 
   useEffect(() => {
     fetchQuotas();
-  }, [aiSettings.cloudToken, cloudEndpoint]);
+  }, [fetchQuotas]);
 
   if (!aiSettings.cloudToken) {
     return (

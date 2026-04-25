@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { trixty, WebviewView } from "@/api/trixty";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
 
 export default function LeftSidebarSlot() {
     const [views, setViews] = useState<WebviewView[]>([]);
@@ -12,7 +12,7 @@ export default function LeftSidebarSlot() {
         return trixty.window.subscribe(update);
     }, []);
 
-    const { activeSidebarTab } = useApp();
+    const { activeSidebarTab } = useUI();
 
     if (views.length === 0) {
         return <div className="flex-1 flex flex-col items-center justify-center text-[#666] text-[11px] p-4 text-center">No Sidebar addons active</div>;

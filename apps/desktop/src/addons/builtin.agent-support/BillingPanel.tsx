@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSettings } from '@/context/SettingsContext';
 import { safeInvoke } from '@/api/tauri';
 import { logger } from '@/lib/logger';
 import { Zap, CreditCard, CheckCircle2, ShieldCheck, ZapOff, ArrowRight, RefreshCw } from 'lucide-react';
@@ -23,14 +23,14 @@ interface PlanInfo {
 }
 
 export const BillingPanel: React.FC = () => {
-  const { cloudEndpoint, aiSettings } = useApp();
+  const { cloudEndpoint, aiSettings } = useSettings();
   const [profile, setProfile] = useState<CloudProfile | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanInfo | null>(null);
   const [availablePlans, setAvailablePlans] = useState<PlanInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!aiSettings.cloudToken || !cloudEndpoint) {
       setIsLoading(false);
       return;
@@ -66,11 +66,11 @@ export const BillingPanel: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [aiSettings.cloudToken, cloudEndpoint]);
 
   useEffect(() => {
     fetchData();
-  }, [aiSettings.cloudToken, cloudEndpoint]);
+  }, [fetchData]);
 
   // Real-time updates listener
   useEffect(() => {
@@ -86,7 +86,7 @@ export const BillingPanel: React.FC = () => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'PLAN_UPDATED') {
-          logger.info('[BillingPanel] Plan updated in real-time. Refreshing data...');
+          logger.debug('[BillingPanel] Plan updated in real-time. Refreshing data...');
           fetchData();
         }
       } catch (err) {
@@ -103,7 +103,7 @@ export const BillingPanel: React.FC = () => {
       logger.debug('[BillingPanel] Closing real-time connection');
       eventSource.close();
     };
-  }, [aiSettings.cloudToken, cloudEndpoint]);
+  }, [aiSettings.cloudToken, cloudEndpoint, fetchData]);
 
   const handleDowngrade = async (planId: string) => {
     setIsProcessing(true);

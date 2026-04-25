@@ -66,6 +66,20 @@ Trixty leverages the latest technologies to ensure a smooth and robust developme
 
 ---
 
+## ⌨️ Terminal Launcher
+
+Trixty ships with a small `tide` CLI so you can open a folder from the
+shell the same way VS Code's `code` command does:
+
+```shell
+tide .                  # open the current directory
+tide /path/to/project   # open an absolute path
+```
+
+See [docs/cli.md](docs/cli.md) for installation and `PATH` setup per OS.
+
+---
+
 ## 🧩 Extensions & Registry
 
 Trixty features a decentralized extension system. You can explore or contribute to the official registry in the [`registry/`](registry/) directory.

@@ -1,4 +1,5 @@
 mod about;
+mod cli;
 mod error;
 mod fs_atomic;
 mod fs_guard;
@@ -6,6 +7,7 @@ mod fs_watcher;
 mod http;
 mod pty;
 
+use cli::CliWorkspace;
 use error::redact_user_paths;
 
 mod extensions;
@@ -17,7 +19,9 @@ use log::{error, info, warn};
 use pty::{kill_pty, new_pty_sessions, resize_pty, spawn_pty, write_to_pty, PtySessions};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use tauri::Manager;
@@ -144,6 +148,45 @@ async fn install_update(app: tauri::AppHandle, window: tauri::Window) -> Result<
     }
 }
 // ============================================================
+
+/// Managed state slot that holds the absolute workspace path supplied on the
+/// command line (`tide .`, `TrixtyIDE --path /repo`). `None` when the app was
+/// launched without a path, or when the supplied path failed validation.
+///
+/// The frontend reads this exactly once during `AppContext` initial load and
+/// uses it to override the "no workspace open" cold-start state. We take the
+/// value out on read so a subsequent manual "Open Folder" can't accidentally
+/// be clobbered by a stale CLI path on reload — it's a one-shot bootstrap
+/// hint, not persistent state.
+///
+/// Wrapped in a newtype (rather than a bare `Arc<Mutex<Option<PathBuf>>>`
+/// alias) because Tauri's managed-state registry is keyed by concrete type:
+/// `WorkspaceState` from `fs_guard` and the CLI hint both need to coexist,
+/// and an alias collision would panic at startup.
+pub struct InitialCliWorkspace(Arc<Mutex<Option<PathBuf>>>);
+
+fn new_initial_cli_workspace(path: Option<PathBuf>) -> InitialCliWorkspace {
+    InitialCliWorkspace(Arc::new(Mutex::new(path)))
+}
+
+/// Returns (and consumes) the CLI-supplied workspace path. The frontend
+/// invokes this once during initial load; subsequent calls return `None`.
+///
+/// Consuming the value avoids a subtle footgun: if a user manually opens a
+/// different folder and then reloads the webview (Ctrl+R in dev, hot-reload
+/// in Next.js), re-reading the CLI path would silently jump them back to
+/// the path they originally launched with. One-shot delivery matches the
+/// intent — the CLI path is a startup hint, not a sticky default.
+#[tauri::command]
+fn take_initial_cli_workspace(
+    state: tauri::State<'_, InitialCliWorkspace>,
+) -> Result<Option<String>, String> {
+    let mut guard = state
+        .0
+        .lock()
+        .map_err(|e| format!("CLI workspace state lock failed: {}", e))?;
+    Ok(guard.take().map(|p| p.to_string_lossy().into_owned()))
+}
 
 struct SystemState {
     sys: System,
@@ -1431,6 +1474,332 @@ async fn ollama_proxy(
     })
 }
 
+/// Payload of the `ollama-stream` event. Fields use camelCase on the wire
+/// because the TypeScript bindings in `api/tauri.ts` expect camelCase —
+/// `#[serde(rename_all = "camelCase")]` does the conversion per field.
+///
+/// Exactly one of `content` / `message` / `error` carries the interesting
+/// bit for a given chunk:
+/// - `kind = "delta"`: `content` is a partial token from an ongoing chunk.
+/// - `kind = "done"`:  `message` is the final Ollama `message` object
+///   (which may include `tool_calls`).
+/// - `kind = "error"`: `error` describes a transport / parse failure.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OllamaStreamPayload {
+    stream_id: String,
+    kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Holds cancellation handles for every in-flight `ollama_proxy_stream` task
+/// so `ollama_proxy_cancel` can terminate them from the frontend. `oneshot`
+/// is plenty here — we only need a one-way "please stop" signal; the task
+/// observes it inside the chunk loop via `try_recv`.
+type OllamaStreams = Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>;
+
+fn new_ollama_streams() -> OllamaStreams {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Splits a growing line-delimited buffer into complete JSON lines and a
+/// tail remainder. Kept as a free function so it can be unit-tested without
+/// standing up a real HTTP server. Mirrors the frontend parser in
+/// `ollamaStream.ts` byte-for-byte so the split behavior is consistent on
+/// both sides of the bridge.
+///
+/// Lines are split on `\n`; a trailing `\r` is stripped so the Windows
+/// Ollama build's CRLF lines still parse. Any line that is not valid JSON
+/// is returned as `Err(raw)` so the caller can log-and-skip — a malformed
+/// chunk MUST NOT tear down the whole stream (reqwest occasionally hands us
+/// half a line, and dropping the whole response would abort the model's
+/// reply mid-sentence).
+fn split_ndjson_lines(buffer: &mut String, chunk: &str) -> Vec<Result<serde_json::Value, String>> {
+    buffer.push_str(chunk);
+    let mut results = Vec::new();
+    // `split('\n')` would consume a trailing newline into an empty final
+    // element that we'd re-insert as the buffer. Use the byte index of the
+    // last `\n` we actually saw to slice the completed prefix off.
+    let last_newline = buffer.rfind('\n');
+    let Some(end) = last_newline else {
+        return results;
+    };
+    // `end + 1` includes the terminating newline so `drain(..end + 1)`
+    // leaves only the still-pending tail behind.
+    let complete = buffer[..end].to_string();
+    buffer.drain(..end + 1);
+    for raw_line in complete.split('\n') {
+        let trimmed = raw_line.strip_suffix('\r').unwrap_or(raw_line);
+        if trimmed.is_empty() {
+            continue;
+        }
+        match serde_json::from_str::<serde_json::Value>(trimmed) {
+            Ok(v) => results.push(Ok(v)),
+            Err(_) => results.push(Err(trimmed.to_string())),
+        }
+    }
+    results
+}
+
+/// Streaming sibling of `ollama_proxy`. Pushes NDJSON chunks back to the
+/// frontend through `ollama-stream` events tagged with the caller-supplied
+/// `streamId`, and registers a cancellation handle so a follow-up
+/// `ollama_proxy_cancel(streamId)` can tear the task down immediately.
+///
+/// Returns `Ok(())` the moment the spawn is registered — the actual work
+/// happens on a detached tokio task so the command doesn't block the Tauri
+/// bridge for the length of a 30 s generation. Any transport or parse
+/// failure is surfaced as an `ollama-stream` `error` event, not through the
+/// command's return value (which has already resolved).
+#[tauri::command]
+async fn ollama_proxy_stream(
+    app: tauri::AppHandle,
+    streams: tauri::State<'_, OllamaStreams>,
+    stream_id: String,
+    method: String,
+    url: String,
+    body: Option<serde_json::Value>,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    validate_ollama_url(&url)?;
+    if method != "POST" && method != "GET" {
+        return Err(format!("Unsupported method: {}", method));
+    }
+
+    // Register the cancellation handle BEFORE spawning so a fast follow-up
+    // `ollama_proxy_cancel` arriving between `spawn` and the first poll can
+    // still find the entry to fire.
+    let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
+    {
+        let mut guard = streams
+            .lock()
+            .map_err(|e| format!("streams mutex poisoned: {}", e))?;
+        // If the caller reused a streamId (shouldn't happen — the frontend
+        // uses `crypto.randomUUID()`) drop the old sender first. Its task
+        // will observe the channel close and exit on the next chunk.
+        guard.insert(stream_id.clone(), cancel_tx);
+    }
+
+    let app_for_task = app.clone();
+    let streams_for_task = (*streams).clone();
+    let stream_id_for_task = stream_id.clone();
+
+    tauri::async_runtime::spawn(async move {
+        let client = http::shared_client();
+        let mut request = match method.as_str() {
+            "POST" => client.post(&url),
+            "GET" => client.get(&url),
+            _ => unreachable!("method validated above"),
+        };
+        if let Some(json_body) = body {
+            // Ollama distinguishes streaming vs one-shot by the `stream`
+            // field in the request body. Force `stream: true` so the server
+            // emits NDJSON even if the frontend forgot to set it.
+            let mut patched = json_body;
+            if let serde_json::Value::Object(ref mut map) = patched {
+                map.insert("stream".to_string(), serde_json::Value::Bool(true));
+            }
+            request = request.json(&patched);
+        }
+
+        let response = match request.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                let _ = app_for_task.emit(
+                    "ollama-stream",
+                    OllamaStreamPayload {
+                        stream_id: stream_id_for_task.clone(),
+                        kind: "error",
+                        content: None,
+                        message: None,
+                        error: Some(format!("request failed: {}", e)),
+                    },
+                );
+                remove_stream(&streams_for_task, &stream_id_for_task);
+                return;
+            }
+        };
+
+        let status = response.status().as_u16();
+        if !response.status().is_success() {
+            // Non-2xx: drain the body once and surface it as an error event
+            // so the frontend's `deep think` fallback can branch on it.
+            let body_text = response.text().await.unwrap_or_default();
+            let _ = app_for_task.emit(
+                "ollama-stream",
+                OllamaStreamPayload {
+                    stream_id: stream_id_for_task.clone(),
+                    kind: "error",
+                    content: None,
+                    message: None,
+                    error: Some(format!("HTTP {}: {}", status, body_text)),
+                },
+            );
+            remove_stream(&streams_for_task, &stream_id_for_task);
+            return;
+        }
+
+        let mut response = response;
+        let mut buffer = String::new();
+        let mut sent_done = false;
+
+        // Main chunk pump. `response.chunk().await` yields `Ok(Some(bytes))`
+        // for each new body fragment, `Ok(None)` at EOF, or `Err(..)` on
+        // transport failure. Cancellation is observed via `try_recv` on the
+        // oneshot between chunks — we don't need sub-chunk responsiveness
+        // because a single chunk is at most a few hundred bytes.
+        loop {
+            if cancel_rx.try_recv().is_ok()
+                || matches!(
+                    cancel_rx.try_recv(),
+                    Err(tokio::sync::oneshot::error::TryRecvError::Closed)
+                )
+            {
+                break;
+            }
+
+            let chunk = match response.chunk().await {
+                Ok(Some(b)) => b,
+                Ok(None) => break, // EOF
+                Err(e) => {
+                    let _ = app_for_task.emit(
+                        "ollama-stream",
+                        OllamaStreamPayload {
+                            stream_id: stream_id_for_task.clone(),
+                            kind: "error",
+                            content: None,
+                            message: None,
+                            error: Some(format!("chunk read failed: {}", e)),
+                        },
+                    );
+                    remove_stream(&streams_for_task, &stream_id_for_task);
+                    return;
+                }
+            };
+
+            // Decode as UTF-8. `from_utf8_lossy` is fine here — Ollama's
+            // response is JSON and therefore UTF-8 by construction; any
+            // invalid byte almost certainly means the proxy is mangling
+            // the stream, and emitting U+FFFD is less bad than dropping
+            // the whole chunk.
+            let text = String::from_utf8_lossy(&chunk).into_owned();
+            let lines = split_ndjson_lines(&mut buffer, &text);
+            for line in lines {
+                match line {
+                    Ok(value) => {
+                        let done = value.get("done").and_then(|v| v.as_bool()).unwrap_or(false);
+                        if done {
+                            let message = value.get("message").cloned();
+                            let _ = app_for_task.emit(
+                                "ollama-stream",
+                                OllamaStreamPayload {
+                                    stream_id: stream_id_for_task.clone(),
+                                    kind: "done",
+                                    content: None,
+                                    message,
+                                    error: None,
+                                },
+                            );
+                            sent_done = true;
+                            break;
+                        }
+                        // Non-terminal chunk. Extract the delta content
+                        // from the `message.content` slot that Ollama
+                        // populates for chat streams.
+                        let delta = value
+                            .get("message")
+                            .and_then(|m| m.get("content"))
+                            .and_then(|c| c.as_str())
+                            .map(|s| s.to_string());
+                        if let Some(content) = delta {
+                            if !content.is_empty() {
+                                let _ = app_for_task.emit(
+                                    "ollama-stream",
+                                    OllamaStreamPayload {
+                                        stream_id: stream_id_for_task.clone(),
+                                        kind: "delta",
+                                        content: Some(content),
+                                        message: None,
+                                        error: None,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Err(raw) => {
+                        warn!(
+                            "[ollama_proxy_stream] dropped malformed NDJSON line ({} bytes)",
+                            raw.len()
+                        );
+                    }
+                }
+            }
+
+            if sent_done {
+                break;
+            }
+        }
+
+        // If we fell out of the loop without seeing `done: true` (EOF
+        // mid-stream, or a cancellation), still emit a done event so the
+        // frontend's awaiter can resolve. Using an empty message here
+        // signals "nothing to append" — the stream callers already saw
+        // every delta along the way.
+        if !sent_done {
+            let _ = app_for_task.emit(
+                "ollama-stream",
+                OllamaStreamPayload {
+                    stream_id: stream_id_for_task.clone(),
+                    kind: "done",
+                    content: None,
+                    message: Some(serde_json::json!({ "role": "assistant", "content": "" })),
+                    error: None,
+                },
+            );
+        }
+
+        remove_stream(&streams_for_task, &stream_id_for_task);
+    });
+
+    Ok(())
+}
+
+fn remove_stream(streams: &OllamaStreams, stream_id: &str) {
+    if let Ok(mut guard) = streams.lock() {
+        guard.remove(stream_id);
+    }
+}
+
+/// Cancels an in-flight `ollama_proxy_stream` task. Idempotent — a call
+/// against an unknown streamId is a no-op, because the task might already
+/// have finished. Returns `Ok(())` in both cases so callers don't have to
+/// branch on "cancelled something" vs "nothing to cancel".
+#[tauri::command]
+async fn ollama_proxy_cancel(
+    streams: tauri::State<'_, OllamaStreams>,
+    stream_id: String,
+) -> Result<(), String> {
+    let sender = {
+        let mut guard = streams
+            .lock()
+            .map_err(|e| format!("streams mutex poisoned: {}", e))?;
+        guard.remove(&stream_id)
+    };
+    if let Some(tx) = sender {
+        // Dropping the sender also closes the channel, but sending () is
+        // cheap and gives the receiving task a positive "cancel requested"
+        // signal if it ever decides to distinguish cancel from close.
+        let _ = tx.send(());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn create_directory(
     path: String,
@@ -1528,6 +1897,41 @@ fn delete_path(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Parse the workspace path from argv BEFORE handing control to Tauri. We
+    // want the resulting `PathBuf` in managed state by the time the setup
+    // hook and the `take_initial_cli_workspace` command fire; reading argv
+    // inside `.setup()` would work too, but keeping it at the top keeps the
+    // data flow easy to follow ("CLI arg → managed state → frontend read").
+    let cli_workspace = cli::parse_cli_workspace();
+    let initial_cli_workspace = match &cli_workspace {
+        CliWorkspace::Path(p) => Some(p.clone()),
+        CliWorkspace::Empty => None,
+        CliWorkspace::Invalid { raw, reason } => {
+            // Log and fall back to a normal startup rather than aborting.
+            // Raw input is redacted because it can contain the user's home
+            // path; the reason string is already redacted in `cli.rs`.
+            warn!(
+                "Ignoring invalid CLI workspace argument {}: {}",
+                redact_user_paths(raw),
+                reason
+            );
+            None
+        }
+    };
+
+    // Pre-populate the `WorkspaceState` guard with the CLI path so the
+    // earliest `read_file` / `read_directory` calls from the frontend
+    // (extension loader, bootstrap probes) don't fail the containment
+    // check before `setRootPath` has run on the React side. The frontend
+    // will re-call `set_workspace_root` with the same path once it picks
+    // up the value, which is a no-op re-canonicalisation.
+    let workspace_state = new_workspace_state();
+    if let Some(ref path) = initial_cli_workspace {
+        if let Ok(mut guard) = workspace_state.lock() {
+            *guard = Some(path.clone());
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -1560,11 +1964,13 @@ pub fn run() {
                 .build(),
         )
         .manage::<PtySessions>(new_pty_sessions())
+        .manage::<OllamaStreams>(new_ollama_streams())
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
         })))
         .manage(Arc::new(Mutex::new(FsWatcherState::new())))
-        .manage::<WorkspaceState>(new_workspace_state())
+        .manage::<WorkspaceState>(workspace_state)
+        .manage::<InitialCliWorkspace>(new_initial_cli_workspace(initial_cli_workspace))
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -1612,10 +2018,13 @@ pub fn run() {
             is_extension_active,
             toggle_extension_state,
             read_extension_script,
+            read_extension_manifest,
             get_recursive_file_list,
             execute_command,
             get_system_health,
             ollama_proxy,
+            ollama_proxy_stream,
+            ollama_proxy_cancel,
             create_directory,
             reveal_path,
             delete_path,
@@ -1624,6 +2033,7 @@ pub fn run() {
             unwatch_all,
             set_workspace_root,
             get_cloud_config,
+            take_initial_cli_workspace,
             about::get_trixty_about_info
         ])
         .setup(|app| {
@@ -1949,5 +2359,79 @@ mod validate_branch_name_tests {
         // Only a LEADING dash is rejected; dashes inside a branch name are
         // legitimate (e.g. `release-1.0`, `fix-bug-123`).
         assert!(validate_branch_name("fix-bug-123").is_ok());
+    }
+}
+
+#[cfg(test)]
+mod split_ndjson_lines_tests {
+    use super::split_ndjson_lines;
+
+    #[test]
+    fn parses_a_single_complete_line() {
+        let mut buf = String::new();
+        let out = split_ndjson_lines(&mut buf, "{\"a\":1}\n");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].as_ref().ok().unwrap()["a"].as_i64(), Some(1));
+        assert!(buf.is_empty(), "complete line should leave empty remainder");
+    }
+
+    #[test]
+    fn parses_two_lines_in_one_chunk() {
+        let mut buf = String::new();
+        let out = split_ndjson_lines(&mut buf, "{\"a\":1}\n{\"b\":2}\n");
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].as_ref().ok().unwrap()["a"].as_i64(), Some(1));
+        assert_eq!(out[1].as_ref().ok().unwrap()["b"].as_i64(), Some(2));
+    }
+
+    #[test]
+    fn holds_a_partial_line_in_the_buffer_until_the_next_chunk() {
+        let mut buf = String::new();
+        let first = split_ndjson_lines(&mut buf, "{\"a\":");
+        assert!(first.is_empty(), "no complete line yet");
+        assert_eq!(buf, "{\"a\":");
+
+        let second = split_ndjson_lines(&mut buf, "1}\n");
+        assert_eq!(second.len(), 1);
+        assert_eq!(second[0].as_ref().ok().unwrap()["a"].as_i64(), Some(1));
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn surfaces_a_malformed_line_as_err_without_dropping_neighbours() {
+        let mut buf = String::new();
+        let out = split_ndjson_lines(&mut buf, "{\"a\":1}\nnot-json\n{\"b\":2}\n");
+        assert_eq!(out.len(), 3);
+        assert!(out[0].is_ok());
+        assert!(out[1].is_err(), "malformed line should be Err");
+        assert_eq!(out[1].as_ref().err().unwrap(), "not-json");
+        assert!(out[2].is_ok());
+    }
+
+    #[test]
+    fn tolerates_crlf_line_endings() {
+        let mut buf = String::new();
+        let out = split_ndjson_lines(&mut buf, "{\"a\":1}\r\n{\"b\":2}\r\n");
+        assert_eq!(out.len(), 2);
+        assert!(out.iter().all(|r| r.is_ok()));
+    }
+
+    #[test]
+    fn empty_input_is_a_noop() {
+        let mut buf = String::new();
+        let out = split_ndjson_lines(&mut buf, "");
+        assert!(out.is_empty());
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn carries_tail_when_chunk_does_not_end_on_newline() {
+        let mut buf = String::new();
+        let first = split_ndjson_lines(&mut buf, "{\"a\":1}\n{\"b\":");
+        assert_eq!(first.len(), 1);
+        assert_eq!(buf, "{\"b\":");
+        let second = split_ndjson_lines(&mut buf, "2}\n");
+        assert_eq!(second.len(), 1);
+        assert!(buf.is_empty());
     }
 }

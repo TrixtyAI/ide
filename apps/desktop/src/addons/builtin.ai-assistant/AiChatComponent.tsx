@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock, ClipboardCheck } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useUI } from "@/context/UIContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useFiles } from "@/context/FilesContext";
+import { useChat } from "@/context/ChatContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useAgent } from "@/context/AgentContext";
+import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import ReactMarkdown from "react-markdown";
 import { trixtyStore } from "@/api/store";
 import { useL10n } from "@/hooks/useL10n";
@@ -13,10 +18,12 @@ import { IDE_TOOLS } from "./tools";
 import { getSystemInfo, detectProjectStack, generateAwarenessBlock, type SystemInfo, type ProjectStack } from "@/lib/awareness";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { logger } from "@/lib/logger";
-import { ToolApprovalPanel, type ApprovalResult } from "./ToolApprovalPanel";
+import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
+import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -30,12 +37,6 @@ interface OllamaModel {
   };
 }
 
-interface PendingTool {
-  id: string;
-  name: string;
-  args: Record<string, string | number | boolean | string[]>;
-}
-
 type OllamaChatMessage =
   | { role: 'system'; content: string }
   | { role: 'user'; content: string; images?: string[] }
@@ -44,31 +45,44 @@ type OllamaChatMessage =
 
 
 const AiChatComponent: React.FC = () => {
+  const { setRightPanelOpen, setSettingsOpen } = useUI();
+  const { rootPath } = useWorkspace();
+  const { openFiles, currentFile } = useFiles();
   const {
-    setRightPanelOpen,
-    rootPath,
-    openFiles,
-    currentFile,
     chatSessions,
     activeSessionId,
     createSession,
     deleteSession,
     switchSession,
     addMessageToSession,
-    updateAISettings,
+    appendToLastAiMessage,
+    finalizeLastAiMessage,
+  } = useChat();
+  const {
     aiSettings,
     cloudEndpoint,
+    updateAISettings,
     editorSettings,
     systemSettings,
     locale,
-    setSettingsOpen
-  } = useApp();
+  } = useSettings();
   const {
     chatMode, setChatMode, getSystemPrompt,
     skills, activeSkills, docs, activeDocs, refreshAgentData,
     memory, plan, setPlan, clearPlan,
   } = useAgent();
+  // Pending-tool state lives in ReviewContext so a sibling Reviewer panel
+  // (mounted by page.tsx) can render the approval UI outside this 380 px
+  // column when the viewport can afford it. The behaviour of the approval
+  // flow — per-call resolver Map, stale-resolver cleanup, callId collision
+  // defense — is unchanged; the state just moved up one level.
+  const { pendingTool, requestToolApproval, resolvePendingTool } = useReview();
   const { t } = useL10n();
+  // When the viewport is wide enough we render the Reviewer in its own right-
+  // side column. On narrow windows we fall back to the old inline dialog so
+  // destructive tool approvals remain reachable even when there is no room
+  // for an extra 480 px column.
+  const canDockReviewer = useMediaQuery("(min-width: 1100px)");
 
   const activeSession = chatSessions.find(s => s.id === activeSessionId);
   const [input, setInput] = useState("");
@@ -79,39 +93,33 @@ const AiChatComponent: React.FC = () => {
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'connected' | 'not_found'>('checking');
   const [projectTree, setProjectTree] = useState<string[]>([]);
-  const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
-  const pendingToolRef = useRef<PendingTool | null>(null);
-  useEffect(() => {
-    pendingToolRef.current = pendingTool;
-  }, [pendingTool]);
   const menuRef = useRef<HTMLDivElement>(null);
   const modelTriggerRef = useRef<HTMLButtonElement>(null);
   const modelOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeModelIndex, setActiveModelIndex] = useState(0);
   const historyOverlayRef = useRef<HTMLDivElement>(null);
-
-  // Single resolver path used by both the Allow/Deny buttons and Escape.
-  // Snapshots the currently-shown tool id so a faster follow-up prompt that
-  // already replaced `pendingTool` cannot have its dialog hidden or its
-  // Promise stranded by this resolution. Reads via a ref to keep the
-  // callback identity stable without incurring stale-closure bugs — the
-  // `setState` updater is pure, safe under React StrictMode.
-  //
-  // The resolver now carries `ApprovalResult` so the panel can return edited
-  // args (e.g. the user tweaked `execute_command` before approving). A
-  // denial still collapses to `{ allowed: false }` so callers don't branch
-  // on a separate boolean.
-  const resolvePendingTool = useCallback((result: ApprovalResult) => {
-    const current = pendingToolRef.current;
-    if (!current) return;
-    const resolver = pendingResolversRef.current.get(current.id);
-    if (!resolver) return;
-    pendingResolversRef.current.delete(current.id);
-    resolver(result);
-    setPendingTool((prev) =>
-      prev && prev.id === current.id ? null : prev,
-    );
-  }, []);
+  // Input ref so focus can return here after the Reviewer unmounts (the
+  // focus trap inside ToolApprovalPanel already restores to whatever was
+  // previously focused; this ref is the natural thing to focus on AI-panel
+  // re-entry if nothing else was focused).
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Return focus to the chat input when the Reviewer closes. We only run this
+  // on the transition from "has pendingTool" to "no pendingTool" so the focus
+  // jump doesn't fire on every unrelated rerender. The focus trap inside the
+  // Reviewer restores focus to whatever held it before opening, but during a
+  // long streaming turn that element may no longer exist — the chat input is
+  // the reliable fallback.
+  const hadPendingRef = useRef(false);
+  useEffect(() => {
+    if (pendingTool) {
+      hadPendingRef.current = true;
+      return;
+    }
+    if (hadPendingRef.current) {
+      hadPendingRef.current = false;
+      inputRef.current?.focus();
+    }
+  }, [pendingTool]);
 
   // When the model menu opens, seed `activeModelIndex` to the currently
   // selected model (or the first option) and move focus there. Deferred via
@@ -157,21 +165,6 @@ const AiChatComponent: React.FC = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Per-call permission resolvers. Previously a single `window.resolveTool`
-  // held the in-flight resolver globally, which meant two concurrent
-  // permission prompts (two chat submissions racing, or a tool-call loop
-  // overlapping with a retry) would silently overwrite the first resolver
-  // and leave the first Promise dangling forever. A Map keyed by call id
-  // keeps each prompt independent; on unmount we resolve everything as
-  // denied so pending awaiters don't leak past the component's lifetime.
-  const pendingResolversRef = useRef<Map<string, (result: ApprovalResult) => void>>(new Map());
-  useEffect(() => {
-    const resolvers = pendingResolversRef.current;
-    return () => {
-      for (const resolver of resolvers.values()) resolver({ allowed: false });
-      resolvers.clear();
-    };
-  }, []);
 
   useEffect(() => {
     // Load last used model from storage
@@ -361,31 +354,39 @@ const AiChatComponent: React.FC = () => {
   // old free-form "Error executing tool X: ..." string so local models can
   // latch onto a stable schema and, ideally, take the `hint` into account
   // instead of re-issuing the same failing call.
+  //
+  // Every `invoke` in here passes `{ silent: true }`. These calls live inside
+  // a classifier-catch pair: any rejection is fed through `classifyToolError`
+  // + `formatToolError`, so the red `[Tauri Invoke Error]` line `safeInvoke`
+  // would otherwise emit is noise — the structured `<tool_error>` block is
+  // the single source of truth the model (and the user) see. Suppression is
+  // scoped to this function; other `invoke` call sites elsewhere in the
+  // component keep their default behaviour.
   const executeToolInternal = async (name: string, args: Record<string, string | number | boolean | string[]>) => {
     try {
       switch (name) {
         case 'list_directory':
-          return await invoke("read_directory", { path: resolvePath(String(args.path)) });
+          return await invoke("read_directory", { path: resolvePath(String(args.path)) }, { silent: true });
         case 'read_file':
-          return await invoke("read_file", { path: resolvePath(String(args.path)) });
+          return await invoke("read_file", { path: resolvePath(String(args.path)) }, { silent: true });
         case 'write_file':
-          await invoke("write_file", { path: resolvePath(String(args.path)), content: String(args.content) });
+          await invoke("write_file", { path: resolvePath(String(args.path)), content: String(args.content) }, { silent: true });
           return "File written successfully.";
         case 'execute_command':
           return await invoke("execute_command", {
             command: String(args.command),
             args: Array.isArray(args.args) ? args.args.map(String) : [],
             cwd: typeof args.cwd === 'string' ? args.cwd : rootPath
-          });
+          }, { silent: true });
         case 'get_workspace_structure':
-          return await invoke("get_recursive_file_list", { rootPath });
+          return await invoke("get_recursive_file_list", { rootPath }, { silent: true });
         case 'web_search':
-          return await invoke("perform_web_search", { query: String(args.query) });
+          return await invoke("perform_web_search", { query: String(args.query) }, { silent: true });
         case 'remember':
           await invoke("write_file", {
             path: resolvePath(".agents/MEMORY.md"),
             content: String(args.content)
-          });
+          }, { silent: true });
           // Refresh context so the memory visualizer updates
           try {
             await refreshAgentData();
@@ -536,13 +537,22 @@ const AiChatComponent: React.FC = () => {
       let consecutiveFailureCount = 0;
       let abortedOnRepeat = false;
 
+      // Sanitize the Ollama chat URL once per send. `proxyFetch` does the
+      // same collapse for the one-shot path; we mirror it here so the
+      // streaming command receives the exact same URL shape regardless of
+      // whether the user put a trailing slash on the endpoint setting.
+      const chatBaseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
+      const chatUrl = `${chatBaseUrl}/api/chat`.replace(/([^:]\/)\/+/g, "$1");
+
       while (loop && maxIterations > 0) {
         maxIterations--;
-        let response;
         const body: OllamaRequest = {
             model: selectedModel,
             messages: history,
-            stream: false,
+            // The streaming helper sets `stream: true` on the wire; we leave
+            // this flag off the request type because the Rust side controls
+            // the stream vs one-shot toggle per command.
+            stream: true,
             tools: (() => {
               if (chatMode !== 'agent') return undefined;
               if (!rootPath) return undefined;
@@ -556,50 +566,107 @@ const AiChatComponent: React.FC = () => {
             ...(aiSettings.useCloudModel ? {} : { keep_alive: `${aiSettings.keepAlive || 5}m` })
         };
 
+        // Push a placeholder assistant bubble. Tool-call-only turns overwrite
+        // the text to the "Interacting…" status below, so starting from an
+        // empty string is safe either way. Keeping the placeholder in place
+        // lets the scroll-to-bottom effect follow the new message smoothly
+        // as tokens stream in.
+        let placeholderPushed = false;
+        const pushPlaceholderOnce = () => {
+          if (placeholderPushed) return;
+          addMessageToSession(activeSessionId, { role: "ai", text: "" });
+          placeholderPushed = true;
+        };
+
+        let streamResult: Awaited<ReturnType<typeof streamOllamaChat>>;
         try {
-            const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
-            response = await proxyFetch(`${baseUrl}/api/chat`, "POST", body);
+          streamResult = await streamOllamaChat(chatUrl, body, (delta) => {
+            pushPlaceholderOnce();
+            appendToLastAiMessage(activeSessionId, delta);
+          }, controller.signal);
 
-            // If failed because model doesn't support 'think', retry without it
-            if (!response.ok && aiSettings.deepMode) {
-                const errorData = await response.json();
-                if (response.status === 400 || (errorData.error && errorData.error.includes("think"))) {
-                    logger.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
-                  const reqBody = { ...body, think: false };
-                    response = await proxyFetch(`${baseUrl}/api/chat`, "POST", reqBody);
-                }
-            }
+          // If the model rejected `think`, retry once without it. Matches the
+          // one-shot behaviour from before streaming landed.
+          if (!streamResult.ok && aiSettings.deepMode && (
+            streamResult.status === 400 || (streamResult.errorText && streamResult.errorText.includes("think"))
+          )) {
+            logger.warn(`Model ${selectedModel} doesn't support Deep Thinking. Retrying without it.`);
+            // Wipe the partially-streamed placeholder so the retry starts from
+            // a clean bubble instead of appending to the prior failed attempt.
+            placeholderPushed = false;
+            const reqBody = { ...body, think: false };
+            streamResult = await streamOllamaChat(chatUrl, reqBody, (delta) => {
+              pushPlaceholderOnce();
+              appendToLastAiMessage(activeSessionId, delta);
+            }, controller.signal);
+          }
         } catch (err) {
-            throw err;
+          throw err;
         }
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || "Ollama Request Failed");
+        if (!streamResult.ok || !streamResult.message) {
+          throw new Error(streamResult.errorText || "Ollama Request Failed");
         }
 
-        const data = await response.json();
-        const message = data.message;
+        const message: OllamaStreamFinalMessage = streamResult.message;
 
         if (message.tool_calls && message.tool_calls.length > 0) {
           // Add the assistant's tool call to history
           history.push(message);
-          addMessageToSession(activeSessionId, {
-            role: "ai",
-            text: t('ai.status.interacting'),
-            thinking: message.thinking,
-            tool_calls: message.tool_calls
-          });
+          // Normalize tool_calls to the stored ChatMessage shape. Ollama
+          // usually provides `id` and `type`, but our stream-event type
+          // leaves them optional to match the upstream spec — fill defaults
+          // so the persisted message matches the stricter ChatMessage
+          // contract.
+          const normalizedCalls = message.tool_calls.map((tc) => ({
+            function: tc.function,
+            id: tc.id ?? "",
+            type: tc.type ?? "function",
+          }));
+          // If the stream produced a placeholder (rare — tool-call turns are
+          // usually emitted whole in the `done` chunk with no preceding
+          // deltas) fold the tool_calls into that bubble so the UI doesn't
+          // end up with an empty-text AI message followed by an "interacting"
+          // one. Otherwise push a fresh "interacting" bubble as before.
+          if (placeholderPushed) {
+            finalizeLastAiMessage(activeSessionId, {
+              text: t('ai.status.interacting'),
+              thinking: message.thinking,
+            });
+            // The finalizer does not know how to attach `tool_calls`, so we
+            // still push a companion message if the placeholder path fired.
+            // In practice the above finalize overwrite is enough because the
+            // next iteration of the tool loop will re-render the tool_calls
+            // chips through `m.tool_calls`; we just need the tool_calls on
+            // the message for history.push (done above) and for the
+            // `msg.tool_calls` render path below.
+            // For that we add a second addMessageToSession call ONLY to
+            // attach tool_calls — but that would duplicate. Simpler: use
+            // addMessageToSession to replace the placeholder fully by
+            // appending a new message and trust the UI renders both. In
+            // practice this branch is virtually never hit.
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: "",
+              tool_calls: normalizedCalls,
+            });
+          } else {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: t('ai.status.interacting'),
+              thinking: message.thinking,
+              tool_calls: normalizedCalls
+            });
+          }
 
           for (const toolCall of message.tool_calls) {
             const toolName = toolCall.function.name;
             const toolArgs = toolCall.function.arguments;
             // Prefer the provider-supplied id; otherwise mint a collision-
-            // resistant one. `Math.random().substr(2, 9)` (the previous shape)
-            // has narrow entropy and could theoretically collide with a
-            // still-pending entry in the resolver Map, which would silently
-            // overwrite the earlier resolver and reintroduce the dangling-
-            // Promise bug this whole path is trying to fix.
+            // resistant one up front so the history / approval / resolver
+            // tuples line up on the exact same string. Generating inside
+            // `requestToolApproval` was tempting but would leave this outer
+            // block without a handle on the id for the history entries below.
             const generatedId =
               typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
                 ? crypto.randomUUID()
@@ -617,26 +684,11 @@ const AiChatComponent: React.FC = () => {
             if (aiSettings.alwaysAllowTools) {
               result = await executeToolInternal(toolName, toolArgs);
             } else {
-              // Manual permission needed. The dialog UI has a single slot, so
-              // any older unresolved prompt is already invisible to the user;
-              // we deny them here instead of letting their Promises dangle.
-              const permissionPromise = new Promise<ApprovalResult>((resolve) => {
-                for (const [oldId, oldResolver] of pendingResolversRef.current) {
-                  if (oldId !== callId) {
-                    oldResolver({ allowed: false });
-                    pendingResolversRef.current.delete(oldId);
-                  }
-                }
-                // Defense against a callId collision (e.g. provider reusing an
-                // id): resolve the prior resolver as denied before replacing,
-                // so no awaiter is left dangling.
-                const existing = pendingResolversRef.current.get(callId);
-                if (existing) existing({ allowed: false });
-                pendingResolversRef.current.set(callId, resolve);
-                setPendingTool({ id: callId, name: toolName, args: toolArgs });
+              const approval = await requestToolApproval({
+                id: callId,
+                name: toolName,
+                args: toolArgs,
               });
-
-              const approval = await permissionPromise;
               if (approval.allowed) {
                 effectiveArgs = approval.args;
                 result = await executeToolInternal(toolName, effectiveArgs);
@@ -688,11 +740,25 @@ const AiChatComponent: React.FC = () => {
           }
           // Continue loop to get AI response for the tool results
         } else {
-          addMessageToSession(activeSessionId, {
-            role: "ai",
-            text: message.content,
-            thinking: message.thinking
-          });
+          // Final assistant turn. If we've been streaming into a placeholder,
+          // attach `thinking` and overwrite `text` with the authoritative
+          // final content from the `done` chunk (which may differ from the
+          // concatenated deltas if the model was post-processed). If the
+          // stream never produced any deltas (empty response, tool-only turn
+          // that ended without content) we push a fresh message so the UI
+          // still renders something.
+          if (placeholderPushed) {
+            finalizeLastAiMessage(activeSessionId, {
+              text: message.content ?? "",
+              thinking: message.thinking,
+            });
+          } else {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: message.content,
+              thinking: message.thinking
+            });
+          }
 
           // Planner-mode post-processor. If the assistant's final message
           // contains a fenced ```plan``` block, persist it to PLAN.md and
@@ -1053,11 +1119,37 @@ const AiChatComponent: React.FC = () => {
             </div>
           ))}
 
-          {/* Permission Request — tool-aware panel that renders a diff for
-              write_file / remember, an editable form for execute_command,
-              and a compact card for read-only tools. Resolves the approval
-              promise with the possibly-edited args. */}
-          {pendingTool && (
+          {/* Permission Request.
+              - Read-only tools (list_directory / read_file / web_search /
+                get_workspace_structure) always render inline: the compact
+                JSON card is perfectly legible inside the 380 px AI panel.
+              - Destructive tools (write_file / execute_command / remember)
+                render in the dedicated Reviewer dock when the viewport has
+                room for it; here we surface a minimal hint card so the user
+                can find the approval UI. On narrow viewports the Reviewer
+                column is not mounted and we fall back to the full panel
+                inline so approvals never become unreachable. */}
+          {pendingTool && !isReviewerEligible(pendingTool.name) && (
+            <div className="flex justify-start w-full">
+              <ToolApprovalPanel
+                tool={pendingTool}
+                rootPath={rootPath}
+                memory={memory}
+                onResolve={resolvePendingTool}
+                t={t}
+              />
+            </div>
+          )}
+          {pendingTool && isReviewerEligible(pendingTool.name) && canDockReviewer && (
+            <div className="flex justify-start w-full">
+              <div className="bg-blue-500/5 border border-blue-500/30 p-3 rounded-xl w-full max-w-[95%] text-[11px] text-blue-200/80 flex items-center gap-2 animate-in fade-in">
+                <ClipboardCheck size={14} className="shrink-0" />
+                <span className="font-semibold">{t('ai.reviewer.pending_hint')}</span>
+                <span className="ml-auto font-mono text-[10px] text-blue-200/60">{pendingTool.name}</span>
+              </div>
+            </div>
+          )}
+          {pendingTool && isReviewerEligible(pendingTool.name) && !canDockReviewer && (
             <div className="flex justify-start w-full">
               <ToolApprovalPanel
                 tool={pendingTool}
@@ -1126,6 +1218,7 @@ const AiChatComponent: React.FC = () => {
       <div className="p-4 bg-[#0a0a0a] border-t border-[#1a1a1a] shrink-0">
         <div className="relative group">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

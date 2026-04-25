@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
-import { useApp } from "@/context/AppContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
 import { CORE_IDENTITY, CORE_SOUL } from "@/addons/builtin.agent-support/index";
 import { trixty } from "@/api/trixty";
 import { logger } from "@/lib/logger";
@@ -54,7 +54,7 @@ interface AgentContextType {
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
 export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { rootPath } = useApp();
+  const { rootPath } = useWorkspace();
   
   const [agents, setAgents] = useState("");
   const [userContext, setUserContext] = useState("");
@@ -480,7 +480,8 @@ ${localDocContext}
   }, [aggregatedPrompt, chatMode, localDocContext, userContext]);
 
   // Memoize the context value so consumers don't re-render on every parent
-  // render — notably during per-keystroke edits bubbling through AppContext.
+  // render. `useWorkspace()` only invalidates when the root path changes,
+  // which keeps the agent context off the keystroke-edit render path.
   const value = useMemo(() => ({
     identity: CORE_IDENTITY,
     soul: CORE_SOUL,

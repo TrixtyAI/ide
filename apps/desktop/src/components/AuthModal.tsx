@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import { useSettings } from '@/context/SettingsContext';
 import { useL10n } from '@/hooks/useL10n';
 import { safeInvoke } from '@/api/tauri';
 import { X, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -10,7 +10,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { cloudEndpoint, updateAISettings } = useApp();
+  const { cloudEndpoint, updateAISettings } = useSettings();
   const { t } = useL10n();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');

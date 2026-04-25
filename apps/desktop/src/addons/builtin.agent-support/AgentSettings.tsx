@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useAgent } from "@/context/AgentContext";
-import { useApp } from "@/context/AppContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useL10n } from "@/hooks/useL10n";
 import {
   Bot,
@@ -18,13 +19,13 @@ interface AgentSettingsProps {
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
-  const { rootPath } = useApp();
+  const { rootPath } = useWorkspace();
   const {
     identity, soul, agents, userContext, memory, design,
     skills, activeSkills, toggleSkill, docs, activeDocs, toggleDoc,
     saveAgentFile, isLoading
   } = useAgent();
-  const { aiSettings, cloudEndpoint, updateAISettings } = useApp();
+  const { aiSettings, cloudEndpoint, updateAISettings } = useSettings();
   const { t } = useL10n();
 
   const getInitialContent = (tab: AgentSettingsProps['activeTab']) => {

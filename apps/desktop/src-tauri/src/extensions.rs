@@ -584,6 +584,35 @@ pub async fn read_extension_script(app: AppHandle, id: String) -> Result<String,
     Ok(content)
 }
 
+/// Read the local `package.json` of an installed extension as raw text.
+///
+/// The sandbox needs the manifest before it spawns the worker so it can
+/// parse `trixty.capabilities` and drive the approval flow. We deliberately
+/// return the raw JSON string (not a parsed `Value`) so the frontend can
+/// surface parse errors to the user instead of converting them into an
+/// opaque `SerdeJsonError`.
+///
+/// Uses the same `validate_extension_id` guard as the sibling commands so
+/// a compromised catalog can't reach arbitrary files on disk via `id`.
+#[tauri::command]
+pub async fn read_extension_manifest(app: AppHandle, id: String) -> Result<String, String> {
+    validate_extension_id(&id)?;
+    let ext_dir = get_extensions_dir(&app)?;
+    let target_dir = ext_dir.join(&id);
+    let manifest_file = target_dir.join("package.json");
+
+    if !manifest_file.exists() {
+        return Err(format!(
+            "Extension {} does not have a package.json file",
+            id
+        ));
+    }
+
+    let content =
+        std::fs::read_to_string(&manifest_file).map_err(|e| redact_user_paths(&e.to_string()))?;
+    Ok(content)
+}
+
 #[cfg(test)]
 mod git_url_validation_tests {
     use super::validate_git_clone_url;

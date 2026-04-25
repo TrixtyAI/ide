@@ -75,6 +75,8 @@ export interface TauriInvokeMap {
   "get_recursive_file_list": { args: { rootPath: string | null }; return: string[] };
   "get_system_health": { args: undefined; return: { cpu_usage: number; memory_usage: number } };
   "ollama_proxy": { args: { method: string; url: string; headers?: Record<string, string>; body?: OllamaRequest }; return: { status: number; body: string } };
+  "ollama_proxy_stream": { args: { streamId: string; method: string; url: string; body: OllamaRequest }; return: void };
+  "ollama_proxy_cancel": { args: { streamId: string }; return: void };
   "check_update": { args: undefined; return: { version: string; body?: string | null } | null };
   "install_update": { args: undefined; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
@@ -107,11 +109,13 @@ export interface TauriInvokeMap {
   "git_push": { args: { path: string }; return: string };
   "search_in_project": { args: { query: string; rootPath: string; filesExclude?: string[] }; return: SearchResult[] };
   "read_extension_script": { args: { id: string }; return: string };
+  "read_extension_manifest": { args: { id: string }; return: string };
   "perform_web_search": { args: { query: string }; return: string };
   "watch_path": { args: { path: string; excludes: string[] }; return: void };
   "unwatch_all": { args: undefined; return: void };
   "set_workspace_root": { args: { path: string | null }; return: void };
   "get_cloud_config": { args: undefined; return: string };
+  "take_initial_cli_workspace": { args: undefined; return: string | null };
   "get_trixty_about_info": { args: undefined; return: Record<string, string> };
 }
 
