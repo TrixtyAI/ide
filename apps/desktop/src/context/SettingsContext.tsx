@@ -270,7 +270,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [systemSettings, isInitialLoadComplete]);
 
   const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
-    setAiSettings((prev) => ({ ...prev, ...newSettings }));
+    setAiSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+
+      // Mutual exclusivity: Allow Provider Keys vs Cloud Mode
+      if (newSettings.allowProviderKeys === true) {
+        updated.useCloudModel = false;
+      } else if (newSettings.useCloudModel === true) {
+        updated.allowProviderKeys = false;
+      }
+
+      return updated;
+    });
   }, []);
 
   const updateEditorSettings = useCallback((newSettings: Partial<EditorSettings>) => {

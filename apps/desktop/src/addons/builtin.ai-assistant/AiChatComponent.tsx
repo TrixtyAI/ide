@@ -238,22 +238,28 @@ const AiChatComponent: React.FC = () => {
     let cancelled = false;
 
     // Provider mode: models are manually configured
-    if (aiSettings.allowProviderKeys && aiSettings.activeProvider) {
+    if (aiSettings.allowProviderKeys) {
       const pId = aiSettings.activeProvider;
-      const providerModels = aiSettings.providerModels[pId] || [];
-      const syntheticModels: OllamaModel[] = providerModels.map(m => ({
-        name: m,
-        size: 0,
-        details: { family: pId, parameter_size: '---', quantization_level: '---' }
-      }));
-      
-      setModels(syntheticModels);
-      setOllamaStatus('connected');
-      
-      if (syntheticModels.length > 0) {
-        setSelectedModel((prev) => 
-          prev && syntheticModels.some(m => m.name === prev) ? prev : syntheticModels[0].name
-        );
+      if (pId) {
+        const providerModels = aiSettings.providerModels[pId] || [];
+        const syntheticModels: OllamaModel[] = providerModels.map(m => ({
+          name: m,
+          size: 0,
+          details: { family: pId, parameter_size: '---', quantization_level: '---' }
+        }));
+        
+        setModels(syntheticModels);
+        setOllamaStatus('connected');
+        
+        if (syntheticModels.length > 0) {
+          setSelectedModel((prev) => 
+            prev && syntheticModels.some(m => m.name === prev) ? prev : syntheticModels[0].name
+          );
+        }
+      } else {
+        // No active provider yet, but we are in provider mode so don't fetch from Ollama
+        setModels([]);
+        setOllamaStatus('connected'); // status 'connected' prevents showing the "Ollama Required" screen
       }
       return;
     }
@@ -693,7 +699,7 @@ const AiChatComponent: React.FC = () => {
           // one. Otherwise push a fresh "interacting" bubble as before.
           if (placeholderPushed) {
             finalizeLastAiMessage(activeSessionId, {
-              text: t('ai.status.interacting'),
+              text: message.content || undefined,
               thinking: message.thinking,
             });
             // The finalizer does not know how to attach `tool_calls`, so we
@@ -812,13 +818,13 @@ const AiChatComponent: React.FC = () => {
           // still renders something.
           if (placeholderPushed) {
             finalizeLastAiMessage(activeSessionId, {
-              text: message.content ?? "",
+              text: message.content || undefined,
               thinking: message.thinking,
             });
           } else {
             addMessageToSession(activeSessionId, {
               role: "ai",
-              text: message.content,
+              text: message.content || "",
               thinking: message.thinking
             });
           }
@@ -855,9 +861,16 @@ const AiChatComponent: React.FC = () => {
         const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
         const isLikelyOOM = err instanceof Error && (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError"));
         const requestFailed = err instanceof Error && err.message?.includes("Ollama Request Failed");
+        const isProviderMode = aiSettings.allowProviderKeys;
+        
+        let errorText = t('ai.error_connect', { endpoint: baseUrl });
+        if (isLikelyOOM) errorText = t('ai.error_oom');
+        else if (requestFailed) errorText = t('ai.error.request_failed');
+        else if (isProviderMode) errorText = err instanceof Error ? err.message : String(err);
+
         addMessageToSession(activeSessionId, {
           role: "ai",
-          text: isLikelyOOM ? t('ai.error_oom') : (requestFailed ? t('ai.error.request_failed') : t('ai.error_connect', { endpoint: baseUrl }))
+          text: errorText
         });
       }
     } finally {
