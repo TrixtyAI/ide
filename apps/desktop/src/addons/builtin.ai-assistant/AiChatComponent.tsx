@@ -1262,7 +1262,7 @@ const AiChatComponent: React.FC = () => {
               />
             </div>
           )}
-          {isTyping && (
+          {isTyping && !(activeSession?.messages[activeSession.messages.length - 1]?.role === "ai" && activeSession.messages[activeSession.messages.length - 1].text) && (
             <div className="flex justify-start">
               <div className="bg-[#141414] p-3 rounded-xl border border-[#1e1e1e] flex gap-1">
                 <div className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce" />
