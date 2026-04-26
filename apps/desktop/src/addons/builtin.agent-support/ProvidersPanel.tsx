@@ -56,11 +56,6 @@ export const ProvidersPanel: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex flex-col gap-1">
-        <h4 className="text-sm font-semibold text-white">{t('agent.providers.title')}</h4>
-        <p className="text-[11px] text-[#555]">{t('agent.providers.desc')}</p>
-      </div>
-
       <div className="space-y-6 max-w-lg">
         {/* Provider Selector */}
         <div className="space-y-2">
@@ -112,10 +107,30 @@ export const ProvidersPanel: React.FC = () => {
           )}
         </div>
 
-        {/* Models List */}
+        {/* Models Section */}
         <div className="space-y-4 pt-4 border-t border-white/5">
           <label className="text-[10px] text-[#555] font-bold uppercase tracking-widest">{t('agent.providers.models_title')}</label>
           
+          {/* Add Model Input (Now at the top) */}
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={newModel}
+              onChange={(e) => setNewModel(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addModel()}
+              placeholder={t('agent.providers.add_model_placeholder', { example: provider.placeholder })}
+              className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-2.5 text-[12px] text-[#ccc] focus:border-blue-500/50 outline-none"
+            />
+            <button
+              onClick={addModel}
+              disabled={!newModel.trim()}
+              className="px-4 py-2 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 disabled:opacity-50 disabled:grayscale transition-all flex items-center gap-2"
+            >
+              <Plus size={14} />
+              {t('agent.providers.add_model')}
+            </button>
+          </div>
+
           <div className="space-y-1">
             {models.map((m) => (
               <div 
@@ -138,25 +153,6 @@ export const ProvidersPanel: React.FC = () => {
                 <p className="text-[11px] text-[#444]">{t('agent.providers.no_models')}</p>
               </div>
             )}
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <input
-              type="text"
-              value={newModel}
-              onChange={(e) => setNewModel(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addModel()}
-              placeholder={t('agent.providers.add_model_placeholder', { example: provider.placeholder })}
-              className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-2.5 text-[12px] text-[#ccc] focus:border-blue-500/50 outline-none"
-            />
-            <button
-              onClick={addModel}
-              disabled={!newModel.trim()}
-              className="px-4 py-2 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-white/90 disabled:opacity-50 disabled:grayscale transition-all flex items-center gap-2"
-            >
-              <Plus size={14} />
-              {t('agent.providers.add_model')}
-            </button>
           </div>
         </div>
       </div>
