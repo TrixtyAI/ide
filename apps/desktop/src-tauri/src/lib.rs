@@ -106,7 +106,7 @@ fn get_cloud_config() -> String {
     // Use option_env! to get the variable at compile time.
     // If not present (e.g. local dev), it falls back to the default.
     option_env!("CLOUD_CONFIG_URL")
-        .unwrap_or("https://ollama.unsetsoft.com")
+        .unwrap_or("https://[IP_ADDRESS]")
         .to_string()
 }
 
@@ -1974,7 +1974,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
                 // If it's a deep link, we might want to trigger a refresh
-                // The deep-link plugin handles the initial link, and subsequent ones 
+                // The deep-link plugin handles the initial link, and subsequent ones
                 // trigger an event we'll listen for in the frontend.
             }
         }))
