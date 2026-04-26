@@ -12,6 +12,7 @@
     "version:publish": "node scripts/publish.mjs"
   },
   "devDependencies": {
+    "prompts": "^2.4.2",
     "turbo": "^2"
   },
   "packageManager": "pnpm@9.15.0"

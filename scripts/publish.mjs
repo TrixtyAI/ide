@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import prompts from 'prompts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -56,39 +57,82 @@ function incrementVersion(version, type) {
   return `${major}.${minor}.${patch}`;
 }
 
-const type = process.argv[2];
-if (!type) {
-  console.error('Uso: node scripts/publish.mjs <major|minor|patch|version>');
-  process.exit(1);
+async function run() {
+  let type = process.argv[2];
+
+  if (!type) {
+    const currentVersion = getVersion();
+    const nextPatch = incrementVersion(currentVersion, 'patch');
+    const nextMinor = incrementVersion(currentVersion, 'minor');
+    const nextMajor = incrementVersion(currentVersion, 'major');
+
+    const response = await prompts({
+      type: 'select',
+      name: 'value',
+      message: `Selecciona el tipo de incremento (actual: v${currentVersion})`,
+      choices: [
+        { title: `Patch (v${nextPatch})`, value: 'patch' },
+        { title: `Minor (v${nextMinor})`, value: 'minor' },
+        { title: `Major (v${nextMajor})`, value: 'major' },
+        { title: 'Versión personalizada', value: 'custom' },
+        { title: 'Cancelar', value: 'cancel' }
+      ],
+      initial: 0
+    });
+
+    if (!response.value || response.value === 'cancel') {
+      console.log('Operación cancelada.');
+      process.exit(0);
+    }
+
+    if (response.value === 'custom') {
+      const customResponse = await prompts({
+        type: 'text',
+        name: 'value',
+        message: 'Ingresa la nueva versión:',
+        validate: value => /^\d+\.\d+\.\d+$/.test(value) ? true : 'Formato inválido (ej: 1.2.3)'
+      });
+      
+      if (!customResponse.value) {
+        console.log('Operación cancelada.');
+        process.exit(0);
+      }
+      type = customResponse.value;
+    } else {
+      type = response.value;
+    }
+  }
+
+  try {
+    const currentVersion = getVersion();
+    const nextVersion = incrementVersion(currentVersion, type);
+
+    console.log(`🚀 Incrementando versión: ${currentVersion} -> ${nextVersion}`);
+
+    // 1. Update apps/desktop/package.json
+    const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
+    pkg.version = nextVersion;
+    fs.writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + '\n');
+
+    // 2. Sync other files
+    console.log('🔄 Sincronizando archivos...');
+    execSync('node scripts/sync-version.mjs', { stdio: 'inherit' });
+
+    // 3. Git operations
+    console.log('📦 Commiteando y tagueando...');
+    execSync('git add .', { stdio: 'inherit' });
+    execSync(`git commit -m "chore: release v${nextVersion}"`, { stdio: 'inherit' });
+    execSync(`git tag v${nextVersion}`, { stdio: 'inherit' });
+
+    console.log('📤 Pusheando a GitHub...');
+    execSync('git push origin main', { stdio: 'inherit' });
+    execSync(`git push origin v${nextVersion}`, { stdio: 'inherit' });
+
+    console.log(`✅ Publicado con éxito: v${nextVersion}`);
+  } catch (err) {
+    console.error(`❌ Error: ${err.message}`);
+    process.exit(1);
+  }
 }
 
-try {
-  const currentVersion = getVersion();
-  const nextVersion = incrementVersion(currentVersion, type);
-
-  console.log(`🚀 Incrementando versión: ${currentVersion} -> ${nextVersion}`);
-
-  // 1. Update apps/desktop/package.json
-  const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
-  pkg.version = nextVersion;
-  fs.writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + '\n');
-
-  // 2. Sync other files
-  console.log('🔄 Sincronizando archivos...');
-  execSync('node scripts/sync-version.mjs', { stdio: 'inherit' });
-
-  // 3. Git operations
-  console.log('📦 Commiteando y tagueando...');
-  execSync('git add .', { stdio: 'inherit' });
-  execSync(`git commit -m "chore: release v${nextVersion}"`, { stdio: 'inherit' });
-  execSync(`git tag v${nextVersion}`, { stdio: 'inherit' });
-
-  console.log('📤 Pusheando a GitHub...');
-  execSync('git push origin main', { stdio: 'inherit' });
-  execSync(`git push origin v${nextVersion}`, { stdio: 'inherit' });
-
-  console.log(`✅ Publicado con éxito: v${nextVersion}`);
-} catch (err) {
-  console.error(`❌ Error: ${err.message}`);
-  process.exit(1);
-}
+run();
