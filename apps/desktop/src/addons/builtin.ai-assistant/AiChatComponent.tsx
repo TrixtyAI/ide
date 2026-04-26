@@ -247,12 +247,12 @@ const AiChatComponent: React.FC = () => {
           size: 0,
           details: { family: pId, parameter_size: '---', quantization_level: '---' }
         }));
-        
+
         setModels(syntheticModels);
         setOllamaStatus('connected');
-        
+
         if (syntheticModels.length > 0) {
-          setSelectedModel((prev) => 
+          setSelectedModel((prev) =>
             prev && syntheticModels.some(m => m.name === prev) ? prev : syntheticModels[0].name
           );
         }
@@ -650,7 +650,7 @@ const AiChatComponent: React.FC = () => {
             // Wipe the partially-streamed placeholder so the retry starts from
             // a clean bubble instead of appending to the prior failed attempt.
             placeholderPushed = false;
-            
+
             if (isProviderMode && aiSettings.activeProvider === 'gemini') {
               streamResult = await streamGeminiChat(providerKey, selectedModel, history, { ...options, think: false, tools: options.tools as unknown[] }, (delta) => {
                 pushPlaceholderOnce();
@@ -674,7 +674,7 @@ const AiChatComponent: React.FC = () => {
         }
 
         if (!streamResult.ok || !streamResult.message) {
-          throw new Error(streamResult.errorText || "Ollama Request Failed");
+          throw new Error(streamResult.errorText || "AI Request Failed");
         }
 
         const message: OllamaStreamFinalMessage = streamResult.message;
@@ -858,12 +858,11 @@ const AiChatComponent: React.FC = () => {
         // Do nothing, user stopped intentionally
       } else {
         // Check for OOM / Connection lost
-        const baseUrl = aiSettings.useCloudModel ? cloudEndpoint : aiSettings.endpoint;
         const isLikelyOOM = err instanceof Error && (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError"));
         const requestFailed = err instanceof Error && err.message?.includes("Ollama Request Failed");
         const isProviderMode = aiSettings.allowProviderKeys;
-        
-        let errorText = t('ai.error_connect', { endpoint: baseUrl });
+
+        let errorText = aiSettings.useCloudModel ? t('ai.error_connect_cloud') : t('ai.error_connect_local');
         if (isLikelyOOM) errorText = t('ai.error_oom');
         else if (requestFailed) errorText = t('ai.error.request_failed');
         else if (isProviderMode) errorText = err instanceof Error ? err.message : String(err);
@@ -999,7 +998,7 @@ const AiChatComponent: React.FC = () => {
             <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">
-                  {aiSettings.allowProviderKeys && aiSettings.activeProvider 
+                  {aiSettings.allowProviderKeys && aiSettings.activeProvider
                     ? t('ai.models.provider_title', { provider: PROVIDERS[aiSettings.activeProvider].name })
                     : (aiSettings.useCloudModel ? t('ai.models.cloud_title') : t('ai.models.local_title'))}
                 </span>
@@ -1149,7 +1148,7 @@ const AiChatComponent: React.FC = () => {
           aria-relevant="additions text"
           aria-busy={isTyping}
           aria-label={t('ai.chat_log_label')}
-          className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-[#0e0e0e]"
+          className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 scrollbar-thin bg-[#0e0e0e]"
         >
           {activeSession?.messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -1216,7 +1215,7 @@ const AiChatComponent: React.FC = () => {
                     <span className="text-[11px] font-semibold italic">{msg.text}</span>
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                        <div className="whitespace-pre-wrap break-words">{msg.text}</div>
                 )}
               </div>
             </div>

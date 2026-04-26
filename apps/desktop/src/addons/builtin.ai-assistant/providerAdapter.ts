@@ -28,9 +28,14 @@ function createProxyFetch() {
         if (typeof init.body === 'string') {
           body = JSON.parse(init.body);
         } else {
-          // If it's a non-string BodyInit, we don't try to parse it for proxying
-          // as our proxy command expects a JSON object.
           body = null;
+        }
+
+        // --- TRUCO DE COMPATIBILIDAD ---
+        // Si el SDK envolvió todo en 'chatRequest', lo aplanamos para el servidor
+        if (body && typeof body === 'object' && 'chatRequest' in body) {
+          const wrapper = body as { chatRequest: Record<string, unknown> };
+          body = wrapper.chatRequest;
         }
       } catch {
         body = null;
@@ -51,9 +56,6 @@ function createProxyFetch() {
             if (payload.kind === "delta" && payload.content) {
               controller.enqueue(new TextEncoder().encode(payload.content));
             } else if (payload.kind === "done") {
-              // OpenRouter/OpenAI usually don't send a final 'done' string in the body like Ollama,
-              // but our Rust proxy might be wrapping it. 
-              // Actually, for generic proxying, we should just pass the raw chunks.
               controller.close();
               unlisten();
             } else if (payload.kind === "error") {
@@ -166,7 +168,7 @@ export async function streamGeminiChat(
     return { ok: true, status: 200, message: finalMessage };
   } catch (err: unknown) {
     const error = err as Error;
-    logger.error("[Gemini Adapter] Stream error:", error);
+    logger.error("Gemini Stream Error:", error);
     return { ok: false, status: 500, errorText: error.message };
   }
 }
@@ -183,23 +185,25 @@ export async function streamOpenRouterChat(
     const openRouter = new OpenRouter({
       apiKey,
     });
-    // Custom fetch for proxy support
+    
+    // Inyectamos el proxy fetch para que Tauri maneje la petición
     (openRouter as unknown as { fetch: unknown }).fetch = createProxyFetch();
 
-    const stream = await (openRouter as unknown as { 
-      chat: { completions: { create: (p: unknown) => Promise<AsyncIterable<{ choices: { delta: { content?: string } }[] }>> } } 
-    }).chat.completions.create({
-      model,
-      messages: toOpenAIMessages(messages) as never,
-      temperature: options.temperature,
-      max_tokens: options.maxTokens,
-      stream: true,
+    const stream = await openRouter.chat.send({
+      chatRequest: {
+        model,
+        messages: toOpenAIMessages(messages) as never,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        stream: true,
+      }
     });
 
     let fullText = "";
-    for await (const chunk of stream) {
+    // El SDK de OpenRouter devuelve un iterador asíncrono directamente
+    for await (const chunk of stream as AsyncIterable<{ choices: { delta: { content?: string } }[] }>) {
       if (abortSignal.aborted) break;
-      const content = chunk.choices[0]?.delta?.content || "";
+      const content = (chunk.choices?.[0]?.delta as { content?: string })?.content || "";
       if (content) {
         fullText += content;
         onDelta(content);
@@ -214,7 +218,7 @@ export async function streamOpenRouterChat(
     return { ok: true, status: 200, message: finalMessage };
   } catch (err: unknown) {
     const error = err as Error;
-    logger.error("[OpenRouter Adapter] Stream error:", error);
+    logger.error("OpenRouter SDK Error:", error);
     return { ok: false, status: 500, errorText: error.message };
   }
 }
