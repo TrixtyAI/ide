@@ -1662,6 +1662,15 @@ async fn ollama_proxy_stream(
         let mut sent_done = false;
         let is_raw = raw_mode.unwrap_or(false);
 
+        // Accumulators for building the final message. Ollama sends
+        // `tool_calls` in non-done chunks (`done: false`) while the final
+        // `done: true` chunk only carries stats — no `tool_calls`. We
+        // accumulate content, tool_calls and thinking across all chunks
+        // and synthesize a complete message for the frontend's done event.
+        let mut accumulated_content = String::new();
+        let mut accumulated_tool_calls: Vec<serde_json::Value> = Vec::new();
+        let mut accumulated_thinking = String::new();
+
         // Main chunk pump. `response.chunk().await` yields `Ok(Some(bytes))`
         // for each new body fragment, `Ok(None)` at EOF, or `Err(..)` on
         // transport failure. Cancellation is observed via `try_recv` on the
@@ -1723,40 +1732,97 @@ async fn ollama_proxy_stream(
                     Ok(value) => {
                         let done = value.get("done").and_then(|v| v.as_bool()).unwrap_or(false);
                         if done {
-                            let message = value.get("message").cloned();
+                            // Build the final message by merging what the
+                            // done chunk carries (usually just role +
+                            // empty content) with our accumulated data.
+                            let mut final_msg = value
+                                .get("message")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::json!({
+                                    "role": "assistant",
+                                    "content": ""
+                                }));
+
+                            if let serde_json::Value::Object(ref mut map) = final_msg {
+                                // Overwrite content with full accumulated text
+                                if !accumulated_content.is_empty() {
+                                    map.insert(
+                                        "content".to_string(),
+                                        serde_json::Value::String(accumulated_content.clone()),
+                                    );
+                                }
+                                // Attach accumulated tool_calls if the done
+                                // chunk didn't already carry them
+                                if !accumulated_tool_calls.is_empty()
+                                    && !map.contains_key("tool_calls")
+                                {
+                                    map.insert(
+                                        "tool_calls".to_string(),
+                                        serde_json::Value::Array(accumulated_tool_calls.clone()),
+                                    );
+                                }
+                                // Attach accumulated thinking if present
+                                if !accumulated_thinking.is_empty()
+                                    && !map.contains_key("thinking")
+                                {
+                                    map.insert(
+                                        "thinking".to_string(),
+                                        serde_json::Value::String(accumulated_thinking.clone()),
+                                    );
+                                }
+                            }
+
                             let _ = app_for_task.emit(
                                 "ollama-stream",
                                 OllamaStreamPayload {
                                     stream_id: stream_id_for_task.clone(),
                                     kind: "done",
                                     content: None,
-                                    message,
+                                    message: Some(final_msg),
                                     error: None,
                                 },
                             );
                             sent_done = true;
                             break;
                         }
-                        // Non-terminal chunk. Extract the delta content
-                        // from the `message.content` slot that Ollama
-                        // populates for chat streams.
-                        let delta = value
-                            .get("message")
-                            .and_then(|m| m.get("content"))
-                            .and_then(|c| c.as_str())
-                            .map(|s| s.to_string());
-                        if let Some(content) = delta {
-                            if !content.is_empty() {
-                                let _ = app_for_task.emit(
-                                    "ollama-stream",
-                                    OllamaStreamPayload {
-                                        stream_id: stream_id_for_task.clone(),
-                                        kind: "delta",
-                                        content: Some(content),
-                                        message: None,
-                                        error: None,
-                                    },
-                                );
+
+                        // Non-terminal chunk. Extract and accumulate
+                        // content, tool_calls and thinking from the
+                        // `message` object.
+                        if let Some(msg) = value.get("message") {
+                            // Delta content → stream to frontend + accumulate
+                            let delta = msg
+                                .get("content")
+                                .and_then(|c| c.as_str())
+                                .map(|s| s.to_string());
+                            if let Some(ref content) = delta {
+                                if !content.is_empty() {
+                                    accumulated_content.push_str(content);
+                                    let _ = app_for_task.emit(
+                                        "ollama-stream",
+                                        OllamaStreamPayload {
+                                            stream_id: stream_id_for_task.clone(),
+                                            kind: "delta",
+                                            content: Some(content.clone()),
+                                            message: None,
+                                            error: None,
+                                        },
+                                    );
+                                }
+                            }
+
+                            // Accumulate tool_calls from this chunk
+                            if let Some(serde_json::Value::Array(calls)) = msg.get("tool_calls") {
+                                for call in calls {
+                                    accumulated_tool_calls.push(call.clone());
+                                }
+                            }
+
+                            // Accumulate thinking content
+                            if let Some(thinking) = msg.get("thinking").and_then(|t| t.as_str()) {
+                                if !thinking.is_empty() {
+                                    accumulated_thinking.push_str(thinking);
+                                }
                             }
                         }
                     }
@@ -1776,17 +1842,34 @@ async fn ollama_proxy_stream(
 
         // If we fell out of the loop without seeing `done: true` (EOF
         // mid-stream, or a cancellation), still emit a done event so the
-        // frontend's awaiter can resolve. Using an empty message here
-        // signals "nothing to append" — the stream callers already saw
-        // every delta along the way.
+        // frontend's awaiter can resolve. Include any accumulated data so
+        // the frontend has a complete picture of what streamed so far.
         if !sent_done {
+            let mut fallback_msg = serde_json::json!({
+                "role": "assistant",
+                "content": accumulated_content
+            });
+            if let serde_json::Value::Object(ref mut map) = fallback_msg {
+                if !accumulated_tool_calls.is_empty() {
+                    map.insert(
+                        "tool_calls".to_string(),
+                        serde_json::Value::Array(accumulated_tool_calls),
+                    );
+                }
+                if !accumulated_thinking.is_empty() {
+                    map.insert(
+                        "thinking".to_string(),
+                        serde_json::Value::String(accumulated_thinking),
+                    );
+                }
+            }
             let _ = app_for_task.emit(
                 "ollama-stream",
                 OllamaStreamPayload {
                     stream_id: stream_id_for_task.clone(),
                     kind: "done",
                     content: None,
-                    message: Some(serde_json::json!({ "role": "assistant", "content": "" })),
+                    message: Some(fallback_msg),
                     error: None,
                 },
             );
