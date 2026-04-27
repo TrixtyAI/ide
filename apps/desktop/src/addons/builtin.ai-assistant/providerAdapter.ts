@@ -368,7 +368,7 @@ export async function streamOpenRouterChat(
       arguments: string;
     }> = new Map();
 
-    for await (const chunk of stream as AsyncIterable<OpenRouterStreamChunk>) {
+    for await (const chunk of stream as unknown as AsyncIterable<OpenRouterStreamChunk>) {
       if (abortSignal.aborted) break;
 
       const choice = chunk.choices?.[0];
