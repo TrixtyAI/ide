@@ -32,7 +32,7 @@ const TitleBar: React.FC = () => {
   };
 
   return (
-    <div className="h-[32px] bg-surface-0 flex items-center shrink-0 select-none border-b border-border-subtle z-titlebar">
+    <div className="relative h-[32px] bg-surface-0 flex items-center shrink-0 select-none border-b border-border-subtle z-titlebar">
       {/* App icon + Drag region with title */}
       <div
         data-tauri-drag-region

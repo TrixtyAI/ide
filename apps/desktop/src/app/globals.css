@@ -55,13 +55,17 @@
   --color-subtle-fg: #555555;
 
   /* Z-index scale — numbers match the current literals in use so nothing
-     reorders visually. `z-titlebar` replaces the broken `z-999` class on
-     TitleBar (Tailwind silently compiled it to a no-op). */
+     reorders visually. `z-titlebar` sits above every overlay so the Tauri
+     drag region and the min/max/close controls stay reachable while a
+     full-screen modal (Settings, ExtensionApprovalModal at z-[2000]) is
+     open. The TitleBar root must also opt into a positioned context for
+     this z-index to apply. */
   --z-tooltip: 50;
   --z-modal: 100;
-  --z-titlebar: 999;
   --z-menu: 1000;
+  --z-extension-modal: 2000;
   --z-toast: 9999;
+  --z-titlebar: 10000;
 
   /* Typography — the app has 164 occurrences of `text-[11px]`/`text-[13px]`
      covering the "caption" and "UI body" roles. Expose them as named
