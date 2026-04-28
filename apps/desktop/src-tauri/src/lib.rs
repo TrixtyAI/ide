@@ -80,11 +80,79 @@ struct InstallerProgress {
     content_length: Option<u64>,
 }
 
-#[tauri::command]
-async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+/// GitHub repo that hosts the release feed. Kept here (rather than read from
+/// `tauri.conf.json`) because the pre-release lookup hits the GitHub API
+/// directly — the configured updater endpoint only resolves "latest stable".
+const RELEASES_REPO_API: &str = "https://api.github.com/repos/TrixtyAI/ide/releases?per_page=10";
+
+/// Resolves the per-channel updater endpoint URL. `Stable` returns `None` so
+/// the plugin falls back to the static endpoint baked into `tauri.conf.json`
+/// (which already points at `releases/latest/download/latest.json`).
+/// `PreRelease` queries the GitHub API and returns the manifest URL of the
+/// most recently published release — pre or stable, whichever is newer —
+/// so the user always sees the bleeding edge.
+async fn resolve_prerelease_endpoint() -> Result<url::Url, String> {
+    let client = reqwest::Client::builder()
+        // GitHub blocks API requests without a User-Agent.
+        .user_agent(concat!("TrixtyIDE-Updater/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|e| format!("HTTP client build failed: {e}"))?;
+
+    let resp = client
+        .get(RELEASES_REPO_API)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("GitHub API request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API returned {}", resp.status()));
+    }
+
+    let releases: Vec<serde_json::Value> = resp
+        .json()
+        .await
+        .map_err(|e| format!("GitHub API JSON parse failed: {e}"))?;
+
+    // Skip drafts (which the API exposes when the token is privileged) and
+    // anything missing a tag. The first surviving entry is the newest by
+    // `created_at` because the GitHub list endpoint sorts that way by default.
+    let tag = releases
+        .iter()
+        .find(|r| !r.get("draft").and_then(|d| d.as_bool()).unwrap_or(false))
+        .and_then(|r| r.get("tag_name").and_then(|t| t.as_str()))
+        .ok_or_else(|| "No published releases found".to_string())?;
+
+    let url_str = format!("https://github.com/TrixtyAI/ide/releases/download/{tag}/latest.json");
+    url::Url::parse(&url_str).map_err(|e| format!("Updater URL parse failed: {e}"))
+}
+
+/// Builds an updater configured for the requested channel. `Some("pre-release")`
+/// overrides the manifest endpoint with one resolved against the GitHub API;
+/// any other value (or `None`) keeps the static stable endpoint from
+/// `tauri.conf.json`.
+async fn build_channel_updater(
+    app: &tauri::AppHandle,
+    channel: Option<&str>,
+) -> Result<tauri_plugin_updater::Updater, String> {
     use tauri_plugin_updater::UpdaterExt;
 
-    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
+    let mut builder = app.updater_builder();
+    if matches!(channel, Some("pre-release")) {
+        let endpoint = resolve_prerelease_endpoint().await?;
+        builder = builder
+            .endpoints(vec![endpoint])
+            .map_err(|e| format!("Updater endpoints override failed: {e}"))?;
+    }
+    builder.build().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn check_update(
+    app: tauri::AppHandle,
+    channel: Option<String>,
+) -> Result<Option<UpdateInfo>, String> {
+    let updater = build_channel_updater(&app, channel.as_deref()).await?;
 
     // Gracefully handle check errors (e.g. 404 when no release exists yet)
     let update = match updater.check().await {
@@ -102,15 +170,19 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, Strin
 }
 
 #[tauri::command]
-async fn install_update(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
+async fn install_update(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    channel: Option<String>,
+) -> Result<(), String> {
     use tauri::Emitter;
-    use tauri_plugin_updater::UpdaterExt;
 
-    let updater = app.updater_builder().build().map_err(|e| {
-        let err = e.to_string();
-        error!("Update install - build failed: {}", err);
-        err
-    })?;
+    let updater = build_channel_updater(&app, channel.as_deref())
+        .await
+        .map_err(|err| {
+            error!("Update install - build failed: {}", err);
+            err
+        })?;
     let update = updater.check().await.map_err(|e| {
         let err = e.to_string();
         error!("Update install - check failed: {}", err);

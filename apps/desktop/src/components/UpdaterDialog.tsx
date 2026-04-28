@@ -5,6 +5,7 @@ import { Download, X, ArrowUpCircle, RefreshCw, CheckCircle2 } from "lucide-reac
 import { safeInvoke } from "@/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { useL10n } from "@/hooks/useL10n";
+import { useSettings } from "@/context/SettingsContext";
 import { logger } from "@/lib/logger";
 
 type UpdaterState =
@@ -18,18 +19,27 @@ type UpdaterState =
 
 const UpdaterDialog: React.FC = () => {
   const { t } = useL10n();
+  const { systemSettings } = useSettings();
   const [state, setState] = useState<UpdaterState>({ phase: "idle" });
   const [dismissed, setDismissed] = useState(false);
+
+  // Read through a ref so the boot timer / install handler always see the
+  // current channel without re-running the auto-check effect on every toggle.
+  const channelRef = React.useRef(systemSettings.updateChannel);
+  React.useEffect(() => {
+    channelRef.current = systemSettings.updateChannel;
+  }, [systemSettings.updateChannel]);
 
   const checkForUpdates = useCallback(async (isManual: boolean = false) => {
     if (isManual) {
        setState({ phase: "checking" });
        setDismissed(false);
     }
-    
+
     try {
-      // Pass no URL, Rust will use pinned endpoints in tauri.conf.json
-      const update = await safeInvoke("check_update");
+      // Channel "stable" uses the pinned endpoint in tauri.conf.json.
+      // "pre-release" makes Rust resolve the latest release via GitHub API.
+      const update = await safeInvoke("check_update", { channel: channelRef.current });
 
       if (!update) {
          if (isManual) setState({ phase: "up-to-date" });
@@ -77,8 +87,8 @@ const UpdaterDialog: React.FC = () => {
       });
 
       try {
-        await safeInvoke("install_update");
-        
+        await safeInvoke("install_update", { channel: channelRef.current });
+
         setState({ phase: "ready" });
         
         // Relaunch app
