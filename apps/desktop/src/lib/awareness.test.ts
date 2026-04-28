@@ -44,6 +44,7 @@ const baseParams = {
     system: {
       hasCompletedOnboarding: true,
       filesExclude: ["**/node_modules"],
+      updateChannel: "stable" as const,
     },
     locale: "es",
   },

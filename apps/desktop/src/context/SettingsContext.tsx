@@ -4,9 +4,12 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { trixtyStore } from "@/api/store";
 import { logger } from "@/lib/logger";
 
+export type UpdateChannel = "stable" | "pre-release";
+
 export interface SystemSettings {
   hasCompletedOnboarding: boolean;
   filesExclude: string[];
+  updateChannel: UpdateChannel;
 }
 
 export interface AISettings {
@@ -50,7 +53,7 @@ interface SettingsContextType {
 // `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
 const AI_SETTINGS_VERSION = 1;
 const EDITOR_SETTINGS_VERSION = 1;
-const SYSTEM_SETTINGS_VERSION = 1;
+const SYSTEM_SETTINGS_VERSION = 2;
 const LOCALE_VERSION = 1;
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
@@ -88,6 +91,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
     "**/node_modules",
     "**/yarn.lock",
   ],
+  updateChannel: "stable",
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

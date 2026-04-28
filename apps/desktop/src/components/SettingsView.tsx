@@ -301,6 +301,32 @@ Node.js: ${systemInfo.node_version}
               </div>
             </section>
 
+            <section>
+              <h3 className="text-[14px] font-semibold text-white mb-2 flex items-center gap-2">
+                <RefreshCw size={16} className="text-blue-400" />
+                {t('settings.application.update_channel')}
+              </h3>
+              <p className="text-[12px] text-[#666] mb-4 max-w-md leading-relaxed">
+                {t('settings.application.update_channel.desc')}
+              </p>
+              <div className="space-y-4 max-w-sm">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="settings-app-update-channel" className="text-[11px] text-[#888] uppercase tracking-wider">
+                    {t('settings.application.update_channel')}
+                  </label>
+                  <select
+                    id="settings-app-update-channel"
+                    value={systemSettings.updateChannel}
+                    onChange={(e) => updateSystemSettings({ updateChannel: e.target.value as 'stable' | 'pre-release' })}
+                    className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors appearance-none"
+                  >
+                    <option value="stable">{t('settings.application.update_channel.stable')}</option>
+                    <option value="pre-release">{t('settings.application.update_channel.prerelease')}</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
             <section className="pt-8 mt-8 border-t border-red-500/20">
               <h3 className="text-[14px] font-semibold text-red-500 mb-2 flex items-center gap-2">
                 <AlertTriangle size={16} />
