@@ -734,21 +734,30 @@ const AiChatComponent: React.FC = () => {
           // Continue loop to get AI response for the tool results
         } else {
           // Final assistant turn. If we've been streaming into a placeholder,
-          // attach `thinking` and overwrite `text` with the authoritative
-          // final content from the `done` chunk (which may differ from the
-          // concatenated deltas if the model was post-processed). If the
-          // stream never produced any deltas (empty response, tool-only turn
-          // that ended without content) we push a fresh message so the UI
-          // still renders something.
+          // attach `thinking` and only adopt `message.content` as the final
+          // text when the `done` chunk actually carries a body. Ollama's
+          // streaming protocol typically returns `message.content === ""` on
+          // `done` because the body was already delivered through deltas, so
+          // overwriting the accumulated placeholder with "" would make the
+          // assistant bubble visually disappear once the response completes
+          // (#278). When the model post-processes and resends a full body,
+          // we still adopt it. Otherwise we keep what we accumulated.
+          // If the stream never produced any deltas (empty response, tool-
+          // only turn that ended without content) we push a fresh message so
+          // the UI still renders something.
           if (placeholderPushed) {
+            const finalText =
+              typeof message.content === "string" && message.content.length > 0
+                ? message.content
+                : undefined;
             finalizeLastAiMessage(activeSessionId, {
-              text: message.content ?? "",
+              text: finalText,
               thinking: message.thinking,
             });
           } else {
             addMessageToSession(activeSessionId, {
               role: "ai",
-              text: message.content,
+              text: message.content ?? "",
               thinking: message.thinking
             });
           }
