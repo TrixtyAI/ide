@@ -1541,6 +1541,9 @@ const CLOUD_PROXY_ALLOWED_HOSTS: &[&str] = &[
     "api.anthropic.com",
     "generativelanguage.googleapis.com",
     "openrouter.ai",
+    // npm registry — used by the visual package.json installer
+    // (issue #264). Read-only public API, no auth required.
+    "registry.npmjs.org",
 ];
 
 fn validate_cloud_proxy_url(raw: &str) -> Result<(), String> {
