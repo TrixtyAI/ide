@@ -48,7 +48,10 @@ export function useInlineCompletions(monaco: Monaco | null): void {
 
         // Debounce by sleeping; Monaco cancels stale invocations via
         // `token.isCancellationRequested` when the user keeps typing.
-        await sleep(inline.debounceMs);
+        // The sleep itself races the cancellation token so we don't
+        // queue ghost timers for keystrokes that have already been
+        // superseded.
+        await sleep(inline.debounceMs, token);
         if (token.isCancellationRequested) return null;
 
         // Resolve the model: explicit override wins, otherwise reuse the
@@ -126,6 +129,22 @@ export function useInlineCompletions(monaco: Monaco | null): void {
   ]);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Cancellable sleep — resolves either when `ms` elapse or when the
+ * caller-provided `CancellationToken` flips. Without the token race a
+ * stale provider call would still tie up a 200-300 ms timer per
+ * keystroke even though Monaco has already cancelled the request, and
+ * the timers stack across rapid edits.
+ */
+function sleep(
+  ms: number,
+  token: CancellationToken,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const handle = setTimeout(resolve, ms);
+    token.onCancellationRequested(() => {
+      clearTimeout(handle);
+      resolve();
+    });
+  });
 }

@@ -14,6 +14,14 @@ export interface NpmSearchHit {
 
 const SEARCH_URL = "https://registry.npmjs.org/-/v1/search";
 
+export interface NpmSearchOutcome {
+  hits: NpmSearchHit[];
+  /** Populated when the request failed (transport error, non-2xx
+   *  status, parse failure). The UI can surface this directly so the
+   *  user knows the difference between "no matches" and "offline". */
+  error?: string;
+}
+
 /**
  * Hits the public npm registry search endpoint via the Rust cloud
  * proxy. The endpoint is fully unauthenticated and read-only — the
@@ -26,8 +34,8 @@ const SEARCH_URL = "https://registry.npmjs.org/-/v1/search";
 export async function searchNpm(
   query: string,
   size = 20,
-): Promise<NpmSearchHit[]> {
-  if (!query.trim()) return [];
+): Promise<NpmSearchOutcome> {
+  if (!query.trim()) return { hits: [] };
   const url = `${SEARCH_URL}?text=${encodeURIComponent(query)}&size=${size}`;
   try {
     const result = await invoke(
@@ -37,14 +45,17 @@ export async function searchNpm(
     );
     if (result.status < 200 || result.status >= 300) {
       logger.debug(`[npm] search HTTP ${result.status}`);
-      return [];
+      return {
+        hits: [],
+        error: `npm registry returned HTTP ${result.status}`,
+      };
     }
     const parsed = JSON.parse(result.body) as {
       objects?: { package: NpmSearchHit }[];
     };
-    return (parsed.objects ?? []).map((o) => o.package);
+    return { hits: (parsed.objects ?? []).map((o) => o.package) };
   } catch (err) {
     logger.debug("[npm] search failed:", err);
-    return [];
+    return { hits: [], error: String(err) };
   }
 }

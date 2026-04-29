@@ -62,8 +62,27 @@ const FLOAT_WINDOW_MIN_SIZE = { minWidth: 320, minHeight: 280 };
 // surfaces only via `tauri://error` — by then the slot has already swapped to
 // the placeholder, leaving the user stuck. Sanitize once, here.
 const TAURI_LABEL_INVALID = /[^a-zA-Z0-9\-/:_]/g;
+
+/**
+ * Tauri 2 only allows `a-zA-Z0-9-/:_` in window labels. View IDs like
+ * `trixty.builtin.ai-assistant` contain `.` which would fail IPC
+ * validation. We sanitize by replacing every invalid char with `_` and
+ * append a 4-char hex digest of the original viewId so two distinct
+ * IDs that collapse to the same sanitized form (e.g. `a.b` vs `a:b`)
+ * still produce distinct labels.
+ */
 function buildWindowLabel(viewId: string): string {
-  return `floating-${viewId.replace(TAURI_LABEL_INVALID, "_")}`;
+  const sanitized = viewId.replace(TAURI_LABEL_INVALID, "_");
+  // Tiny FNV-1a (32-bit) — no crypto strength needed, just a stable
+  // disambiguator. 4 hex chars = ~65k buckets, plenty for "two views
+  // sanitize to the same string" cases.
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < viewId.length; i++) {
+    h ^= viewId.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const hash = h.toString(16).padStart(8, "0").slice(0, 4);
+  return `floating-${sanitized}-${hash}`;
 }
 
 class FloatingWindowRegistry implements FloatingWindowRegistryAPI {
@@ -205,6 +224,12 @@ class FloatingWindowRegistry implements FloatingWindowRegistryAPI {
   }
 
   private async persistNow(): Promise<void> {
+    // Cancel any pending debounced write so a queued snapshot from
+    // before the immediate write does not clobber the freshest state.
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
     const payload: PersistedDetachedEntry[] = Array.from(
       this.detached.entries(),
       ([viewId, entry]) => ({
@@ -306,7 +331,11 @@ class FloatingWindowRegistry implements FloatingWindowRegistryAPI {
         if (current && current.windowLabel === windowLabel) {
           this.detached.delete(viewId);
           this.notify();
-          this.schedulePersist();
+          // Persist immediately rather than via the debounce — the
+          // debounce window can race with the optimistic write that
+          // queued when `detach()` ran, leaving a stale entry on disk
+          // for a window that never came up.
+          void this.persistNow();
         }
       });
     } catch (err) {
@@ -315,7 +344,7 @@ class FloatingWindowRegistry implements FloatingWindowRegistryAPI {
       // for a window that never came up.
       this.detached.delete(viewId);
       this.notify();
-      this.schedulePersist();
+      void this.persistNow();
     }
   }
 

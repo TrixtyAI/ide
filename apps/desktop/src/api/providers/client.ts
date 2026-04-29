@@ -167,11 +167,14 @@ async function chatAnthropic(req: CloudChatRequest): Promise<CloudChatResult> {
 }
 
 async function chatGemini(req: CloudChatRequest): Promise<CloudChatResult> {
-  // Gemini's REST API takes the API key as a query parameter and uses a
-  // `contents`-shaped body where roles are `user` and `model`.
+  // Gemini supports the API key either as a query param or the
+  // `x-goog-api-key` header. We use the header form so the key never
+  // shows up in URL logs (Tauri's `e.to_string()` on a transport
+  // failure echoes the URL, OS-level proxies log query strings, etc.).
+  // Body uses Gemini's `contents` shape with `user` / `model` roles.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     req.model,
-  )}:generateContent?key=${encodeURIComponent(req.apiKey)}`;
+  )}:generateContent`;
   const systemMessages = req.messages.filter((m) => m.role === "system");
   const conversation = req.messages.filter((m) => m.role !== "system");
   const systemInstruction = systemMessages.length
@@ -185,7 +188,10 @@ async function chatGemini(req: CloudChatRequest): Promise<CloudChatResult> {
     {
       method: "POST",
       url,
-      headers: [["Content-Type", "application/json"]],
+      headers: [
+        ["x-goog-api-key", req.apiKey],
+        ["Content-Type", "application/json"],
+      ],
       body: {
         contents: conversation.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",

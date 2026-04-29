@@ -171,10 +171,25 @@ export function useFloatingDockTracker(): { overlayViewId: string | null } {
       }
     })();
 
+    // Prune `everSawBelow` whenever the registry's detached set
+    // changes — covers the case where a redock came in via the float
+    // window's "Dock back" button or via `redock()` directly (closes
+    // the window without giving the float page a chance to fire its
+    // own `floating-window:closed` listener). Without this, the same
+    // viewId re-detached later would inherit a stale "saw below"
+    // flag and never auto-redock again.
+    const unsubscribeRegistry = floatingWindowRegistry.subscribe(() => {
+      const liveIds = new Set(floatingWindowRegistry.list().map((e) => e.viewId));
+      for (const viewId of Array.from(everSawBelow)) {
+        if (!liveIds.has(viewId)) everSawBelow.delete(viewId);
+      }
+    });
+
     return () => {
       unsubscribed = true;
       if (settleTimer) clearTimeout(settleTimer);
       if (unlisten) unlisten();
+      unsubscribeRegistry();
     };
   }, []);
 

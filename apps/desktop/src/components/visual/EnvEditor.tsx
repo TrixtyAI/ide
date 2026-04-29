@@ -172,7 +172,14 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
                   type="text"
                   value={r.key}
                   spellCheck={false}
-                  onChange={(e) => updateRow(r.id, { key: e.target.value.trim() })}
+                  // Trim only on blur — `onChange` trim collapses
+                  // intermediate states like "MY KEY" while typing
+                  // (becomes "MYKEY") and breaks non-ASCII flow.
+                  onChange={(e) => updateRow(r.id, { key: e.target.value })}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.trim();
+                    if (trimmed !== r.key) updateRow(r.id, { key: trimmed });
+                  }}
                   placeholder="KEY"
                   className="bg-[#0e0e0e] border border-[#1a1a1a] rounded px-2 py-1 text-[12px] font-mono text-white focus:border-blue-500/50 outline-none transition-colors"
                 />

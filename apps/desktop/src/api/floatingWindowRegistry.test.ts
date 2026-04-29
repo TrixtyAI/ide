@@ -18,10 +18,24 @@ describe("floatingWindowRegistry", () => {
     // Tauri 2 only allows a-zA-Z0-9-/:_ in window labels; dots in the viewId
     // must be replaced or the WebviewWindow constructor rejects on the Rust
     // side and the slot is stranded on the placeholder.
-    expect(floatingWindowRegistry.getEntry("trixty.builtin.ai-assistant")).toEqual({
-      windowLabel: "floating-trixty_builtin_ai-assistant",
-      panel: "right",
-    });
+    const entry = floatingWindowRegistry.getEntry("trixty.builtin.ai-assistant");
+    // Sanitized prefix + 4-char FNV hash suffix to disambiguate viewIds
+    // that collapse to the same sanitized form (e.g. `a.b` vs `a:b`).
+    expect(entry?.windowLabel).toMatch(
+      /^floating-trixty_builtin_ai-assistant-[0-9a-f]{4}$/,
+    );
+    expect(entry?.panel).toBe("right");
+  });
+
+  it("buildWindowLabel disambiguates viewIds that share a sanitized prefix", async () => {
+    // Both `.` and ` ` are outside the Tauri label charset and both
+    // collapse to `_` under sanitization, so without the hash suffix
+    // these two distinct viewIds would share a window label.
+    await floatingWindowRegistry.detach("a.b", "right");
+    await floatingWindowRegistry.detach("a b", "right");
+    const aDot = floatingWindowRegistry.getEntry("a.b");
+    const aSpace = floatingWindowRegistry.getEntry("a b");
+    expect(aDot?.windowLabel).not.toBe(aSpace?.windowLabel);
   });
 
   it("detach() is idempotent — second call does not duplicate listener notifications", async () => {

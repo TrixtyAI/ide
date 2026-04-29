@@ -89,9 +89,12 @@ const NpmInstallerModal: React.FC<NpmInstallerModalProps> = ({
     let cancelled = false;
     const handle = setTimeout(async () => {
       setSearching(true);
+      setError(null);
       try {
-        const results = await searchNpm(query, 25);
-        if (!cancelled) setHits(results);
+        const outcome = await searchNpm(query, 25);
+        if (cancelled) return;
+        setHits(outcome.hits);
+        if (outcome.error) setError(outcome.error);
       } finally {
         if (!cancelled) setSearching(false);
       }
