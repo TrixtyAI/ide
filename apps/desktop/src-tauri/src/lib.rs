@@ -2459,6 +2459,49 @@ async fn has_provider_secret(provider: String) -> Result<bool, String> {
     }
 }
 
+/// Spawn a new TrixtyIDE process pointing at the given workspace
+/// folder. Each instance gets its own JS realm AND its own Rust
+/// state, so the existing single-window architecture works without
+/// cross-instance synchronization. The new process inherits the
+/// current binary path and forwards the workspace via the existing
+/// `--path` flag the `cli` module already parses.
+///
+/// Validates the path is an absolute directory before spawning so a
+/// crafted argument can't trick the launcher into running a sibling
+/// binary or exec-ing through a symlink.
+#[tauri::command]
+async fn spawn_workspace_instance(path: String) -> Result<(), String> {
+    let candidate = std::path::Path::new(&path);
+    let resolved = candidate
+        .canonicalize()
+        .map_err(|e| format!("invalid path: {}", e))?;
+    if !resolved.is_dir() {
+        return Err("path is not a directory".to_string());
+    }
+
+    let exe =
+        std::env::current_exe().map_err(|e| format!("could not resolve current exe: {}", e))?;
+
+    // Use the std-library Command for a fire-and-forget spawn — we
+    // do not need the tokio variant here because the new process is
+    // detached, and `silent_command` is reserved for child tasks
+    // whose stdout we still consume in this binary.
+    let mut cmd = std::process::Command::new(&exe);
+    cmd.arg("--path").arg(resolved);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW so the spawn doesn't flash a console; the
+        // new TrixtyIDE process is GUI-only, same as the current one.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.spawn().map_err(|e| format!("spawn failed: {}", e))?;
+    Ok(())
+}
+
 #[tauri::command]
 fn create_directory(
     path: String,
@@ -2692,6 +2735,7 @@ pub fn run() {
             get_provider_secret,
             clear_provider_secret,
             has_provider_secret,
+            spawn_workspace_instance,
             create_directory,
             reveal_path,
             delete_path,

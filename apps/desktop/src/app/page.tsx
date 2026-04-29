@@ -84,6 +84,31 @@ export default function Home() {
   } = useFiles();
   const { handleOpenFolder } = useWorkspace();
 
+  // Cmd / Ctrl+Shift+N — open another workspace in a new TrixtyIDE
+  // process. Two windows = two separate processes, so each gets its
+  // own Rust state, terminals, AI sessions, and store file. We don't
+  // try to share anything between the instances on purpose; the
+  // existing `--path` CLI flag is the contract.
+  const openInNewWindow = React.useCallback(async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Open Folder in New Window",
+      });
+      if (selected && typeof selected === "string") {
+        const { safeInvoke } = await import("@/api/tauri");
+        await safeInvoke("spawn_workspace_instance", { path: selected });
+      }
+    } catch (err) {
+      // Best-effort logging; failing to spawn is recoverable (the
+      // current window stays usable).
+      const { logger } = await import("@/lib/logger");
+      logger.warn("[multi-instance] spawn failed:", err);
+    }
+  }, []);
+
   // Subscribe to the floating-window registry so the bottom panel
   // re-renders when it detaches / re-docks. We can't gate on it
   // earlier (e.g. by hiding the whole `<ResizablePanel>`) without
@@ -297,6 +322,15 @@ export default function Home() {
         return;
       }
 
+      // Ctrl+Shift+N — Open another workspace in a new window. Each
+      // window is a fresh process with its own state, so two repos
+      // can be open side-by-side without context switching.
+      if (ctrl && shift && key === "n") {
+        e.preventDefault();
+        void openInNewWindow();
+        return;
+      }
+
       // Ctrl+, — Open settings
       if (ctrl && key === ",") {
         e.preventDefault();
@@ -317,6 +351,7 @@ export default function Home() {
     setActiveSidebarTab,
     saveCurrentFile,
     handleOpenFolder,
+    openInNewWindow,
     openFile,
     setSettingsOpen,
     isSettingsOpen,
