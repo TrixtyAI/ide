@@ -18,13 +18,41 @@ interface InlineCompletionRequest {
   signal?: AbortSignal;
 }
 
-const STOP_TOKENS = [
-  "\n\n",
-  "<|endoftext|>",
-  "<|fim_pad|>",
-  "<|file_separator|>",
-  "<|endofline|>",
+/**
+ * Per-family FIM stop tokens. Each coder model family ends an
+ * inline completion at different sentinels — Qwen and DeepSeek share
+ * `<|fim_pad|>` / `<|file_separator|>`; StarCoder uses
+ * `<file_sep>`/`<eos>`; CodeLlama uses `<EOT>` / `<MID>`. We pick the
+ * matcher by a substring of the model id and fall back to a safe
+ * baseline that just includes the universal `\n\n` plus generic
+ * end-of-text sentinels — those never hurt even if the model emits
+ * none of them.
+ */
+const STOP_TOKENS_BASE = ["\n\n", "<|endoftext|>"];
+const STOP_TOKENS_BY_FAMILY: Array<{ match: RegExp; tokens: string[] }> = [
+  {
+    match: /qwen|deepseek/i,
+    tokens: [
+      ...STOP_TOKENS_BASE,
+      "<|fim_pad|>",
+      "<|file_separator|>",
+      "<|endofline|>",
+    ],
+  },
+  {
+    match: /starcoder|santacoder/i,
+    tokens: [...STOP_TOKENS_BASE, "<file_sep>", "<|endoftext|>", "<eos>"],
+  },
+  {
+    match: /codellama/i,
+    tokens: [...STOP_TOKENS_BASE, "<EOT>", "<MID>", "<PRE>", "<SUF>"],
+  },
 ];
+
+function stopTokensFor(modelId: string): string[] {
+  const match = STOP_TOKENS_BY_FAMILY.find((f) => f.match.test(modelId));
+  return match?.tokens ?? STOP_TOKENS_BASE;
+}
 
 /**
  * Single non-streaming Ollama `/api/generate` call with FIM (`prompt` +
@@ -55,7 +83,7 @@ export async function requestInlineCompletion(
           prompt: req.prefix,
           suffix: req.suffix || undefined,
           stream: false,
-          stop: STOP_TOKENS,
+          stop: stopTokensFor(req.model),
           options: {
             temperature: 0.2,
             top_p: 0.95,
