@@ -2113,10 +2113,15 @@ async fn ollama_proxy_cancel(
 /// `cloud_proxy_stream` task registers a oneshot sender keyed by the
 /// caller-supplied `streamId` so a follow-up `cloud_proxy_cancel` can
 /// terminate it from the renderer.
-type CloudStreams = Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>;
+// Newtype wrapper (not a type alias) so Tauri's TypeId-keyed state map
+// can distinguish this from `OllamaStreams`, which has identical shape.
+// Two aliases of the same `Arc<Mutex<...>>` collapse to the same TypeId
+// and `.manage()` panics with "state for type ... is already being managed".
+#[derive(Clone)]
+struct CloudStreams(Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>);
 
 fn new_cloud_streams() -> CloudStreams {
-    Arc::new(Mutex::new(HashMap::new()))
+    CloudStreams(Arc::new(Mutex::new(HashMap::new())))
 }
 
 /// Payload for the `cloud-stream` event. Mirror of `OllamaStreamPayload`'s
@@ -2212,6 +2217,7 @@ async fn cloud_proxy_stream(
     let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
     {
         let mut guard = streams
+            .0
             .lock()
             .map_err(|e| format!("cloud streams mutex poisoned: {}", e))?;
         guard.insert(stream_id.clone(), cancel_tx);
@@ -2389,7 +2395,7 @@ async fn cloud_proxy_stream(
 }
 
 fn remove_cloud_stream(streams: &CloudStreams, stream_id: &str) {
-    if let Ok(mut guard) = streams.lock() {
+    if let Ok(mut guard) = streams.0.lock() {
         guard.remove(stream_id);
     }
 }
@@ -2402,6 +2408,7 @@ async fn cloud_proxy_cancel(
 ) -> Result<(), String> {
     let sender = {
         let mut guard = streams
+            .0
             .lock()
             .map_err(|e| format!("cloud streams mutex poisoned: {}", e))?;
         guard.remove(&stream_id)
