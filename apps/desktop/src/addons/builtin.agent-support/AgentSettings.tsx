@@ -373,6 +373,104 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   </div>
                 </div>
               </div>
+
+              <div className="h-px bg-white/5" />
+
+              {/* Inline code suggestions (issue #258). Off by default —
+                  every keystroke can hit Ollama, so the user opts in
+                  explicitly. Falls back to the chat-selected model when
+                  no override is provided. */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between group">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[12px] font-bold text-white tracking-tight">
+                      Inline code suggestions
+                    </label>
+                    <p className="text-[11px] text-[#555] max-w-sm">
+                      Ghost-text completions in the editor powered by Ollama (FIM).
+                      Tab accepts, Esc dismisses.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      updateAISettings({
+                        inlineCompletions: {
+                          ...aiSettings.inlineCompletions,
+                          enabled: !aiSettings.inlineCompletions.enabled,
+                        },
+                      })
+                    }
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
+                      aiSettings.inlineCompletions.enabled
+                        ? "bg-blue-600 shadow-lg shadow-blue-900/40"
+                        : "bg-[#1a1a1a] border border-white/5"
+                    }`}
+                    aria-pressed={aiSettings.inlineCompletions.enabled}
+                  >
+                    <div
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
+                        aiSettings.inlineCompletions.enabled ? "left-7" : "left-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {aiSettings.inlineCompletions.enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="inline-completions-model"
+                        className="text-[10px] text-[#888] uppercase tracking-wider"
+                      >
+                        Model override
+                      </label>
+                      <input
+                        id="inline-completions-model"
+                        type="text"
+                        placeholder="qwen2.5-coder:7b (chat model if empty)"
+                        value={aiSettings.inlineCompletions.model}
+                        onChange={(e) =>
+                          updateAISettings({
+                            inlineCompletions: {
+                              ...aiSettings.inlineCompletions,
+                              model: e.target.value,
+                            },
+                          })
+                        }
+                        className="bg-[#0a0a0a] border border-[#1a1a1a] rounded px-2 py-1.5 text-[12px] text-white focus:border-blue-500/50 outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="inline-completions-debounce"
+                        className="text-[10px] text-[#888] uppercase tracking-wider"
+                      >
+                        Debounce (ms)
+                      </label>
+                      <input
+                        id="inline-completions-debounce"
+                        type="number"
+                        min={50}
+                        max={2000}
+                        step={50}
+                        value={aiSettings.inlineCompletions.debounceMs}
+                        onChange={(e) => {
+                          const val = e.target.valueAsNumber;
+                          if (Number.isFinite(val) && val >= 50) {
+                            updateAISettings({
+                              inlineCompletions: {
+                                ...aiSettings.inlineCompletions,
+                                debounceMs: val,
+                              },
+                            });
+                          }
+                        }}
+                        className="bg-[#0a0a0a] border border-[#1a1a1a] rounded px-2 py-1.5 text-[12px] text-white focus:border-blue-500/50 outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         );

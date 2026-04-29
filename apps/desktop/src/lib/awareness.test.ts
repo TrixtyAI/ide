@@ -33,6 +33,12 @@ const baseParams = {
       deepMode: false,
       keepAlive: 5,
       loadOnStartup: false,
+      inlineCompletions: {
+        enabled: false,
+        model: "",
+        debounceMs: 250,
+        maxTokens: 64,
+      },
     },
     editor: {
       fontSize: 14,

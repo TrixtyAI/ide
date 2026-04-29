@@ -12,6 +12,17 @@ export interface SystemSettings {
   updateChannel: UpdateChannel;
 }
 
+export interface InlineCompletionSettings {
+  /** Off by default — opt-in because every keystroke can hit Ollama. */
+  enabled: boolean;
+  /** Optional override; falls back to the chat-selected model when empty. */
+  model: string;
+  /** Wait ms after last keystroke before requesting a suggestion. */
+  debounceMs: number;
+  /** Cap suggestion length so the request doesn't run for seconds. */
+  maxTokens: number;
+}
+
 export interface AISettings {
   temperature: number;
   systemPrompt: string;
@@ -22,6 +33,7 @@ export interface AISettings {
   deepMode: boolean;
   keepAlive: number;
   loadOnStartup: boolean;
+  inlineCompletions: InlineCompletionSettings;
 }
 
 export interface EditorSettings {
@@ -51,10 +63,17 @@ interface SettingsContextType {
 // Schema versions for each persisted bundle. Bump when the shape of the
 // stored data changes, then add a migration function at
 // `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
-const AI_SETTINGS_VERSION = 1;
+const AI_SETTINGS_VERSION = 2;
 const EDITOR_SETTINGS_VERSION = 1;
 const SYSTEM_SETTINGS_VERSION = 2;
 const LOCALE_VERSION = 1;
+
+export const DEFAULT_INLINE_COMPLETIONS: InlineCompletionSettings = {
+  enabled: false,
+  model: "",
+  debounceMs: 250,
+  maxTokens: 64,
+};
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
   temperature: 0.7,
@@ -66,6 +85,7 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   deepMode: false,
   keepAlive: 5,
   loadOnStartup: false,
+  inlineCompletions: DEFAULT_INLINE_COMPLETIONS,
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -129,6 +149,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           "trixty-ai-settings",
           AI_SETTINGS_VERSION,
           null,
+          {
+            // v1 → v2: add `inlineCompletions` block (issue #258).
+            // Existing v1 payloads stay intact, the new block lands with
+            // `enabled: false` so users opt in.
+            1: (prev) => ({
+              ...(prev as AISettings),
+              inlineCompletions: { ...DEFAULT_INLINE_COMPLETIONS },
+            }),
+          },
         );
         if (savedSettings) {
           setAiSettings((prev) => ({ ...prev, ...savedSettings }));

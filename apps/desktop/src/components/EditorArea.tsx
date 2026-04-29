@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import React, { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
@@ -8,6 +8,7 @@ import { useFiles } from "@/context/FilesContext";
 import { useSettings } from "@/context/SettingsContext";
 import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
+import { useInlineCompletions } from "@/hooks/useInlineCompletions";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 // Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
@@ -125,11 +126,19 @@ const EditorArea: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  // State copy of the Monaco instance so the inline-completions hook
+  // re-runs once Monaco loads. Refs alone don't trigger re-renders.
+  const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Wires the AI inline-completions provider once Monaco is ready. Off by
+  // default — flipped via `aiSettings.inlineCompletions.enabled`.
+  useInlineCompletions(monacoInstance);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setMonacoInstance(monaco);
 
     ensureMonacoTheme(monaco);
     monaco.editor.setTheme(MONACO_THEME_NAME);
