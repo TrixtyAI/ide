@@ -10,9 +10,19 @@ import {
   BookOpen, Sparkles, Save, RefreshCw, CheckCircle2, Lock, AlertCircle, AlertTriangle
 } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { ProviderKeysPanel } from "@/addons/builtin.agent-support/ProviderKeysPanel";
 
 interface AgentSettingsProps {
-  activeTab: 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration';
+  activeTab:
+    | 'profile'
+    | 'manual'
+    | 'user'
+    | 'skills'
+    | 'documentations'
+    | 'design'
+    | 'memory'
+    | 'configuration'
+    | 'provider-keys';
 }
 
 const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
@@ -305,6 +315,45 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <section className="space-y-6 max-w-lg">
+              {/* Allow Provider Keys (issue #267). Gates the cloud-AI
+                  surface. When OFF, the chat header stays Ollama-only and
+                  the Provider Keys submenu is hidden from settings. */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between group">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[12px] font-bold text-white tracking-tight">
+                      Allow Provider Keys
+                    </label>
+                    <p className="text-[11px] text-[#555] max-w-sm">
+                      Unlocks cloud providers (OpenAI, Anthropic, Gemini,
+                      OpenRouter) in the chat header and reveals the
+                      Provider Keys submenu where you store API credentials.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      updateAISettings({
+                        allowProviderKeys: !aiSettings.allowProviderKeys,
+                      })
+                    }
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
+                      aiSettings.allowProviderKeys
+                        ? "bg-blue-600 shadow-lg shadow-blue-900/40"
+                        : "bg-[#1a1a1a] border border-white/5"
+                    }`}
+                    aria-pressed={aiSettings.allowProviderKeys}
+                  >
+                    <div
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
+                        aiSettings.allowProviderKeys ? "left-7" : "left-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-px bg-white/5" />
+
               {/* Keep Alive Setting */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -472,6 +521,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 )}
               </div>
             </section>
+          </div>
+        );
+      case 'provider-keys':
+        return (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <ProviderKeysPanel />
           </div>
         );
       case 'memory':

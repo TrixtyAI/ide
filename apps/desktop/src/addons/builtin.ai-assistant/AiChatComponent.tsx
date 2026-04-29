@@ -24,6 +24,8 @@ import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
 import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
+import { cloudChat, keyForProvider, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
+import { PROVIDERS, PROVIDER_IDS } from "@/api/providers/registry";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
 
@@ -87,6 +89,25 @@ const AiChatComponent: React.FC = () => {
   const [input, setInput] = useState("");
   const [models, setModels] = useState<OllamaModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  // Lifted from `aiSettings` so the dropdown / provider chip can react.
+  const activeProvider = aiSettings.activeProvider ?? "ollama";
+  const showProviderUI = !!aiSettings.allowProviderKeys;
+  // Provider switcher menu visibility (chat header chip).
+  const [showProviderMenu, setShowProviderMenu] = useState(false);
+  const providerMenuRef = useRef<HTMLDivElement>(null);
+  // Inline "Add model" input shown at the bottom of the model dropdown
+  // for cloud providers — keystroke ergonomics for adding a new model
+  // without leaving chat.
+  const [draftCloudModel, setDraftCloudModel] = useState("");
+
+  // Unified model list — for Ollama we use the live `/api/tags` fetch
+  // result (with parameter_size + quantization metadata); for cloud
+  // providers we map the user-curated string list into the same shape so
+  // the dropdown render stays one-pass.
+  const availableModels: { name: string; details?: OllamaModel["details"] }[] =
+    activeProvider === "ollama"
+      ? models
+      : (aiSettings.providerModels[activeProvider] ?? []).map((name) => ({ name }));
   const [isTyping, setIsTyping] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
@@ -184,6 +205,63 @@ const AiChatComponent: React.FC = () => {
       trixtyStore.set("trixty_ai_last_model", selectedModel);
     }
   }, [selectedModel]);
+
+  // Refs hold the latest aiSettings + updateAISettings so the persistence
+  // effect does not fire on every settings tick — it should only re-run
+  // when the user actually picks a new model or provider.
+  const aiSettingsRef = useRef(aiSettings);
+  const updateAISettingsRef = useRef(updateAISettings);
+  useEffect(() => {
+    aiSettingsRef.current = aiSettings;
+    updateAISettingsRef.current = updateAISettings;
+  }, [aiSettings, updateAISettings]);
+
+  // Persist last model PER provider so switching providers restores the
+  // user's previous pick instead of resetting (issue #267).
+  useEffect(() => {
+    if (!selectedModel) return;
+    const current = aiSettingsRef.current;
+    const last = current.lastModelByProvider?.[activeProvider];
+    if (last === selectedModel) return;
+    updateAISettingsRef.current({
+      lastModelByProvider: {
+        ...(current.lastModelByProvider ?? {}),
+        [activeProvider]: selectedModel,
+      },
+    });
+  }, [selectedModel, activeProvider]);
+
+  // When the user switches providers, restore that provider's last
+  // selected model (or fall back to the first curated entry). Skips
+  // Ollama, which has its own dynamic model list driven by `/api/tags`.
+  useEffect(() => {
+    if (activeProvider === "ollama") return;
+    const current = aiSettingsRef.current;
+    const remembered = current.lastModelByProvider?.[activeProvider];
+    const list = current.providerModels[activeProvider] ?? [];
+    if (remembered && list.includes(remembered)) {
+      setSelectedModel(remembered);
+    } else if (list.length > 0) {
+      setSelectedModel(list[0]);
+    } else {
+      setSelectedModel("");
+    }
+  }, [activeProvider]);
+
+  // Close provider menu on outside click.
+  useEffect(() => {
+    if (!showProviderMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        providerMenuRef.current &&
+        !providerMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowProviderMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showProviderMenu]);
 
   const proxyFetch = useCallback(async (url: string, method: string = "GET", body?: OllamaRequest) => {
     // Sanitize the URL to avoid double slashes if endpoint has trailing slash
@@ -458,6 +536,61 @@ const AiChatComponent: React.FC = () => {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    // Cloud-provider branch (issue #267). Routes the request through the
+    // generic `cloud_proxy` instead of Ollama's bridge. Tools / agent /
+    // streaming are intentionally not wired for cloud yet — every provider
+    // has a different SSE envelope and tool-call format. Single-shot
+    // chat works for all four providers we ship today.
+    const activeProvider = aiSettings.activeProvider ?? "ollama";
+    if (activeProvider !== "ollama") {
+      try {
+        const cloudKey = keyForProvider(aiSettings.providerKeys, activeProvider);
+        const cloudHistory: ProviderChatMessage[] = [
+          { role: "system", content: getSystemPrompt() },
+          ...activeSession.messages
+            .filter((m) => m.role === "user" || m.role === "ai")
+            .map((m): ProviderChatMessage => ({
+              role: m.role === "ai" ? "assistant" : "user",
+              content: m.text,
+            })),
+          { role: "user", content: userMessage },
+        ];
+        const result = await cloudChat({
+          provider: activeProvider,
+          apiKey: cloudKey,
+          model: selectedModel,
+          messages: cloudHistory,
+          temperature: aiSettings.temperature,
+          maxTokens: aiSettings.maxTokens,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (!result.ok) {
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: `Error: ${result.error || "cloud provider returned no content"}`,
+          });
+        } else {
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: result.text,
+          });
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          logger.error("[cloud chat] failed:", err);
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: `Error: ${String(err)}`,
+          });
+        }
+      } finally {
+        setIsTyping(false);
+        abortControllerRef.current = null;
+      }
+      return;
+    }
 
     try {
       // Build context for the system prompt
@@ -819,7 +952,11 @@ const AiChatComponent: React.FC = () => {
     }
   };
 
-  if (ollamaStatus === 'not_found') {
+  // Only surface the "Ollama not installed" wall when the user is
+  // actually trying to use Ollama. With provider keys enabled and a
+  // cloud provider active, the chat keeps working even if Ollama is
+  // absent.
+  if (ollamaStatus === 'not_found' && activeProvider === "ollama") {
     return (
       <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/5">
@@ -852,6 +989,54 @@ const AiChatComponent: React.FC = () => {
     >
       {/* Header */}
       <div className="p-3 border-b border-[#1a1a1a] flex items-center justify-between bg-[#0a0a0a] shrink-0">
+        {showProviderUI && (
+          <div className="relative mr-1" ref={providerMenuRef}>
+            <button
+              onClick={() => setShowProviderMenu((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={showProviderMenu}
+              title="Switch provider"
+              className="px-2 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1"
+            >
+              {PROVIDERS[activeProvider]?.label.split(" ")[0] ?? activeProvider}
+              <ChevronDown size={10} className={`transition-transform ${showProviderMenu ? "rotate-180" : ""}`} />
+            </button>
+            {showProviderMenu && (
+              <div
+                role="menu"
+                className="absolute top-full left-0 mt-2 w-52 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+              >
+                {PROVIDER_IDS.map((pid) => {
+                  const meta = PROVIDERS[pid];
+                  const keyMissing =
+                    meta.kind === "cloud" &&
+                    !aiSettings.providerKeys[pid as Exclude<typeof pid, "ollama">];
+                  return (
+                    <button
+                      key={pid}
+                      onClick={() => {
+                        updateAISettings({ activeProvider: pid });
+                        setShowProviderMenu(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-[11px] flex items-center justify-between transition-colors ${
+                        activeProvider === pid
+                          ? "bg-white/10 text-white"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span>{meta.label}</span>
+                      {keyMissing && (
+                        <span className="text-[9px] text-amber-300/80 uppercase tracking-wider">
+                          No key
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-2 relative" ref={menuRef}>
           <button
             ref={modelTriggerRef}
@@ -887,7 +1072,7 @@ const AiChatComponent: React.FC = () => {
                 onKeyDown={handleModelKeyDown}
                 className="max-h-80 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
               >
-                {models.map((m, idx) => (
+                {availableModels.map((m, idx) => (
                   <button
                     key={m.name}
                     ref={(el) => {
@@ -922,12 +1107,48 @@ const AiChatComponent: React.FC = () => {
                     )}
                   </button>
                 ))}
-                {models.length === 0 && (
+                {availableModels.length === 0 && (
                   <div className="p-8 text-center">
                     <div className="text-[10px] text-white/20 italic">{t('ai.no_models')}</div>
                   </div>
                 )}
               </div>
+              {activeProvider !== "ollama" && (
+                // Inline "Add model" footer for cloud providers — pushes
+                // the typed string into `aiSettings.providerModels[provider]`
+                // so the user does not have to leave chat to register a new
+                // model ID. Settings → Provider Keys → Models is the same
+                // store under the hood.
+                <div className="border-t border-white/5 p-2 flex gap-2 items-center bg-black/30">
+                  <input
+                    type="text"
+                    value={draftCloudModel}
+                    onChange={(e) => setDraftCloudModel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const id = draftCloudModel.trim();
+                        if (!id) return;
+                        const existing =
+                          aiSettings.providerModels[activeProvider] ?? [];
+                        if (!existing.includes(id)) {
+                          updateAISettings({
+                            providerModels: {
+                              ...aiSettings.providerModels,
+                              [activeProvider]: [...existing, id],
+                            },
+                          });
+                        }
+                        setSelectedModel(id);
+                        setDraftCloudModel("");
+                        setShowModelMenu(false);
+                      }
+                    }}
+                    placeholder="Add model ID + Enter"
+                    className="flex-1 bg-[#0e0e0e] border border-white/10 rounded px-2 py-1 text-[10px] text-white font-mono focus:border-blue-500/50 outline-none transition-colors"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
