@@ -221,22 +221,20 @@ const EditorArea: React.FC = () => {
       }
     }
     // Sentry Tracking for File Open
-    if (currentFile) {
-      Sentry.metrics.count('editor_file_open', 1, {
-        attributes: { 
-          language: currentFile.language || 'unknown',
-          extension: currentFile.path.split('.').pop() || 'none',
-          type: currentFile.type || 'text'
-        }
-      });
-      
-      if (isLargeFile) {
-        Sentry.metrics.count('editor_large_file_open', 1);
-        Sentry.logger.info(`Large file opened: ${currentFile.path}`, { 
-          size: currentFile.content?.length,
-          path: currentFile.path 
-        });
+    Sentry.metrics.count('editor_file_open', 1, {
+      attributes: { 
+        language: currentFile.language || 'unknown',
+        extension: currentFile.path.split('.').pop() || 'none',
+        type: currentFile.type || 'text'
       }
+    });
+    
+    if (isLargeFile) {
+      Sentry.metrics.count('editor_large_file_open', 1);
+      Sentry.logger.info(`Large file opened: ${currentFile.path}`, { 
+        size: currentFile.content?.length,
+        path: currentFile.path 
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPathKeys, currentFile?.path]);
