@@ -3,7 +3,7 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { safeInvoke as invoke } from "@/api/tauri";
-import type { ProviderId, ProviderKeys } from "@/context/SettingsContext";
+import type { ProviderId } from "@/context/SettingsContext";
 import { logger } from "@/lib/logger";
 
 export interface ChatMessage {
@@ -401,23 +401,4 @@ export function extractFullResponse(
 
 function truncate(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n)}…` : s;
-}
-
-/** Resolve the right key for a cloud provider, returning `""` for Ollama. */
-export function keyForProvider(
-  keys: ProviderKeys,
-  provider: ProviderId,
-): string {
-  switch (provider) {
-    case "openai":
-      return keys.openai;
-    case "anthropic":
-      return keys.anthropic;
-    case "gemini":
-      return keys.gemini;
-    case "openrouter":
-      return keys.openrouter;
-    default:
-      return "";
-  }
 }

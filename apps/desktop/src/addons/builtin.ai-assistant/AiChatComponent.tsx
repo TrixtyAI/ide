@@ -24,7 +24,8 @@ import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
 import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
-import { streamCloudChat, keyForProvider, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
+import { streamCloudChat, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
+import { getProviderSecret, type SecretProvider } from "@/api/providerSecrets";
 import { PROVIDERS, PROVIDER_IDS } from "@/api/providers/registry";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
@@ -545,7 +546,11 @@ const AiChatComponent: React.FC = () => {
     const activeProvider = aiSettings.activeProvider ?? "ollama";
     if (activeProvider !== "ollama") {
       try {
-        const cloudKey = keyForProvider(aiSettings.providerKeys, activeProvider);
+        // API key lives in the OS keychain (set via Settings → Provider
+        // Keys). Fetched per-send rather than cached on the component
+        // so a key revoked or rotated mid-session takes effect on the
+        // next message instead of the next page reload.
+        const cloudKey = await getProviderSecret(activeProvider as SecretProvider);
         // Guard against a stale `selectedModel` that belongs to a
         // different provider than the one currently active — e.g. the
         // user switched provider but never reopened the model menu.

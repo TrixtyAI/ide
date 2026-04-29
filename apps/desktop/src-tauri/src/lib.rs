@@ -2374,6 +2374,91 @@ async fn cloud_proxy_cancel(
     Ok(())
 }
 
+// ============================================================
+// Provider secret storage (OS keychain)
+// ============================================================
+//
+// Backs the four cloud-AI provider API keys with the OS native secret
+// store (macOS Keychain, Windows Credential Manager, Linux Secret
+// Service / kwallet) instead of `settings.json` plaintext. The
+// `keyring` crate handles the per-platform shimming.
+//
+// Service name is fixed at `trixty.ide` so the entries are namespaced
+// to this app and not visible to other Trixty tooling. Allowed
+// providers are pinned to a hard-coded list so a renderer XSS can't
+// probe arbitrary keychain entries by passing crafted strings.
+
+const SECRET_SERVICE: &str = "trixty.ide";
+const SECRET_ALLOWED_PROVIDERS: &[&str] = &["openai", "anthropic", "gemini", "openrouter"];
+
+fn validate_secret_provider(provider: &str) -> Result<(), String> {
+    if SECRET_ALLOWED_PROVIDERS.contains(&provider) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Provider {} is not on the secret-store allow-list",
+            provider
+        ))
+    }
+}
+
+fn provider_entry(provider: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(SECRET_SERVICE, provider).map_err(|e| format!("keychain: {}", e))
+}
+
+#[tauri::command]
+async fn set_provider_secret(provider: String, secret: String) -> Result<(), String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    entry
+        .set_password(&secret)
+        .map_err(|e| format!("keychain set failed: {}", e))
+}
+
+/// Returns the stored secret for a provider, or `None` if no entry
+/// exists. Distinguishes `NoEntry` from real failures so the caller
+/// (settings UI) can render an empty input without surfacing an
+/// error toast for the common "never configured" case.
+#[tauri::command]
+async fn get_provider_secret(provider: String) -> Result<Option<String>, String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("keychain get failed: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn clear_provider_secret(provider: String) -> Result<(), String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        // Idempotent: clearing a never-set provider is a no-op rather
+        // than an error so the UI's "Remove" button works the same way
+        // regardless of prior state.
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("keychain delete failed: {}", e)),
+    }
+}
+
+/// Probe whether a provider has a stored secret without exposing the
+/// secret itself. The settings panel uses this on mount to render the
+/// "Configured" badge so the actual key only travels through IPC when
+/// the user explicitly clicks reveal or sends a chat.
+#[tauri::command]
+async fn has_provider_secret(provider: String) -> Result<bool, String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.get_password() {
+        Ok(_) => Ok(true),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(e) => Err(format!("keychain probe failed: {}", e)),
+    }
+}
+
 #[tauri::command]
 fn create_directory(
     path: String,
@@ -2603,6 +2688,10 @@ pub fn run() {
             cloud_proxy,
             cloud_proxy_stream,
             cloud_proxy_cancel,
+            set_provider_secret,
+            get_provider_secret,
+            clear_provider_secret,
+            has_provider_secret,
             create_directory,
             reveal_path,
             delete_path,
