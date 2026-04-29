@@ -33,7 +33,22 @@ export interface DirEntry {
 
 export type OllamaRequest =
   | { type: 'chat'; model: string; messages: unknown[]; stream?: boolean; tools?: unknown[]; options?: Record<string, unknown>; think?: boolean; keep_alive?: string | number }
-  | { type: 'generate'; model: string; prompt?: string; stream?: boolean; options?: Record<string, unknown>; keep_alive?: string | number }
+  | {
+      type: 'generate';
+      model: string;
+      prompt?: string;
+      // FIM (fill-in-the-middle) — Ollama's `/api/generate` accepts a
+      // `suffix` for FIM-aware coder models (qwen2.5-coder, codellama,
+      // starcoder2, deepseek-coder, etc.). Inline completions in the
+      // editor pass everything before the cursor as `prompt` and
+      // everything after as `suffix`.
+      suffix?: string;
+      stream?: boolean;
+      raw?: boolean;
+      stop?: string[];
+      options?: Record<string, unknown>;
+      keep_alive?: string | number;
+    }
   | { type: 'tags' }
   | { type: 'version' };
 
