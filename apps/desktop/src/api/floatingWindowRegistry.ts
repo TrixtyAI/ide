@@ -2,7 +2,13 @@ import { logger } from "@/lib/logger";
 import { isTauri } from "@/api/tauri";
 import { trixtyStore } from "@/api/store";
 
-export type DetachablePanel = "right" | "left";
+export type DetachablePanel = "right" | "left" | "bottom";
+
+/** Special viewId reserved for the (single) detachable BottomPanel. The
+ *  shell renders a placeholder when this ID is detached, and the
+ *  floating page recognises it to render `<BottomPanel />` directly
+ *  instead of going through the regular view registry. */
+export const BOTTOM_PANEL_VIEW_ID = "trixty.builtin.bottom-panel";
 
 export interface DetachedBounds {
   x: number;

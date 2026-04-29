@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import ActivityBar from "@/components/ActivityBar";
 import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
@@ -17,6 +17,12 @@ import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useFloatingDockTracker } from "@/hooks/useFloatingDockTracker";
 import { PluginManager } from "@/api/PluginManager";
+import {
+  BOTTOM_PANEL_VIEW_ID,
+  floatingWindowRegistry,
+} from "@/api/floatingWindowRegistry";
+import { Terminal as TerminalIcon } from "lucide-react";
+import { useL10n } from "@/hooks/useL10n";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -77,6 +83,17 @@ export default function Home() {
     saveCurrentFile,
   } = useFiles();
   const { handleOpenFolder } = useWorkspace();
+
+  // Subscribe to the floating-window registry so the bottom panel
+  // re-renders when it detaches / re-docks. We can't gate on it
+  // earlier (e.g. by hiding the whole `<ResizablePanel>`) without
+  // breaking the layout-preset flow that depends on the panel's
+  // sizing slot existing — so we keep the slot and swap its content.
+  const bottomPanelDetached = useSyncExternalStore(
+    floatingWindowRegistry.subscribe,
+    () => floatingWindowRegistry.isDetached(BOTTOM_PANEL_VIEW_ID),
+    () => false,
+  );
 
   // Tracks a pending `Ctrl+K` leader for two-step chords (`Ctrl+K U`,
   // `Ctrl+K W`). The TTL matches the VS Code default: if the second key
@@ -492,7 +509,11 @@ export default function Home() {
                   >
                     <div className="h-full overflow-hidden">
                       <ErrorBoundary name="Bottom Panel">
-                        <BottomPanel />
+                        {bottomPanelDetached ? (
+                          <BottomPanelDetachedPlaceholder />
+                        ) : (
+                          <BottomPanel />
+                        )}
                       </ErrorBoundary>
                     </div>
                   </ResizablePanel>
@@ -543,6 +564,39 @@ export default function Home() {
       <UpdaterDialog />
 
       <StatusBar />
+    </div>
+  );
+}
+
+// Rendered in the bottom panel slot while the panel is detached into a
+// floating window. Mirrors the placeholder pattern the right-panel
+// slots use — keeps the column reserved so re-dock fills back into the
+// same place, and offers a one-click "Dock back" affordance that
+// drives the registry directly.
+function BottomPanelDetachedPlaceholder() {
+  const { t } = useL10n();
+  return (
+    <div className="h-full bg-[#0e0e0e] flex flex-col items-center justify-center text-[#777] text-[11px] gap-3 p-6 text-center">
+      <TerminalIcon size={20} strokeWidth={1.5} className="text-[#444]" />
+      <span>
+        {t("panel.view.in_floating_window", {
+          name: t("panel.bottom.terminal_tabs", { defaultValue: "Terminal" }),
+        })}
+      </span>
+      <div className="flex gap-2">
+        <button
+          onClick={() => void floatingWindowRegistry.focus(BOTTOM_PANEL_VIEW_ID)}
+          className="px-3 py-1.5 text-[11px] bg-white/5 hover:bg-white/10 text-white rounded border border-white/10 transition-colors"
+        >
+          {t("panel.view.bring_to_front")}
+        </button>
+        <button
+          onClick={() => void floatingWindowRegistry.redock(BOTTOM_PANEL_VIEW_ID)}
+          className="px-3 py-1.5 text-[11px] bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 rounded border border-blue-500/30 transition-colors"
+        >
+          {t("panel.view.dock_back")}
+        </button>
+      </div>
     </div>
   );
 }

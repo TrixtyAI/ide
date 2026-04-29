@@ -4,10 +4,13 @@ import React, { Suspense, useEffect, useState, useSyncExternalStore } from "reac
 import { useSearchParams } from "next/navigation";
 import { trixty, type WebviewView } from "@/api/trixty";
 import FloatingTitleBar from "@/components/FloatingTitleBar";
+import BottomPanel from "@/components/BottomPanel";
+import { Terminal as TerminalIcon } from "lucide-react";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
 import { isTauri } from "@/api/tauri";
 import { PluginManager } from "@/api/PluginManager";
+import { BOTTOM_PANEL_VIEW_ID } from "@/api/floatingWindowRegistry";
 
 // Each Tauri WebviewWindow has its own JS realm, so the `trixty.window`
 // registry in this window starts empty. Without bootstrapping built-ins
@@ -158,6 +161,25 @@ function FloatingViewBody() {
     return (
       <div className="h-screen flex flex-col items-center justify-center text-red-300/90 text-[12px] gap-2 px-6 text-center">
         <span>{bootError}</span>
+      </div>
+    );
+  }
+
+  // The bottom panel isn't part of the regular WebviewView registry —
+  // it's a hardcoded shell component. Render it directly when the
+  // floating window was spawned for the reserved viewId.
+  if (viewId === BOTTOM_PANEL_VIEW_ID) {
+    const title = t("panel.bottom.terminal_tabs", { defaultValue: "Terminal" });
+    return (
+      <div className="h-screen w-screen flex flex-col bg-surface-1">
+        <FloatingTitleBar
+          viewId={viewId}
+          title={title}
+          icon={<TerminalIcon size={12} strokeWidth={1.5} />}
+        />
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <BottomPanel isFloating />
+        </div>
       </div>
     );
   }
