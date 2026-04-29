@@ -6,6 +6,7 @@ import { trixty, WebviewView } from "@/api/trixty";
 import { useL10n } from "@/hooks/useL10n";
 import Tooltip from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
+import * as Sentry from "@sentry/nextjs";
 
 const ActivityBar: React.FC = () => {
   const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, setSidebarOpen, setSettingsOpen } = useUI();
@@ -27,6 +28,11 @@ const ActivityBar: React.FC = () => {
   }, [activeSidebarTab, setActiveSidebarTab]);
 
   const handleTabClick = (id: string) => {
+    // Track navigation metric
+    Sentry.metrics.count('navigation_sidebar_click', 1, {
+      attributes: { tab_id: id }
+    });
+
     // Extensions opens a virtual tab directly, not a sidebar panel
     if (id === "extensions") {
       openFile("virtual://extensions", t('extensions.title'), "", "virtual");

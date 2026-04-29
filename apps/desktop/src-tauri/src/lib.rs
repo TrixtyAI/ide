@@ -27,6 +27,7 @@ use sysinfo::System;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 use tokio::process::Command;
+use tracing_subscriber::prelude::*;
 
 /// Creates a [`tokio::process::Command`] that will NOT show a console window
 /// on Windows. On other platforms this is equivalent to `Command::new`.
@@ -255,6 +256,31 @@ fn take_initial_cli_workspace(
     Ok(guard.take().map(|p| p.to_string_lossy().into_owned()))
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct SentryContext {
+    sentry_trace: Option<String>,
+    baggage: Option<String>,
+}
+
+impl SentryContext {
+    fn continue_trace(&self, name: &str) -> Option<sentry::Transaction> {
+        let mut headers = Vec::new();
+        if let Some(ref trace) = self.sentry_trace {
+            headers.push(("sentry-trace", trace.as_str()));
+        }
+        if let Some(ref baggage) = self.baggage {
+            headers.push(("baggage", baggage.as_str()));
+        }
+
+        if headers.is_empty() {
+            return None;
+        }
+
+        let tx_ctx = sentry::TransactionContext::continue_from_headers(name, "tauri.command", headers.into_iter());
+        Some(sentry::start_transaction(tx_ctx))
+    }
+}
+
 struct SystemState {
     sys: System,
 }
@@ -270,7 +296,9 @@ pub struct FileEntry {
 fn read_directory(
     path: String,
     workspace: tauri::State<'_, WorkspaceState>,
+    _sentry_context: Option<SentryContext>,
 ) -> Result<Vec<FileEntry>, String> {
+    let _tx = _sentry_context.and_then(|ctx| ctx.continue_trace("read_directory"));
     let resolved = resolve_within_workspace(&path, workspace.inner())?;
     let dir_iter = match fs::read_dir(&resolved) {
         Ok(iter) => iter,
@@ -307,7 +335,12 @@ fn read_directory(
 const READ_FILE_MAX_BYTES: u64 = 10 * 1024 * 1024;
 
 #[tauri::command]
-fn read_file(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Result<String, String> {
+fn read_file(
+    path: String,
+    workspace: tauri::State<'_, WorkspaceState>,
+    _sentry_context: Option<SentryContext>,
+) -> Result<String, String> {
+    let _tx = _sentry_context.and_then(|ctx| ctx.continue_trace("read_file"));
     let resolved = resolve_within_workspace(&path, workspace.inner())?;
     let metadata = fs::metadata(&resolved).map_err(|e| {
         let err = format!("Failed to stat file {}: {}", path, e);
@@ -352,7 +385,9 @@ fn write_file(
     path: String,
     content: String,
     workspace: tauri::State<'_, WorkspaceState>,
+    _sentry_context: Option<SentryContext>,
 ) -> Result<(), String> {
+    let _tx = _sentry_context.and_then(|ctx| ctx.continue_trace("write_file"));
     let resolved = resolve_within_workspace(&path, workspace.inner())?;
     fs_atomic::write_atomic(&resolved, content.as_bytes()).map_err(|e| {
         let err = format!("Failed to write file {}: {}", path, e);
@@ -529,7 +564,9 @@ async fn execute_command(
     command: String,
     args: Vec<String>,
     cwd: Option<String>,
+    _sentry_context: Option<SentryContext>,
 ) -> Result<String, String> {
+    let _tx = _sentry_context.and_then(|ctx| ctx.continue_trace("execute_command"));
     // Spawn the program directly on every platform. The previous Windows
     // branch wrapped the call in `cmd /C <command> <args...>`, which asks
     // `cmd.exe` to parse `&`, `|`, `^`, `%VAR%`, quoted redirections, etc.
@@ -543,7 +580,14 @@ async fn execute_command(
         cmd.current_dir(dir);
     }
 
-    let output = cmd.output().await.map_err(|e| e.to_string())?;
+    if let Some(path) = cwd {
+        cmd.current_dir(path);
+    }
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -2164,6 +2208,26 @@ fn delete_path(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize Sentry
+    let dsn = std::env::var("SENTRY_DSN")
+        .ok()
+        .or_else(|| option_env!("SENTRY_DSN").map(|s| s.to_string()));
+
+    let _sentry = sentry::init((
+        dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            ..Default::default()
+        },
+    ));
+
+    // Configure tracing with Sentry layer
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with(tracing_subscriber::fmt::layer())
+        .with(sentry_tracing::layer())
+        .init();
+
     // Parse the workspace path from argv BEFORE handing control to Tauri. We
     // want the resulting `PathBuf` in managed state by the time the setup
     // hook and the `take_initial_cli_workspace` command fire; reading argv
@@ -2214,20 +2278,6 @@ pub fn run() {
                     tauri_plugin_window_state::StateFlags::all()
                         & !tauri_plugin_window_state::StateFlags::VISIBLE,
                 )
-                .build(),
-        )
-        .plugin(
-            tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Info)
-                .targets([
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                        file_name: Some("trixty".into()),
-                    }),
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-                ])
-                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
-                .max_file_size(1_000_000) // 1MB
                 .build(),
         )
         .manage::<PtySessions>(new_pty_sessions())

@@ -26,6 +26,7 @@ import { useResetApp } from "@/context/useResetApp";
 import { useL10n } from "@/hooks/useL10n";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
+import * as Sentry from "@sentry/nextjs";
 import logoWhite from "@/assets/branding/logo-white.png";
 import AgentSettings from "@/addons/builtin.agent-support/AgentSettings";
 
@@ -444,6 +445,22 @@ Node.js: ${systemInfo.node_version}
     }
   };
 
+  const testFunction = () => {
+    Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
+    
+    // Test Sentry Metrics
+    Sentry.metrics.count('user_action_test', 1, {
+      attributes: { action_type: 'click', view: 'settings' }
+    });
+    
+    Sentry.metrics.distribution('api_response_time_test', 150, {
+      unit: 'millisecond',
+      attributes: { endpoint: 'test_sentry' }
+    });
+
+    throw new Error("Sentry Test Error from Trixty IDE");
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12 animate-in fade-in duration-300">
       {/* Backdrop */}
@@ -536,6 +553,9 @@ Node.js: ${systemInfo.node_version}
               className="absolute top-8 right-8 text-[#555] hover:text-white transition-colors"
             >
               <X size={20} />
+            </button>
+            <button onClick={testFunction}>
+              test sentry
             </button>
             {renderContent()}
           </div>
