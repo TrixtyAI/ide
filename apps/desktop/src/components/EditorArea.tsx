@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { Suspense, useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
@@ -10,6 +10,8 @@ import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import { useInlineCompletions } from "@/hooks/useInlineCompletions";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { Code2, LayoutGrid } from "lucide-react";
+import { getVisualEditor } from "./visual/getVisualEditor";
 
 // Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
 // Loading it with `next/dynamic` keeps it off the boot path; it only arrives
@@ -368,29 +370,24 @@ const EditorArea: React.FC = () => {
             </p>
           </div>
         ) : currentFile ? (
-          // Opt Monaco back into the app's global shortcuts (Ctrl+S etc.). The
-          // page-level keydown guard skips editable targets by default; Monaco
-          // owns its own save semantics so it needs this attribute to keep
-          // Ctrl+S firing while the editor has focus.
-          //
-          // Also: Monaco identifies files by the `path` prop and swaps to the
-          // matching model on change, preserving scroll position, cursor,
-          // undo history, and markers per file. Previously a `key={currentFile.path}`
-          // tore all of that down on every tab switch; now Monaco does the
-          // swap itself and the model-cleanup effect below still disposes
-          // models that fall out of `openFiles`, so memory stays bounded.
-          <div className="h-full" data-allow-global-shortcuts="true">
-          <MonacoEditor
-            height="100%"
-            language={currentFile.language}
-            value={currentFile.content}
-            theme={MONACO_THEME_NAME}
-            onMount={handleEditorDidMount}
-            onChange={handleEditorChange}
-            path={currentFile.path}
-            options={editorOptions}
+          <FileViewSurface
+            file={currentFile}
+            onContentChange={(next) => updateFileContent(currentFile.path, next)}
+            monacoElement={
+              <div className="h-full" data-allow-global-shortcuts="true">
+                <MonacoEditor
+                  height="100%"
+                  language={currentFile.language}
+                  value={currentFile.content}
+                  theme={MONACO_THEME_NAME}
+                  onMount={handleEditorDidMount}
+                  onChange={handleEditorChange}
+                  path={currentFile.path}
+                  options={editorOptions}
+                />
+              </div>
+            }
           />
-          </div>
         ) : null}
       </div>
     </div>
@@ -398,3 +395,108 @@ const EditorArea: React.FC = () => {
 };
 
 export default EditorArea;
+
+interface FileViewSurfaceProps {
+  file: import("@/context/FilesContext").FileState;
+  onContentChange: (next: string) => void;
+  monacoElement: React.ReactNode;
+}
+
+/**
+ * Wraps Monaco with a sub-tab strip ("Source" / visual label) when the
+ * current file has a registered visual editor (issue #264). For files
+ * without a visual surface, renders Monaco directly with no strip — keeps
+ * the default editor experience untouched.
+ *
+ * View mode is a tiny `Map<path, mode>` so switching tabs preserves the
+ * user's last choice per file. Default mode is "source" so a brand-new
+ * package.json / .env / .json file opens in the same place every other
+ * file does.
+ */
+const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
+  file,
+  onContentChange,
+  monacoElement,
+}) => {
+  const visual = useMemo(() => getVisualEditor(file), [file]);
+  const [modeByPath, setModeByPath] = useState<Map<string, "source" | "visual">>(
+    () => new Map(),
+  );
+
+  if (!visual) return <>{monacoElement}</>;
+
+  // Default to "source" when the path has no remembered choice yet —
+  // computed inline so we don't need an effect to seed the map.
+  const mode = modeByPath.get(file.path) ?? "source";
+  const setMode = (next: "source" | "visual") => {
+    setModeByPath((prev) => {
+      const map = new Map(prev);
+      map.set(file.path, next);
+      return map;
+    });
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#1a1a1a] bg-[#0a0a0a] shrink-0">
+        <SubTabButton
+          active={mode === "source"}
+          onClick={() => setMode("source")}
+          icon={<Code2 size={11} strokeWidth={1.6} />}
+          label="Source"
+        />
+        <SubTabButton
+          active={mode === "visual"}
+          onClick={() => setMode("visual")}
+          icon={<LayoutGrid size={11} strokeWidth={1.6} />}
+          label={visual.label}
+        />
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {mode === "source" ? (
+          monacoElement
+        ) : (
+          <Suspense
+            fallback={
+              <div className="h-full flex items-center justify-center text-[11px] text-[#555]">
+                Loading visual editor…
+              </div>
+            }
+          >
+            <ErrorBoundary name="Visual editor">
+              <visual.Component file={file} onChange={onContentChange} />
+            </ErrorBoundary>
+          </Suspense>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface SubTabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}
+
+const SubTabButton: React.FC<SubTabButtonProps> = ({
+  active,
+  onClick,
+  icon,
+  label,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${
+      active
+        ? "bg-white/10 text-white"
+        : "text-[#666] hover:text-white hover:bg-white/5"
+    }`}
+    aria-pressed={active}
+  >
+    {icon}
+    <span>{label}</span>
+  </button>
+);
