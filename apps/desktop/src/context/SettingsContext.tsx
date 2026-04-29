@@ -383,6 +383,51 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadInitialState();
   }, [setLocale]);
 
+  // One-shot lazy migration: any provider key still living in
+  // `aiSettings.providerKeys` (the pre-keychain plaintext field) gets
+  // moved to the OS keychain on the first load that detects it, then
+  // the settings field is cleared so the next persist doesn't write
+  // the secret back to disk. Idempotent — once `providerKeys` is empty
+  // this effect short-circuits on every subsequent boot.
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    const entries = Object.entries(aiSettings.providerKeys ?? {}).filter(
+      ([, v]) => typeof v === "string" && v.length > 0,
+    ) as Array<[keyof ProviderKeys, string]>;
+    if (entries.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { setProviderSecret } = await import("@/api/providerSecrets");
+      for (const [provider, secret] of entries) {
+        try {
+          await setProviderSecret(
+            provider as "openai" | "anthropic" | "gemini" | "openrouter",
+            secret,
+          );
+        } catch (err) {
+          logger.warn(
+            `[SettingsContext] keychain migration failed for ${provider}:`,
+            err,
+          );
+          // Bail out without clearing — the next boot will retry. Better
+          // to leave the plaintext in place than lose the key entirely.
+          return;
+        }
+      }
+      if (cancelled) return;
+      setAiSettings((prev) => ({
+        ...prev,
+        providerKeys: { ...DEFAULT_PROVIDER_KEYS },
+      }));
+      logger.debug(
+        `[SettingsContext] migrated ${entries.length} provider key(s) from settings.json to OS keychain.`,
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInitialLoadComplete, aiSettings.providerKeys]);
+
   // Persistence effects — ONLY run after initial load to avoid overwriting the
   // store with defaults. Writes are debounced by 300 ms via effect cleanup:
   // the timer is scheduled on every state change and cancelled by the next

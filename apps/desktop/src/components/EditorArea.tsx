@@ -435,17 +435,20 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
   onContentChange,
   monacoElement,
 }) => {
-  const visual = useMemo(() => getVisualEditor(file), [file]);
-  const [modeByPath, setModeByPath] = useState<Map<string, "source" | "visual">>(
+  const visuals = useMemo(() => getVisualEditor(file), [file]);
+  // Mode tracks "source" or one of the visual entry ids. Per-path so
+  // switching files of the same kind preserves the user's last choice.
+  const [modeByPath, setModeByPath] = useState<Map<string, string>>(
     () => new Map(),
   );
 
-  if (!visual) return <>{monacoElement}</>;
+  if (visuals.length === 0) return <>{monacoElement}</>;
 
-  // Default to "source" when the path has no remembered choice yet —
-  // computed inline so we don't need an effect to seed the map.
+  // Default to "source" — the source view is the safe baseline for
+  // every kind, and it preserves the editor flow for files the user
+  // didn't explicitly switch.
   const mode = modeByPath.get(file.path) ?? "source";
-  const setMode = (next: "source" | "visual") => {
+  const setMode = (next: string) => {
     Sentry.metrics.count('editor_mode_switch', 1, {
       attributes: { to_mode: next, file_type: file.language }
     });
@@ -456,6 +459,8 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
     });
   };
 
+  const activeVisual = visuals.find((v) => v.id === mode);
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-1 px-2 py-1 border-b border-[#1a1a1a] bg-[#0a0a0a] shrink-0">
@@ -465,15 +470,18 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
           icon={<Code2 size={11} strokeWidth={1.6} />}
           label="Source"
         />
-        <SubTabButton
-          active={mode === "visual"}
-          onClick={() => setMode("visual")}
-          icon={<LayoutGrid size={11} strokeWidth={1.6} />}
-          label={visual.label}
-        />
+        {visuals.map((v) => (
+          <SubTabButton
+            key={v.id}
+            active={mode === v.id}
+            onClick={() => setMode(v.id)}
+            icon={<LayoutGrid size={11} strokeWidth={1.6} />}
+            label={v.label}
+          />
+        ))}
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
-        {mode === "source" ? (
+        {mode === "source" || !activeVisual ? (
           monacoElement
         ) : (
           <Suspense
@@ -484,7 +492,7 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
             }
           >
             <ErrorBoundary name="Visual editor">
-              <visual.Component file={file} onChange={onContentChange} />
+              <activeVisual.Component file={file} onChange={onContentChange} />
             </ErrorBoundary>
           </Suspense>
         )}

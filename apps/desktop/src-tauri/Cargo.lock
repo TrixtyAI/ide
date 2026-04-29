@@ -11,6 +11,7 @@ dependencies = [
  "grep-searcher",
  "html2text",
  "ignore",
+ "keyring",
  "log",
  "notify",
  "portable-pty",
@@ -2374,6 +2375,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "keyring"
+version = "3.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eebcc3aff044e5944a8fbaf69eb277d11986064cba30c468730e8b9909fb551c"
+dependencies = [
+ "log",
+ "zeroize",
+]
+
+[[package]]
 name = "kqueue"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4462,7 +4473,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "161283cfe8e99c8f6f236a402b9ccf726b201f365988b5bb637ebca0abbd4a30"
 dependencies = [
  "once_cell",
- "rand 0.8.5",
+ "rand 0.8.6",
  "sentry-types",
  "serde",
  "serde_json",
@@ -4509,7 +4520,7 @@ checksum = "5d68cdf6bc41b8ff3ae2a9c4671e97426dcdd154cc1d4b6b72813f285d6b163f"
 dependencies = [
  "debugid",
  "hex",
- "rand 0.8.5",
+ "rand 0.8.6",
  "serde",
  "serde_json",
  "thiserror 1.0.69",

@@ -24,7 +24,14 @@ import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
 import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
-import { cloudChat, keyForProvider, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
+import {
+  streamCloudChat,
+  cloudAgentChat,
+  type ChatMessage as ProviderChatMessage,
+  type CanonicalHistoryEntry,
+  type ToolDefinition,
+} from "@/api/providers/client";
+import { getProviderSecret, type SecretProvider } from "@/api/providerSecrets";
 import { PROVIDERS, PROVIDER_IDS } from "@/api/providers/registry";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
@@ -537,15 +544,277 @@ const AiChatComponent: React.FC = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Cloud-provider branch (issue #267). Routes the request through the
-    // generic `cloud_proxy` instead of Ollama's bridge. Tools / agent /
-    // streaming are intentionally not wired for cloud yet — every provider
-    // has a different SSE envelope and tool-call format. Single-shot
-    // chat works for all four providers we ship today.
+    // Cloud-provider branch (issue #267). Two sub-paths:
+    //   - chatMode === 'agent' + workspace open → cloud-agent loop with
+    //     IDE_TOOLS, mirroring the Ollama agent pattern but per-provider
+    //     tool serialization (`cloudAgentChat` from providers/client).
+    //   - everything else → streaming text via `cloud_proxy_stream`.
     const activeProvider = aiSettings.activeProvider ?? "ollama";
+    if (activeProvider !== "ollama" && chatMode === "agent" && rootPath) {
+      try {
+        const cloudKey = await getProviderSecret(activeProvider as SecretProvider);
+        if (!cloudKey) {
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: `Error: no API key set for ${activeProvider}. Add one under Settings → Provider Keys.`,
+          });
+          return;
+        }
+        const providerModelList = aiSettings.providerModels[activeProvider] ?? [];
+        let modelToUse = selectedModel;
+        if (!providerModelList.includes(modelToUse)) {
+          modelToUse =
+            aiSettings.lastModelByProvider?.[activeProvider] ??
+            providerModelList[0] ??
+            "";
+          if (!modelToUse) {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: `Error: no model registered for ${activeProvider}.`,
+            });
+            return;
+          }
+          setSelectedModel(modelToUse);
+        }
+
+        // Build awareness inline — same compute the Ollama branch does
+        // below. Cloud-agent needs the same workspace/system context the
+        // local model gets so its tool decisions are grounded.
+        const systemInfo = cachedSystemInfo ?? (await getSystemInfo());
+        const projectStack = cachedStack ?? (await detectProjectStack(rootPath));
+        const awarenessBlock = generateAwarenessBlock({
+          system: systemInfo,
+          stack: projectStack,
+          settings: {
+            ai: aiSettings,
+            editor: editorSettings,
+            system: systemSettings,
+            locale: locale,
+          },
+          skills: skills.map((s) => ({
+            id: s.id,
+            name: s.name,
+            active: activeSkills.includes(s.id),
+          })),
+          docs: docs.map((d) => ({
+            id: d.id,
+            name: d.name,
+            active: activeDocs.includes(d.id),
+          })),
+          mode: chatMode,
+          rootPath,
+          internetAccess: "Enabled (via web_search tool)",
+          projectTreeSummary: projectTree,
+        });
+        const systemPrompt = getSystemPrompt();
+        const workspaceContext = `Workspace Root: ${rootPath}\n`;
+        const currentContext = currentFile
+          ? `${t("ai.context.focused_file")}: ${currentFile.path}\n`
+          : "";
+
+        const canonicalHistory: CanonicalHistoryEntry[] = [
+          {
+            role: "system",
+            content: `${systemPrompt}\n\n${awarenessBlock}\n\n${workspaceContext}${currentContext}`,
+          },
+        ];
+        for (const m of activeSession.messages) {
+          if (m.role === "user") {
+            canonicalHistory.push({ role: "user", content: m.text });
+          } else if (m.role === "ai") {
+            if (m.tool_calls && m.tool_calls.length > 0) {
+              canonicalHistory.push({
+                role: "assistant_with_tools",
+                content: m.text || "",
+                tool_calls: m.tool_calls.map((tc) => ({
+                  id: tc.id || crypto.randomUUID(),
+                  type: "function" as const,
+                  function: {
+                    name: tc.function.name,
+                    // Session messages store args as a parsed object (Ollama
+                    // shape) but the canonical history threads them as a
+                    // JSON-encoded string so the per-provider translator can
+                    // re-emit them in the right wire envelope.
+                    arguments:
+                      typeof tc.function.arguments === "string"
+                        ? tc.function.arguments
+                        : JSON.stringify(tc.function.arguments),
+                  },
+                })),
+              });
+            } else {
+              canonicalHistory.push({ role: "assistant", content: m.text });
+            }
+          } else if (m.role === "tool") {
+            canonicalHistory.push({
+              role: "tool_result",
+              tool_call_id: m.tool_id || "",
+              tool_name: "",
+              content: m.text,
+            });
+          }
+        }
+        canonicalHistory.push({ role: "user", content: userMessage });
+
+        let agentLoop = true;
+        let iterations = 0;
+        const MAX_ITERATIONS = aiSettings.deepMode ? 15 : 5;
+        let agentLastFailureKey: string | null = null;
+        let agentConsecutiveFailureCount = 0;
+
+        while (agentLoop && iterations < MAX_ITERATIONS) {
+          if (controller.signal.aborted) return;
+          iterations += 1;
+          const result = await cloudAgentChat({
+            provider: activeProvider as Exclude<typeof activeProvider, "ollama">,
+            apiKey: cloudKey,
+            model: modelToUse,
+            history: canonicalHistory,
+            tools: IDE_TOOLS as ToolDefinition[],
+            temperature: aiSettings.temperature,
+            maxTokens: aiSettings.maxTokens,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+
+          if (!result.ok && result.toolCalls.length === 0) {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: `Error: ${result.error || "cloud provider returned no content"}`,
+            });
+            break;
+          }
+
+          if (result.toolCalls.length === 0) {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: result.text,
+            });
+            canonicalHistory.push({ role: "assistant", content: result.text });
+            agentLoop = false;
+            break;
+          }
+
+          // Tool-call turn — render assistant bubble + execute each call.
+          // Session messages store args as a parsed object (Ollama shape),
+          // so we JSON.parse the string the cloud adapter handed us.
+          const normalizedCalls = result.toolCalls.map((tc) => {
+            let parsedArgs: ToolArgs;
+            try {
+              parsedArgs = JSON.parse(tc.function.arguments || "{}") as ToolArgs;
+            } catch {
+              parsedArgs = {} as ToolArgs;
+            }
+            return {
+              function: { name: tc.function.name, arguments: parsedArgs },
+              id: tc.id,
+              type: tc.type,
+            };
+          });
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: result.text || t("ai.status.interacting"),
+            tool_calls: normalizedCalls,
+          });
+          canonicalHistory.push({
+            role: "assistant_with_tools",
+            content: result.text,
+            tool_calls: result.toolCalls,
+          });
+
+          let abortedOnRepeat = false;
+          for (const tc of result.toolCalls) {
+            if (controller.signal.aborted) return;
+            const toolName = tc.function.name;
+            let toolArgs: ToolArgs;
+            try {
+              toolArgs = JSON.parse(tc.function.arguments || "{}") as ToolArgs;
+            } catch {
+              toolArgs = {} as ToolArgs;
+            }
+            const callId = tc.id;
+
+            let effectiveArgs: ToolArgs = toolArgs;
+            let toolResult: unknown;
+            if (aiSettings.alwaysAllowTools) {
+              toolResult = await executeToolInternal(toolName, toolArgs);
+            } else {
+              const approval = await requestToolApproval({
+                id: callId,
+                name: toolName,
+                args: toolArgs,
+              });
+              if (approval.allowed) {
+                effectiveArgs = approval.args;
+                toolResult = await executeToolInternal(toolName, effectiveArgs);
+              } else {
+                toolResult = t("ai.error.user_denied");
+              }
+            }
+
+            const resultStr =
+              typeof toolResult === "string"
+                ? toolResult
+                : JSON.stringify(toolResult, null, 2);
+            canonicalHistory.push({
+              role: "tool_result",
+              tool_call_id: callId,
+              tool_name: toolName,
+              content: resultStr,
+            });
+            addMessageToSession(activeSessionId, {
+              role: "tool",
+              text: resultStr,
+              tool_id: callId,
+            });
+
+            const isFailure =
+              typeof resultStr === "string" && resultStr.startsWith("<tool_error");
+            const key = failureKey(toolName, effectiveArgs);
+            if (isFailure && key === agentLastFailureKey) {
+              agentConsecutiveFailureCount += 1;
+            } else if (isFailure) {
+              agentLastFailureKey = key;
+              agentConsecutiveFailureCount = 1;
+            } else {
+              agentLastFailureKey = null;
+              agentConsecutiveFailureCount = 0;
+            }
+            if (agentConsecutiveFailureCount >= 2) {
+              abortedOnRepeat = true;
+              break;
+            }
+          }
+          if (abortedOnRepeat) {
+            addMessageToSession(activeSessionId, {
+              role: "warning",
+              text: t("ai.error.repeat_failure"),
+            });
+            break;
+          }
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          logger.error("[cloud agent] failed:", err);
+          addMessageToSession(activeSessionId, {
+            role: "ai",
+            text: `Error: ${String(err)}`,
+          });
+        }
+      } finally {
+        setIsTyping(false);
+        abortControllerRef.current = null;
+      }
+      return;
+    }
+
     if (activeProvider !== "ollama") {
       try {
-        const cloudKey = keyForProvider(aiSettings.providerKeys, activeProvider);
+        // API key lives in the OS keychain (set via Settings → Provider
+        // Keys). Fetched per-send rather than cached on the component
+        // so a key revoked or rotated mid-session takes effect on the
+        // next message instead of the next page reload.
+        const cloudKey = await getProviderSecret(activeProvider as SecretProvider);
         // Guard against a stale `selectedModel` that belongs to a
         // different provider than the one currently active — e.g. the
         // user switched provider but never reopened the model menu.
@@ -583,26 +852,47 @@ const AiChatComponent: React.FC = () => {
             })),
           { role: "user", content: userMessage },
         ];
-        const result = await cloudChat({
-          provider: activeProvider,
-          apiKey: cloudKey,
-          model: modelToUse,
-          messages: cloudHistory,
-          temperature: aiSettings.temperature,
-          maxTokens: aiSettings.maxTokens,
-          signal: controller.signal,
-        });
+
+        // Lazily create the assistant bubble on the first delta so we
+        // don't leave an empty placeholder behind if the request fails
+        // before any content arrives. Same pattern the Ollama branch
+        // uses below.
+        let placeholderPushed = false;
+        const pushPlaceholderOnce = () => {
+          if (placeholderPushed) return;
+          addMessageToSession(activeSessionId, { role: "ai", text: "" });
+          placeholderPushed = true;
+        };
+
+        const result = await streamCloudChat(
+          {
+            provider: activeProvider,
+            apiKey: cloudKey,
+            model: modelToUse,
+            messages: cloudHistory,
+            temperature: aiSettings.temperature,
+            maxTokens: aiSettings.maxTokens,
+            signal: controller.signal,
+          },
+          (delta) => {
+            pushPlaceholderOnce();
+            appendToLastAiMessage(activeSessionId, delta);
+          },
+        );
         if (controller.signal.aborted) return;
-        if (!result.ok) {
+        if (!result.ok && !placeholderPushed) {
           addMessageToSession(activeSessionId, {
             role: "ai",
             text: `Error: ${result.error || "cloud provider returned no content"}`,
           });
-        } else {
-          addMessageToSession(activeSessionId, {
-            role: "ai",
-            text: result.text,
-          });
+        } else if (!result.ok) {
+          // Stream started, then failed mid-flight — append the error
+          // inline so the user can see how far the model got before the
+          // failure. The bubble already exists so we don't push a new one.
+          appendToLastAiMessage(
+            activeSessionId,
+            `\n\n[Error: ${result.error || "stream interrupted"}]`,
+          );
         }
       } catch (err) {
         if (!controller.signal.aborted) {

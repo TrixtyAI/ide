@@ -276,7 +276,8 @@ impl SentryContext {
             return None;
         }
 
-        let tx_ctx = sentry::TransactionContext::continue_from_headers(name, "tauri.command", headers.into_iter());
+        let tx_ctx =
+            sentry::TransactionContext::continue_from_headers(name, "tauri.command", headers);
         Some(sentry::start_transaction(tx_ctx))
     }
 }
@@ -580,14 +581,7 @@ async fn execute_command(
         cmd.current_dir(dir);
     }
 
-    if let Some(path) = cwd {
-        cmd.current_dir(path);
-    }
-
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let output = cmd.output().await.map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -2111,6 +2105,441 @@ async fn ollama_proxy_cancel(
     Ok(())
 }
 
+// ============================================================
+// Cloud streaming (SSE)
+// ============================================================
+
+/// Same shape as `OllamaStreams` but for the cloud-AI bridge. Each open
+/// `cloud_proxy_stream` task registers a oneshot sender keyed by the
+/// caller-supplied `streamId` so a follow-up `cloud_proxy_cancel` can
+/// terminate it from the renderer.
+type CloudStreams = Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>>;
+
+fn new_cloud_streams() -> CloudStreams {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Payload for the `cloud-stream` event. Mirror of `OllamaStreamPayload`'s
+/// camelCase wire form. Cloud providers each speak a slightly different
+/// JSON shape inside the SSE `data:` lines, so we forward the raw payload
+/// (joined by `\n` for multi-line events) and let the per-provider TS
+/// adapter extract the delta. Keeping the Rust side provider-agnostic
+/// keeps `cloud_proxy_stream` a thin transport that the visual editors
+/// and future agent-mode loop can reuse without each gaining its own
+/// protocol switch.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CloudStreamPayload {
+    stream_id: String,
+    kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Splits an SSE stream buffer into complete events. Per the SSE spec,
+/// events are separated by a blank line — `\n\n` or `\r\n\r\n`. Within an
+/// event the `data:` lines are concatenated by `\n` (also per spec). We
+/// drop everything else (`event:`, `id:`, `retry:`, comments) because none
+/// of the four cloud providers in our allow-list use them to convey the
+/// generation delta.
+///
+/// Pure function so it can be unit tested without standing up a real HTTP
+/// stream. Mirrors the Ollama side's `split_ndjson_lines` design.
+fn split_sse_events(buffer: &mut String) -> Vec<String> {
+    let mut events = Vec::new();
+    loop {
+        let crlf = buffer.find("\r\n\r\n");
+        let lf = buffer.find("\n\n");
+        let (idx, sep_len) = match (crlf, lf) {
+            (Some(c), Some(l)) if c <= l => (c, 4),
+            (Some(c), None) => (c, 4),
+            (_, Some(l)) => (l, 2),
+            (None, None) => break,
+        };
+        let event = buffer[..idx].to_string();
+        buffer.drain(..idx + sep_len);
+
+        let mut data_lines: Vec<String> = Vec::new();
+        for raw_line in event.split('\n') {
+            let line = raw_line.strip_suffix('\r').unwrap_or(raw_line);
+            if let Some(rest) = line.strip_prefix("data:") {
+                // Per SSE: a single space after the colon is part of the
+                // separator and must be stripped; further whitespace is
+                // payload. `strip_prefix(" ")` is `Some(rest)` exactly when
+                // a single leading space exists, so this gives the right
+                // semantics for both `data:` and `data: ` framings.
+                let payload = rest.strip_prefix(' ').unwrap_or(rest);
+                data_lines.push(payload.to_string());
+            }
+        }
+        if !data_lines.is_empty() {
+            events.push(data_lines.join("\n"));
+        }
+    }
+    events
+}
+
+/// Streaming sibling of `cloud_proxy`. Subjects every request to the same
+/// per-host method + path + header allow-list, then pumps SSE events back
+/// to the renderer through `cloud-stream` tagged with the caller-supplied
+/// `streamId`. The Rust side is provider-agnostic — each `data:` payload
+/// is forwarded verbatim and the TS adapter parses the OpenAI / Anthropic
+/// / Gemini-specific JSON shape.
+///
+/// Returns `Ok(())` as soon as the cancel handle is registered. The actual
+/// transport runs on a detached tokio task so the bridge isn't held open
+/// for the duration of a multi-second generation. Transport / size /
+/// non-2xx failures are surfaced as `cloud-stream` `error` events.
+#[tauri::command]
+async fn cloud_proxy_stream(
+    app: tauri::AppHandle,
+    streams: tauri::State<'_, CloudStreams>,
+    stream_id: String,
+    method: String,
+    url: String,
+    headers: Option<Vec<(String, String)>>,
+    body: Option<serde_json::Value>,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    let policy = validate_cloud_proxy_request(&url, &method)?;
+
+    // Register the cancel handle BEFORE spawning so a fast follow-up
+    // `cloud_proxy_cancel` arriving between `spawn` and the first poll
+    // still has an entry to fire.
+    let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
+    {
+        let mut guard = streams
+            .lock()
+            .map_err(|e| format!("cloud streams mutex poisoned: {}", e))?;
+        guard.insert(stream_id.clone(), cancel_tx);
+    }
+
+    let app_for_task = app.clone();
+    let streams_for_task = (*streams).clone();
+    let stream_id_for_task = stream_id.clone();
+    let allowed_headers = policy.allowed_headers;
+
+    tauri::async_runtime::spawn(async move {
+        let client = http::shared_client();
+        let mut request = match method.as_str() {
+            "POST" => client.post(&url),
+            "GET" => client.get(&url),
+            _ => unreachable!("method validated above"),
+        };
+        request = request.timeout(std::time::Duration::from_secs(CLOUD_PROXY_TIMEOUT_SECS));
+
+        if let Some(pairs) = headers {
+            for (name, value) in pairs {
+                let lower = name.to_ascii_lowercase();
+                if !allowed_headers.iter().any(|h| *h == lower) {
+                    continue;
+                }
+                request = request.header(name, value);
+            }
+        }
+        if let Some(json_body) = body {
+            request = request.json(&json_body);
+        }
+
+        let response = match request.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                let _ = app_for_task.emit(
+                    "cloud-stream",
+                    CloudStreamPayload {
+                        stream_id: stream_id_for_task.clone(),
+                        kind: "error",
+                        data: None,
+                        error: Some(format!("request failed: {}", e)),
+                    },
+                );
+                remove_cloud_stream(&streams_for_task, &stream_id_for_task);
+                return;
+            }
+        };
+
+        let status = response.status().as_u16();
+        if !response.status().is_success() {
+            // Drain the body once and surface as a single error event so the
+            // frontend can show a useful message instead of "stream failed".
+            let body_text = response.text().await.unwrap_or_default();
+            let _ = app_for_task.emit(
+                "cloud-stream",
+                CloudStreamPayload {
+                    stream_id: stream_id_for_task.clone(),
+                    kind: "error",
+                    data: None,
+                    error: Some(format!("HTTP {}: {}", status, body_text)),
+                },
+            );
+            remove_cloud_stream(&streams_for_task, &stream_id_for_task);
+            return;
+        }
+
+        let mut response = response;
+        let mut buffer = String::new();
+        let mut total_bytes: usize = 0;
+        let mut sent_done = false;
+
+        loop {
+            if cancel_rx.try_recv().is_ok()
+                || matches!(
+                    cancel_rx.try_recv(),
+                    Err(tokio::sync::oneshot::error::TryRecvError::Closed)
+                )
+            {
+                break;
+            }
+
+            let chunk = match response.chunk().await {
+                Ok(Some(b)) => b,
+                Ok(None) => break, // EOF
+                Err(e) => {
+                    let _ = app_for_task.emit(
+                        "cloud-stream",
+                        CloudStreamPayload {
+                            stream_id: stream_id_for_task.clone(),
+                            kind: "error",
+                            data: None,
+                            error: Some(format!("chunk read failed: {}", e)),
+                        },
+                    );
+                    remove_cloud_stream(&streams_for_task, &stream_id_for_task);
+                    return;
+                }
+            };
+
+            total_bytes = total_bytes.saturating_add(chunk.len());
+            if total_bytes > CLOUD_PROXY_MAX_BODY {
+                let _ = app_for_task.emit(
+                    "cloud-stream",
+                    CloudStreamPayload {
+                        stream_id: stream_id_for_task.clone(),
+                        kind: "error",
+                        data: None,
+                        error: Some(format!(
+                            "Cloud stream exceeded the {} MiB cap",
+                            CLOUD_PROXY_MAX_BODY / (1024 * 1024)
+                        )),
+                    },
+                );
+                remove_cloud_stream(&streams_for_task, &stream_id_for_task);
+                return;
+            }
+
+            buffer.push_str(&String::from_utf8_lossy(&chunk));
+            let events = split_sse_events(&mut buffer);
+            for data in events {
+                // OpenAI / OpenRouter terminate with `data: [DONE]`. We
+                // collapse that to a structured `done` event so the TS
+                // side doesn't have to special-case the sentinel — and
+                // future providers that adopt the same convention work
+                // for free.
+                if data == "[DONE]" {
+                    let _ = app_for_task.emit(
+                        "cloud-stream",
+                        CloudStreamPayload {
+                            stream_id: stream_id_for_task.clone(),
+                            kind: "done",
+                            data: None,
+                            error: None,
+                        },
+                    );
+                    sent_done = true;
+                    break;
+                }
+                let _ = app_for_task.emit(
+                    "cloud-stream",
+                    CloudStreamPayload {
+                        stream_id: stream_id_for_task.clone(),
+                        kind: "data",
+                        data: Some(data),
+                        error: None,
+                    },
+                );
+            }
+
+            if sent_done {
+                break;
+            }
+        }
+
+        if !sent_done {
+            // Anthropic + Gemini close the connection on completion instead
+            // of sending a terminal sentinel. Synthesise a `done` event so
+            // the frontend's awaiter resolves either way.
+            let _ = app_for_task.emit(
+                "cloud-stream",
+                CloudStreamPayload {
+                    stream_id: stream_id_for_task.clone(),
+                    kind: "done",
+                    data: None,
+                    error: None,
+                },
+            );
+        }
+
+        remove_cloud_stream(&streams_for_task, &stream_id_for_task);
+    });
+
+    Ok(())
+}
+
+fn remove_cloud_stream(streams: &CloudStreams, stream_id: &str) {
+    if let Ok(mut guard) = streams.lock() {
+        guard.remove(stream_id);
+    }
+}
+
+/// Cancels an in-flight `cloud_proxy_stream` task. Idempotent.
+#[tauri::command]
+async fn cloud_proxy_cancel(
+    streams: tauri::State<'_, CloudStreams>,
+    stream_id: String,
+) -> Result<(), String> {
+    let sender = {
+        let mut guard = streams
+            .lock()
+            .map_err(|e| format!("cloud streams mutex poisoned: {}", e))?;
+        guard.remove(&stream_id)
+    };
+    if let Some(tx) = sender {
+        let _ = tx.send(());
+    }
+    Ok(())
+}
+
+// ============================================================
+// Provider secret storage (OS keychain)
+// ============================================================
+//
+// Backs the four cloud-AI provider API keys with the OS native secret
+// store (macOS Keychain, Windows Credential Manager, Linux Secret
+// Service / kwallet) instead of `settings.json` plaintext. The
+// `keyring` crate handles the per-platform shimming.
+//
+// Service name is fixed at `trixty.ide` so the entries are namespaced
+// to this app and not visible to other Trixty tooling. Allowed
+// providers are pinned to a hard-coded list so a renderer XSS can't
+// probe arbitrary keychain entries by passing crafted strings.
+
+const SECRET_SERVICE: &str = "trixty.ide";
+const SECRET_ALLOWED_PROVIDERS: &[&str] = &["openai", "anthropic", "gemini", "openrouter"];
+
+fn validate_secret_provider(provider: &str) -> Result<(), String> {
+    if SECRET_ALLOWED_PROVIDERS.contains(&provider) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Provider {} is not on the secret-store allow-list",
+            provider
+        ))
+    }
+}
+
+fn provider_entry(provider: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(SECRET_SERVICE, provider).map_err(|e| format!("keychain: {}", e))
+}
+
+#[tauri::command]
+async fn set_provider_secret(provider: String, secret: String) -> Result<(), String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    entry
+        .set_password(&secret)
+        .map_err(|e| format!("keychain set failed: {}", e))
+}
+
+/// Returns the stored secret for a provider, or `None` if no entry
+/// exists. Distinguishes `NoEntry` from real failures so the caller
+/// (settings UI) can render an empty input without surfacing an
+/// error toast for the common "never configured" case.
+#[tauri::command]
+async fn get_provider_secret(provider: String) -> Result<Option<String>, String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("keychain get failed: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn clear_provider_secret(provider: String) -> Result<(), String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        // Idempotent: clearing a never-set provider is a no-op rather
+        // than an error so the UI's "Remove" button works the same way
+        // regardless of prior state.
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("keychain delete failed: {}", e)),
+    }
+}
+
+/// Probe whether a provider has a stored secret without exposing the
+/// secret itself. The settings panel uses this on mount to render the
+/// "Configured" badge so the actual key only travels through IPC when
+/// the user explicitly clicks reveal or sends a chat.
+#[tauri::command]
+async fn has_provider_secret(provider: String) -> Result<bool, String> {
+    validate_secret_provider(&provider)?;
+    let entry = provider_entry(&provider)?;
+    match entry.get_password() {
+        Ok(_) => Ok(true),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(e) => Err(format!("keychain probe failed: {}", e)),
+    }
+}
+
+/// Spawn a new TrixtyIDE process pointing at the given workspace
+/// folder. Each instance gets its own JS realm AND its own Rust
+/// state, so the existing single-window architecture works without
+/// cross-instance synchronization. The new process inherits the
+/// current binary path and forwards the workspace via the existing
+/// `--path` flag the `cli` module already parses.
+///
+/// Validates the path is an absolute directory before spawning so a
+/// crafted argument can't trick the launcher into running a sibling
+/// binary or exec-ing through a symlink.
+#[tauri::command]
+async fn spawn_workspace_instance(path: String) -> Result<(), String> {
+    let candidate = std::path::Path::new(&path);
+    let resolved = candidate
+        .canonicalize()
+        .map_err(|e| format!("invalid path: {}", e))?;
+    if !resolved.is_dir() {
+        return Err("path is not a directory".to_string());
+    }
+
+    let exe =
+        std::env::current_exe().map_err(|e| format!("could not resolve current exe: {}", e))?;
+
+    // Use the std-library Command for a fire-and-forget spawn — we
+    // do not need the tokio variant here because the new process is
+    // detached, and `silent_command` is reserved for child tasks
+    // whose stdout we still consume in this binary.
+    let mut cmd = std::process::Command::new(&exe);
+    cmd.arg("--path").arg(resolved);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW so the spawn doesn't flash a console; the
+        // new TrixtyIDE process is GUI-only, same as the current one.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.spawn().map_err(|e| format!("spawn failed: {}", e))?;
+    Ok(())
+}
+
 #[tauri::command]
 fn create_directory(
     path: String,
@@ -2223,7 +2652,10 @@ pub fn run() {
 
     // Configure tracing with Sentry layer
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .with(sentry_tracing::layer())
         .init();
@@ -2282,6 +2714,7 @@ pub fn run() {
         )
         .manage::<PtySessions>(new_pty_sessions())
         .manage::<OllamaStreams>(new_ollama_streams())
+        .manage::<CloudStreams>(new_cloud_streams())
         .manage(Arc::new(Mutex::new(SystemState {
             sys: System::new_all(),
         })))
@@ -2343,6 +2776,13 @@ pub fn run() {
             ollama_proxy_stream,
             ollama_proxy_cancel,
             cloud_proxy,
+            cloud_proxy_stream,
+            cloud_proxy_cancel,
+            set_provider_secret,
+            get_provider_secret,
+            clear_provider_secret,
+            has_provider_secret,
+            spawn_workspace_instance,
             create_directory,
             reveal_path,
             delete_path,
@@ -2750,5 +3190,101 @@ mod split_ndjson_lines_tests {
         let second = split_ndjson_lines(&mut buf, "2}\n");
         assert_eq!(second.len(), 1);
         assert!(buf.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod split_sse_events_tests {
+    use super::split_sse_events;
+
+    #[test]
+    fn parses_one_complete_event() {
+        let mut buf = String::from("data: {\"text\":\"hi\"}\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("{\"text\":\"hi\"}")]);
+        assert!(
+            buf.is_empty(),
+            "complete event should leave empty remainder"
+        );
+    }
+
+    #[test]
+    fn joins_multiple_data_lines_within_an_event_with_newline() {
+        let mut buf = String::from("data: line one\ndata: line two\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("line one\nline two")]);
+    }
+
+    #[test]
+    fn skips_event_id_retry_and_comment_lines() {
+        let mut buf =
+            String::from("event: ping\nid: 42\nretry: 1000\n: this is a comment\ndata: hello\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("hello")]);
+    }
+
+    #[test]
+    fn drops_events_without_a_data_line() {
+        let mut buf = String::from("event: ping\n\ndata: real\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("real")]);
+    }
+
+    #[test]
+    fn holds_partial_event_in_buffer_until_next_chunk() {
+        let mut buf = String::new();
+        buf.push_str("data: {\"a\":1}");
+        let first = split_sse_events(&mut buf);
+        assert!(first.is_empty(), "no terminator yet");
+        buf.push_str("\n\n");
+        let second = split_sse_events(&mut buf);
+        assert_eq!(second, vec![String::from("{\"a\":1}")]);
+    }
+
+    #[test]
+    fn handles_crlf_separators() {
+        let mut buf = String::from("data: foo\r\n\r\ndata: bar\r\n\r\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("foo"), String::from("bar")]);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn passes_through_done_sentinel_unchanged() {
+        let mut buf = String::from("data: [DONE]\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from("[DONE]")]);
+    }
+
+    #[test]
+    fn empty_input_is_a_noop() {
+        let mut buf = String::new();
+        let out = split_sse_events(&mut buf);
+        assert!(out.is_empty());
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn handles_back_to_back_events_in_one_chunk() {
+        let mut buf = String::from("data: {\"a\":1}\n\ndata: {\"a\":2}\n\ndata: [DONE]\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(
+            out,
+            vec![
+                String::from("{\"a\":1}"),
+                String::from("{\"a\":2}"),
+                String::from("[DONE]"),
+            ]
+        );
+    }
+
+    #[test]
+    fn preserves_a_single_leading_space_after_data_colon() {
+        // Per SSE spec: a single space after `data:` is part of the
+        // separator, not the payload. Anything beyond that single space is
+        // payload — so `data:  hello` carries ` hello` (one leading space).
+        let mut buf = String::from("data:  hello\n\n");
+        let out = split_sse_events(&mut buf);
+        assert_eq!(out, vec![String::from(" hello")]);
     }
 }

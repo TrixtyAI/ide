@@ -107,6 +107,28 @@ export interface TauriInvokeMap {
     };
     return: { status: number; body: string };
   };
+  "cloud_proxy_stream": {
+    args: {
+      streamId: string;
+      method: string;
+      url: string;
+      headers?: Array<[string, string]>;
+      body?: unknown;
+    };
+    return: void;
+  };
+  "cloud_proxy_cancel": { args: { streamId: string }; return: void };
+  // OS keychain-backed AI provider secrets. `provider` must be on the
+  // Rust-side allow-list (`openai` / `anthropic` / `gemini` / `openrouter`).
+  "set_provider_secret": { args: { provider: string; secret: string }; return: void };
+  "get_provider_secret": { args: { provider: string }; return: string | null };
+  "clear_provider_secret": { args: { provider: string }; return: void };
+  "has_provider_secret": { args: { provider: string }; return: boolean };
+  /** Spawn a new TrixtyIDE process pointing at the given workspace
+   *  folder. Each instance gets its own JS realm and its own Rust
+   *  state. The path must be an absolute, existing directory; the
+   *  Rust side canonicalises and rejects invalid inputs. */
+  "spawn_workspace_instance": { args: { path: string }; return: void };
   "check_update": { args: { channel?: "stable" | "pre-release" }; return: { version: string; body?: string | null } | null };
   "install_update": { args: { channel?: "stable" | "pre-release" }; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
@@ -210,7 +232,7 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
     Sentry.metrics.count('tauri_command_call', 1, {
       attributes: { command: cmd }
     });
-  } catch (e) {
+  } catch {
     // Sentry not initialized or failed to load, ignore
   }
 
