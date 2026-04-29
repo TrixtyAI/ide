@@ -12,7 +12,6 @@ import { useInlineCompletions } from "@/hooks/useInlineCompletions";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Code2, LayoutGrid } from "lucide-react";
 import { getVisualEditor } from "./visual/getVisualEditor";
-import * as Sentry from "@sentry/nextjs";
 
 // Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
 // Loading it with `next/dynamic` keeps it off the boot path; it only arrives
@@ -219,22 +218,6 @@ const EditorArea: React.FC = () => {
       if (!openPaths.has(modelPath)) {
         model.dispose();
       }
-    }
-    // Sentry Tracking for File Open
-    Sentry.metrics.count('editor_file_open', 1, {
-      attributes: { 
-        language: currentFile.language || 'unknown',
-        extension: currentFile.path.split('.').pop() || 'none',
-        type: currentFile.type || 'text'
-      }
-    });
-    
-    if (isLargeFile) {
-      Sentry.metrics.count('editor_large_file_open', 1);
-      Sentry.logger.info(`Large file opened: ${currentFile.path}`, { 
-        size: currentFile.content?.length,
-        path: currentFile.path 
-      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPathKeys, currentFile?.path]);
@@ -446,9 +429,6 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
   // computed inline so we don't need an effect to seed the map.
   const mode = modeByPath.get(file.path) ?? "source";
   const setMode = (next: "source" | "visual") => {
-    Sentry.metrics.count('editor_mode_switch', 1, {
-      attributes: { to_mode: next, file_type: file.language }
-    });
     setModeByPath((prev) => {
       const map = new Map(prev);
       map.set(file.path, next);
