@@ -13,5 +13,13 @@
   "devDependencies": {
     "turbo": "^2"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "dompurify": "^3.4.0",
+      "postcss": "^8.5.10",
+      "esbuild": "^0.25.0",
+      "vite": "^6.4.2"
+    }
+  }
 }
