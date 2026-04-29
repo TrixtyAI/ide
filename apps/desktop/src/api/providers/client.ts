@@ -5,6 +5,16 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { safeInvoke as invoke } from "@/api/tauri";
 import type { ProviderId } from "@/context/SettingsContext";
 import { logger } from "@/lib/logger";
+import {
+  type CanonicalHistoryEntry,
+  type ToolDefinition,
+  type UnifiedToolCall,
+  extractToolCallsFromBody,
+  translateHistoryForProvider,
+  translateToolsForProvider,
+} from "./cloudTools";
+
+export type { CanonicalHistoryEntry, ToolDefinition, UnifiedToolCall };
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -24,6 +34,25 @@ export interface CloudChatRequest {
 export interface CloudChatResult {
   ok: boolean;
   text: string;
+  error?: string;
+}
+
+export interface CloudAgentRequest {
+  provider: Exclude<ProviderId, "ollama">;
+  apiKey: string;
+  model: string;
+  /** Canonical history maintained by the renderer across agent turns. */
+  history: CanonicalHistoryEntry[];
+  tools: ToolDefinition[];
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
+}
+
+export interface CloudAgentResult {
+  ok: boolean;
+  text: string;
+  toolCalls: UnifiedToolCall[];
   error?: string;
 }
 
@@ -199,6 +228,175 @@ export async function cloudChat(req: CloudChatRequest): Promise<CloudChatResult>
     if (req.signal?.aborted) return { ok: false, text: "", error: "aborted" };
     logger.warn(`[providers/${req.provider}] chat failed:`, err);
     return { ok: false, text: "", error: String(err) };
+  }
+}
+
+/**
+ * One-shot agent turn for cloud providers. Sends a tool-aware request
+ * and returns the model's reply along with any unified tool calls so
+ * the renderer's existing agent loop (the one used for Ollama) can
+ * execute the tools and re-enter on the next turn with the results
+ * folded into the canonical history.
+ *
+ * Streaming with tool-call deltas is intentionally out of scope —
+ * each provider streams partial-arguments differently (OpenAI ships
+ * `delta.tool_calls[].function.arguments` chunks, Anthropic streams
+ * `input_json_delta` blocks, Gemini doesn't really stream tool calls
+ * at all). Doing it well needs four bespoke parsers; doing it badly
+ * means broken arguments. Single-shot per turn is the predictable
+ * baseline; the next iteration can layer streaming on without
+ * changing the renderer's loop shape.
+ */
+export async function cloudAgentChat(
+  req: CloudAgentRequest,
+): Promise<CloudAgentResult> {
+  const invalid = validateAgentRequest(req);
+  if (invalid) return invalid;
+
+  try {
+    const config = buildAgentProviderRequest(req);
+    const result = await invoke(
+      "cloud_proxy",
+      {
+        method: "POST",
+        url: config.url,
+        headers: config.headers,
+        body: config.body,
+      },
+      { silent: true },
+    );
+    if (result.status < 200 || result.status >= 300) {
+      return {
+        ok: false,
+        text: "",
+        toolCalls: [],
+        error: `${req.provider} HTTP ${result.status}: ${truncate(result.body, 240)}`,
+      };
+    }
+    const text = extractFullResponse(req.provider, result.body);
+    const toolCalls = extractToolCallsFromBody(req.provider, result.body);
+    return {
+      ok: text.length > 0 || toolCalls.length > 0,
+      text,
+      toolCalls,
+    };
+  } catch (err) {
+    if (req.signal?.aborted) {
+      return {
+        ok: false,
+        text: "",
+        toolCalls: [],
+        error: "aborted",
+      };
+    }
+    logger.warn(`[providers/${req.provider}] agent chat failed:`, err);
+    return {
+      ok: false,
+      text: "",
+      toolCalls: [],
+      error: String(err),
+    };
+  }
+}
+
+function validateAgentRequest(req: CloudAgentRequest): CloudAgentResult | null {
+  if (req.signal?.aborted)
+    return { ok: false, text: "", toolCalls: [], error: "aborted" };
+  if (!req.apiKey) {
+    return {
+      ok: false,
+      text: "",
+      toolCalls: [],
+      error: `Missing API key for ${req.provider}`,
+    };
+  }
+  if (!req.model) {
+    return {
+      ok: false,
+      text: "",
+      toolCalls: [],
+      error: `No model selected for ${req.provider}`,
+    };
+  }
+  return null;
+}
+
+function buildAgentProviderRequest(req: CloudAgentRequest): ProviderRequest {
+  const translated = translateHistoryForProvider(req.provider, req.history);
+  const tools = translateToolsForProvider(req.provider, req.tools);
+  switch (req.provider) {
+    case "openai":
+      return {
+        url: "https://api.openai.com/v1/chat/completions",
+        headers: [
+          ["Authorization", `Bearer ${req.apiKey}`],
+          ["Content-Type", "application/json"],
+        ],
+        body: {
+          model: req.model,
+          messages: translated.messages,
+          temperature: req.temperature ?? 0.7,
+          max_tokens: req.maxTokens ?? 2048,
+          tools,
+        },
+      };
+    case "openrouter":
+      return {
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        headers: [
+          ["Authorization", `Bearer ${req.apiKey}`],
+          ["Content-Type", "application/json"],
+          ["HTTP-Referer", "https://github.com/TrixtyAI/ide"],
+          ["X-Title", "Trixty IDE"],
+        ],
+        body: {
+          model: req.model,
+          messages: translated.messages,
+          temperature: req.temperature ?? 0.7,
+          max_tokens: req.maxTokens ?? 2048,
+          tools,
+        },
+      };
+    case "anthropic":
+      return {
+        url: "https://api.anthropic.com/v1/messages",
+        headers: [
+          ["x-api-key", req.apiKey],
+          ["anthropic-version", "2023-06-01"],
+          ["Content-Type", "application/json"],
+        ],
+        body: {
+          model: req.model,
+          max_tokens: req.maxTokens ?? 2048,
+          temperature: req.temperature ?? 0.7,
+          system: translated.system,
+          messages: translated.messages,
+          tools,
+        },
+      };
+    case "gemini": {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        req.model,
+      )}:generateContent`;
+      return {
+        url,
+        headers: [
+          ["x-goog-api-key", req.apiKey],
+          ["Content-Type", "application/json"],
+        ],
+        body: {
+          contents: translated.contents,
+          ...(translated.systemInstruction
+            ? { systemInstruction: translated.systemInstruction }
+            : {}),
+          generationConfig: {
+            temperature: req.temperature ?? 0.7,
+            maxOutputTokens: req.maxTokens ?? 2048,
+          },
+          ...(tools ? { tools } : {}),
+        },
+      };
+    }
   }
 }
 
