@@ -15,14 +15,7 @@ interface TerminalTab {
   cwd: string | null;
 }
 
-const newSessionId = (): string => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  // Fallback for very old browsers — good enough for a process-local
-  // session id that never leaves the renderer.
-  return `term-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-};
+const newSessionId = (): string => `term-${crypto.randomUUID()}`;
 
 const BottomPanel: React.FC = () => {
   const { setBottomPanelOpen, terminalPath } = useUI();

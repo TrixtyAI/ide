@@ -543,10 +543,7 @@ async fn execute_command(
         cmd.current_dir(dir);
     }
 
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let output = cmd.output().await.map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -1572,11 +1569,7 @@ const ANTHROPIC_HEADERS: &[&str] = &[
     "content-type",
     "accept",
 ];
-const GEMINI_HEADERS: &[&str] = &[
-    "x-goog-api-key",
-    "content-type",
-    "accept",
-];
+const GEMINI_HEADERS: &[&str] = &["x-goog-api-key", "content-type", "accept"];
 const OPENROUTER_HEADERS: &[&str] = &[
     "authorization",
     "content-type",
@@ -1645,7 +1638,12 @@ fn validate_cloud_proxy_request(
     let policy = CLOUD_PROXY_HOST_POLICIES
         .iter()
         .find(|p| p.host == host)
-        .ok_or_else(|| format!("Cloud URL host {} is not on the cloud-proxy allow-list", host))?;
+        .ok_or_else(|| {
+            format!(
+                "Cloud URL host {} is not on the cloud-proxy allow-list",
+                host
+            )
+        })?;
 
     let path = parsed.path();
     let method_upper = method.to_ascii_uppercase();

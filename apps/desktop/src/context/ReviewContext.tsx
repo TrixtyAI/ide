@@ -83,11 +83,7 @@ export const ReviewProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const requestToolApproval = useCallback<ReviewContextValue["requestToolApproval"]>(
     ({ id, name, args }) => {
-      const generatedId =
-        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-          ? crypto.randomUUID()
-          : `cid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      const callId = id ?? generatedId;
+      const callId = id ?? crypto.randomUUID();
 
       return new Promise<ApprovalResult>((resolve) => {
         // Any still-open prompt that is NOT the new one gets denied: the UI

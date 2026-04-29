@@ -62,12 +62,33 @@ function parseEnv(text: string): EnvRow[] {
         rest = rest.trim();
       }
     } else {
-      // Quoted: find the closing quote and treat everything after as
-      // the optional comment chunk.
-      const closeIdx = rest.indexOf('"', 1);
+      // Quoted: scan character by character so an escaped quote (`\"`) or
+      // escaped backslash (`\\`) inside the value doesn't terminate the
+      // string early. Anything after the closing quote is treated as the
+      // optional `# comment` chunk.
+      let i = 1;
+      let unescaped = "";
+      let closeIdx = -1;
+      while (i < rest.length) {
+        const ch = rest[i];
+        if (ch === "\\" && i + 1 < rest.length) {
+          const next = rest[i + 1];
+          if (next === "\\" || next === '"') {
+            unescaped += next;
+            i += 2;
+            continue;
+          }
+        }
+        if (ch === '"') {
+          closeIdx = i;
+          break;
+        }
+        unescaped += ch;
+        i += 1;
+      }
       if (closeIdx !== -1) {
         const after = rest.slice(closeIdx + 1).trim();
-        rest = rest.slice(1, closeIdx);
+        rest = unescaped;
         if (after.startsWith("#")) comment = after.slice(1).trim();
       }
     }
@@ -79,11 +100,17 @@ function parseEnv(text: string): EnvRow[] {
 function serializeEnv(rows: EnvRow[]): string {
   const lines = rows.map((r) => {
     if (r.raw !== null) return r.raw;
-    // Synthesized row — render `KEY=VALUE` with quoting only when the
-    // value contains whitespace or `#`.
+    // Synthesized row — render `KEY=VALUE` with quoting whenever the value
+    // contains whitespace, `#`, `"`, or `\`. Quoting is also the trigger
+    // for escaping: backslash MUST be escaped before quotes so a value
+    // ending in `\` doesn't produce `\"` and accidentally re-open the
+    // string when round-tripped through `parseEnv`.
     if (!r.key && !r.value && !r.comment) return "";
-    const needsQuote = /[\s#]/.test(r.value);
-    const valueOut = needsQuote ? `"${r.value.replace(/"/g, '\\"')}"` : r.value;
+    const needsQuote = /[\s#"\\]/.test(r.value);
+    const escaped = r.value
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+    const valueOut = needsQuote ? `"${escaped}"` : r.value;
     const head = r.key ? `${r.key}=${valueOut}` : "";
     const tail = r.comment ? ` # ${r.comment}` : "";
     return head + tail;

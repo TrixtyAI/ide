@@ -109,12 +109,7 @@ export async function streamOllamaChat(
   if (!isTauri()) {
     throw new Error("streamOllamaChat requires the Tauri runtime");
   }
-  // Prefer the native crypto.randomUUID when available; fall back to a
-  // sufficiently unique alternative for jsdom / older runtimes.
-  const streamId =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `stream-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  const streamId = crypto.randomUUID();
 
   let unlisten: UnlistenFn | undefined;
   let finalMessage: OllamaStreamFinalMessage | undefined;

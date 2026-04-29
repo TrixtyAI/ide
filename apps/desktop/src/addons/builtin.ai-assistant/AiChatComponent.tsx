@@ -820,11 +820,7 @@ const AiChatComponent: React.FC = () => {
             // tuples line up on the exact same string. Generating inside
             // `requestToolApproval` was tempting but would leave this outer
             // block without a handle on the id for the history entries below.
-            const generatedId =
-              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-                ? crypto.randomUUID()
-                : `cid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-            const callId = toolCall.id || generatedId;
+            const callId = toolCall.id || crypto.randomUUID();
 
             let result;
             // `effectiveArgs` holds the args actually passed to execution.
