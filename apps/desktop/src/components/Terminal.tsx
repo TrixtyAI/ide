@@ -7,7 +7,6 @@ import { listen } from "@tauri-apps/api/event";
 import { safeInvoke as invoke, type PtyOutputEvent } from "@/api/tauri";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
-import * as Sentry from "@sentry/nextjs";
 import "@xterm/xterm/css/xterm.css";
 
 interface TerminalProps {
@@ -35,11 +34,6 @@ interface TerminalProps {
 // these to debug so the real PTY problems stay visible.
 function logPtyError(label: string, err: unknown): void {
   const msg = typeof err === "string" ? err : JSON.stringify(err);
-  
-  Sentry.metrics.count('terminal_pty_error', 1, {
-    attributes: { label, is_silent: msg.includes("No PTY session with id") ? 'yes' : 'no' }
-  });
-
   if (msg.includes("No PTY session with id")) {
     logger.debug(`${label} (session already gone):`, err);
     return;
@@ -202,10 +196,7 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
           rows: term.rows,
           cols: term.cols,
         });
-
-        Sentry.metrics.count('terminal_pty_spawn', 1);
       } catch (err) {
-        Sentry.metrics.count('terminal_pty_error', 1, { attributes: { label: 'setup_failed' } });
         if (!isCanceled && xtermRef.current) {
           xtermRef.current.writeln(
             "\x1b[31m" + t("terminal.error_connect") + "\x1b[0m " + err,
