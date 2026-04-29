@@ -12,11 +12,14 @@ describe("floatingWindowRegistry", () => {
     expect(floatingWindowRegistry.getEntry("any")).toBeUndefined();
   });
 
-  it("detach() adds the view with a deterministic windowLabel", async () => {
+  it("detach() adds the view with a Tauri-safe windowLabel (dots sanitized)", async () => {
     await floatingWindowRegistry.detach("trixty.builtin.ai-assistant", "right");
     expect(floatingWindowRegistry.isDetached("trixty.builtin.ai-assistant")).toBe(true);
+    // Tauri 2 only allows a-zA-Z0-9-/:_ in window labels; dots in the viewId
+    // must be replaced or the WebviewWindow constructor rejects on the Rust
+    // side and the slot is stranded on the placeholder.
     expect(floatingWindowRegistry.getEntry("trixty.builtin.ai-assistant")).toEqual({
-      windowLabel: "floating-trixty.builtin.ai-assistant",
+      windowLabel: "floating-trixty_builtin_ai-assistant",
       panel: "right",
     });
   });
@@ -54,6 +57,15 @@ describe("floatingWindowRegistry", () => {
     unsubscribe();
     await floatingWindowRegistry.detach("v2", "right");
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("subscribe stays bound when destructured (useSyncExternalStore safe)", () => {
+    const { subscribe } = floatingWindowRegistry;
+    const listener = vi.fn();
+    expect(() => {
+      const unsubscribe = subscribe(listener);
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("supports multiple simultaneous detachments", async () => {

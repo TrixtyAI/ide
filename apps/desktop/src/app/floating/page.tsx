@@ -7,6 +7,20 @@ import FloatingTitleBar from "@/components/FloatingTitleBar";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
 import { isTauri } from "@/api/tauri";
+import { PluginManager } from "@/api/PluginManager";
+
+// Each Tauri WebviewWindow has its own JS realm, so the `trixty.window`
+// registry in this window starts empty. Without bootstrapping built-ins
+// here the requested view is never registered and the body is stuck on
+// the "loading" state. External addons stay disabled — the main window
+// already owns their lifecycle, and we do not want duplicate sandbox
+// workers or approval prompts surfacing in an auxiliary window.
+let floatBootstrapStarted = false;
+function ensureFloatBootstrap(): void {
+  if (floatBootstrapStarted) return;
+  floatBootstrapStarted = true;
+  void PluginManager.bootstrap({ skipExternalAddons: true });
+}
 
 function useRegisteredView(viewId: string | null): WebviewView | null {
   const subscribe = (listener: () => void) =>
@@ -36,6 +50,17 @@ function FloatingViewBody() {
   const view = useRegisteredView(viewId);
   const { t } = useL10n();
   const [bootError, setBootError] = useState<string | null>(null);
+
+  // Bootstrap built-in addons after commit. Calling it during render would
+  // synchronously fire `L10nRegistry.notify()` → other useSyncExternalStore
+  // subscribers (e.g. HtmlLangSync) would setState during another component's
+  // render and React 18 throws "Cannot update a component while rendering a
+  // different component". The effect path defers the work to the
+  // commit-phase, so the first paint shows the loading state and the next
+  // commit wakes up the registry subscribers cleanly.
+  useEffect(() => {
+    ensureFloatBootstrap();
+  }, []);
 
   // Broadcast our outer rect on every move so the main window can compute
   // overlap and decide when to show its drop zone.
@@ -149,7 +174,12 @@ function FloatingViewBody() {
   return (
     <div className="h-screen w-screen flex flex-col bg-surface-1">
       <FloatingTitleBar viewId={viewId} title={view.title} icon={view.icon} />
-      <div className="flex-1 overflow-hidden flex">
+      {/* `flex-col` so children stretch to full width by default — the
+          right-panel slot uses the same shape. A row-flex parent here would
+          collapse views like AiChat (whose root has h-full but no explicit
+          w-full / flex-1) to their content width and leave the rest of the
+          window dark. */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <ViewRender />
       </div>
     </div>

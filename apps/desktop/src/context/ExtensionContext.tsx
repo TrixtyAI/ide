@@ -129,14 +129,26 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const enrichedEntries = await Promise.all(
         entries.map(async (entry) => {
           const resolvedRepoUrl = resolveGitRepoUrl(entry) || "";
+          // Both calls are silent — a missing manifest or unreachable
+          // GitHub stars endpoint is normal for in-progress catalog
+          // entries (e.g. example-addon stub) and we don't want them
+          // surfaced as `[Tauri Invoke Error]` in the dev console.
           const [manifestResult, starsResult] = await Promise.allSettled([
-            invoke("fetch_extension_manifest", {
-              repoUrl: entry.repository || "",
-              branch: entry.branch || "main",
-              dataUrl: entry.data,
-              path: entry.path
-            }),
-            invoke("fetch_extension_stars", { repoUrl: resolvedRepoUrl })
+            invoke(
+              "fetch_extension_manifest",
+              {
+                repoUrl: entry.repository || "",
+                branch: entry.branch || "main",
+                dataUrl: entry.data,
+                path: entry.path,
+              },
+              { silent: true },
+            ),
+            invoke(
+              "fetch_extension_stars",
+              { repoUrl: resolvedRepoUrl },
+              { silent: true },
+            ),
           ]);
 
           const manifest = manifestResult.status === "fulfilled" ? manifestResult.value : undefined;
@@ -145,7 +157,12 @@ export const ExtensionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             : undefined;
 
           if (manifestResult.status === "rejected") {
-            logger.error(`Error fetching manifest for ${entry.id}`, manifestResult.reason);
+            // Demoted to debug — the catalog tolerates entries without a
+            // resolvable manifest, the UI just renders the bare entry.
+            logger.debug(
+              `[ExtensionContext] manifest unavailable for ${entry.id}:`,
+              manifestResult.reason,
+            );
           }
 
           return { ...entry, manifest, stars };

@@ -6,26 +6,6 @@ import { useL10n } from "@/hooks/useL10n";
 import { useDetachableHeader } from "@/hooks/useDetachableHeader";
 import { floatingWindowRegistry } from "@/api/floatingWindowRegistry";
 import DropZoneOverlay from "@/components/DropZoneOverlay";
-import { isTauri } from "@/api/tauri";
-import { logger } from "@/lib/logger";
-
-const REDOCK_OVERLAP_THRESHOLD = 0.3;
-const REDOCK_SETTLE_MS = 200;
-
-interface MainRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-interface FloatMoveEvent {
-  viewId: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
 
 function useFloatingRegistrySnapshot() {
   return useSyncExternalStore(
@@ -35,13 +15,18 @@ function useFloatingRegistrySnapshot() {
   );
 }
 
-export default function RightPanelSlot() {
+interface RightPanelSlotProps {
+  /** ViewId currently overlapping main window enough to be a redock
+   *  candidate. Owned by `useFloatingDockTracker` at the shell level. */
+  overlayViewId?: string | null;
+}
+
+export default function RightPanelSlot({ overlayViewId = null }: RightPanelSlotProps) {
   const [views, setViews] = useState<WebviewView[]>([]);
   const { t } = useL10n();
   const slotRef = useRef<HTMLDivElement | null>(null);
 
   const [collapsedViews, setCollapsedViews] = useState<Record<string, boolean>>({});
-  const [overlayViewId, setOverlayViewId] = useState<string | null>(null);
 
   // Force re-render when the registry changes.
   useFloatingRegistrySnapshot();
@@ -56,105 +41,18 @@ export default function RightPanelSlot() {
     setCollapsedViews((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  // Listen for floating-window moves and decide when to show the drop zone.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unsubscribed = false;
-    let unlisten: (() => void) | undefined;
-    let mainRect: MainRect | null = null;
-    let settleTimer: ReturnType<typeof setTimeout> | null = null;
-    let lastEvent: FloatMoveEvent | null = null;
-    let currentOverlayViewId: string | null = null;
+  // Show the drop-zone hint only when the moving float belongs to a
+  // right-panel view. Left-panel floats trigger the overlay on
+  // LeftSidebarSlot instead.
+  const showOverlay =
+    overlayViewId !== null &&
+    floatingWindowRegistry.getEntry(overlayViewId)?.panel === "right";
+  const overlayView = showOverlay
+    ? views.find((v) => v.id === overlayViewId)
+    : undefined;
 
-    const refreshMainRect = async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
-        const size = await win.outerSize();
-        mainRect = { x: pos.x, y: pos.y, w: size.width, h: size.height };
-      } catch (err) {
-        logger.debug("[floating] mainRect refresh failed:", err);
-      }
-    };
-
-    const overlapFraction = (a: MainRect, b: FloatMoveEvent): number => {
-      const overlapW = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
-      const overlapH = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-      const overlapArea = overlapW * overlapH;
-      const floatArea = Math.max(1, b.w * b.h);
-      return overlapArea / floatArea;
-    };
-
-    const setOverlay = (next: string | null) => {
-      if (currentOverlayViewId === next) return;
-      currentOverlayViewId = next;
-      setOverlayViewId(next);
-    };
-
-    const settleAndMaybeRedock = (event: FloatMoveEvent) => {
-      if (!mainRect) return;
-      const fraction = overlapFraction(mainRect, event);
-      if (fraction >= REDOCK_OVERLAP_THRESHOLD) {
-        setOverlay(event.viewId);
-      } else if (currentOverlayViewId === event.viewId) {
-        setOverlay(null);
-      }
-
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => {
-        if (!mainRect || !lastEvent) return;
-        const finalFraction = overlapFraction(mainRect, lastEvent);
-        if (finalFraction >= REDOCK_OVERLAP_THRESHOLD) {
-          setOverlay(null);
-          void floatingWindowRegistry.redock(lastEvent.viewId);
-        } else {
-          setOverlay(null);
-        }
-      }, REDOCK_SETTLE_MS);
-    };
-
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const { listen } = await import("@tauri-apps/api/event");
-        const win = getCurrentWindow();
-
-        await refreshMainRect();
-        const moveHandle = await win.onMoved(refreshMainRect);
-        const resizeHandle = await win.onResized(refreshMainRect);
-
-        const eventHandle = await listen<FloatMoveEvent>(
-          "floating-window:moved",
-          (event) => {
-            if (!event.payload || typeof event.payload.viewId !== "string") return;
-            lastEvent = event.payload;
-            settleAndMaybeRedock(event.payload);
-          },
-        );
-
-        if (unsubscribed) {
-          moveHandle();
-          resizeHandle();
-          eventHandle();
-        } else {
-          unlisten = () => {
-            moveHandle();
-            resizeHandle();
-            eventHandle();
-          };
-        }
-      } catch (err) {
-        logger.warn("[floating] main-window listener init failed:", err);
-      }
-    })();
-
-    return () => {
-      unsubscribed = true;
-      if (settleTimer) clearTimeout(settleTimer);
-      if (unlisten) unlisten();
-    };
-  }, []);
+  // Drag-tracking + redock decision live in the shell-level
+  // `useFloatingDockTracker` hook. Slots only render the visual hint.
 
   if (views.length === 0) {
     return (
@@ -175,10 +73,8 @@ export default function RightPanelSlot() {
           onToggleCollapse={toggleView}
         />
       ))}
-      {overlayViewId ? (
-        <DropZoneOverlay
-          viewName={t(views.find((v) => v.id === overlayViewId)?.title ?? "")}
-        />
+      {overlayView ? (
+        <DropZoneOverlay viewName={t(overlayView.title)} />
       ) : null}
     </div>
   );
