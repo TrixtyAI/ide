@@ -563,7 +563,7 @@ async fn search_in_project(
 async fn execute_command(
     command: String,
     args: Vec<String>,
-    cwd: String,
+    cwd: Option<String>,
     _sentry_context: Option<SentryContext>,
 ) -> Result<String, String> {
     let _tx = _sentry_context.and_then(|ctx| ctx.continue_trace("execute_command"));
@@ -577,8 +577,11 @@ async fn execute_command(
     let mut cmd = silent_command(&command);
     cmd.args(&args);
 
+    if let Some(path) = cwd {
+        cmd.current_dir(path);
+    }
+
     let output = cmd
-        .current_dir(cwd)
         .output()
         .await
         .map_err(|e| e.to_string())?;
