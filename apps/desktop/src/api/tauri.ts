@@ -178,17 +178,36 @@ export const isTauri = (): boolean => {
 
 /**
  * A safe wrapper around Tauri's 'invoke' command.
- * 
- * If running in a browser environment where Tauri internals are missing, 
- * it will log a warning and return a meaningful default or reject gracefully, 
+ *
+ * If running in a browser environment where Tauri internals are missing,
+ * it will log a warning and return a meaningful default or reject gracefully,
  * preventing the application from crashing.
  */
 export async function safeInvoke<K extends keyof TauriInvokeMap>(
-  cmd: K, 
+  cmd: K,
   args?: TauriInvokeMap[K]["args"],
   options: { silent?: boolean } = {}
 ): Promise<TauriInvokeMap[K]["return"]> {
-  const payload = args as Record<string, unknown> | undefined;
+  let payload = (args as Record<string, unknown> | undefined) || {};
+
+  // Inject Sentry tracing context for distributed tracing
+  try {
+    const Sentry = await import("@sentry/nextjs");
+    const span = Sentry.getActiveSpan();
+    if (span) {
+      const traceData = Sentry.getTraceData();
+      payload = {
+        ...payload,
+        _sentry_context: {
+          sentry_trace: traceData["sentry-trace"],
+          baggage: traceData["baggage"],
+        },
+      };
+    }
+  } catch (e) {
+    // Sentry not initialized or failed to load, ignore
+  }
+
   if (isTauri()) {
     try {
       return await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
