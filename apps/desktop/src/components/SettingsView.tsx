@@ -444,6 +444,10 @@ Node.js: ${systemInfo.node_version}
     }
   };
 
+  const testFunction = () => {
+    throw new Error("Sentry Test Error from Trixty IDE");
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12 animate-in fade-in duration-300">
       {/* Backdrop */}
@@ -536,6 +540,9 @@ Node.js: ${systemInfo.node_version}
               className="absolute top-8 right-8 text-[#555] hover:text-white transition-colors"
             >
               <X size={20} />
+            </button>
+            <button onClick={testFunction}>
+              test sentry
             </button>
             {renderContent()}
           </div>
