@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { Plus, Trash2, AlertTriangle, Package } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, Package, GripVertical } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import type { VisualEditorProps } from "./getVisualEditor";
 import NpmInstallerModal from "./NpmInstallerModal";
+import { useDragReorder, type DragRowProps } from "@/hooks/useDragReorder";
 
 type DepGroup = "dependencies" | "devDependencies" | "peerDependencies";
 
@@ -126,6 +127,28 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
     commit(next);
   };
 
+  /** Drag-reorder support: rebuild the section's map preserving the
+   *  caller-provided key order. JS spec keeps insertion order for
+   *  string keys, so the on-disk JSON.stringify output reflects the
+   *  user's drag exactly. */
+  const reorderMapKeys = (
+    key: "scripts" | DepGroup | "engines",
+    keysInOrder: string[],
+  ) => {
+    const map = (data[key] ?? {}) as Record<string, string>;
+    const reordered: Record<string, string> = {};
+    for (const k of keysInOrder) {
+      if (k in map) reordered[k] = map[k];
+    }
+    // Preserve any keys we didn't see in `keysInOrder` (defensive —
+    // the caller supplies the visible row order; if it gets out of
+    // sync with `entries`, we still keep the extras at the tail).
+    for (const k of Object.keys(map)) {
+      if (!(k in reordered)) reordered[k] = map[k];
+    }
+    commit({ ...data, [key]: reordered });
+  };
+
   const addMapEntry = (
     key: "scripts" | "engines",
     name: string,
@@ -218,6 +241,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("dependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("dependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("dependencies", k)}
+          onReorder={(keys) => reorderMapKeys("dependencies", keys)}
         />
         <DepSection
           title="Dev dependencies"
@@ -228,6 +252,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("devDependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("devDependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("devDependencies", k)}
+          onReorder={(keys) => reorderMapKeys("devDependencies", keys)}
         />
         <DepSection
           title="Peer dependencies"
@@ -238,6 +263,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("peerDependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("peerDependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("peerDependencies", k)}
+          onReorder={(keys) => reorderMapKeys("peerDependencies", keys)}
         />
 
         <MapSection
@@ -399,6 +425,7 @@ interface DepSectionProps {
   onUpdateValue: (k: string, v: string) => void;
   onRenameKey: (oldK: string, newK: string) => void;
   onRemove: (k: string) => void;
+  onReorder: (keysInOrder: string[]) => void;
 }
 
 const DepSection: React.FC<DepSectionProps> = ({
@@ -409,7 +436,15 @@ const DepSection: React.FC<DepSectionProps> = ({
   onUpdateValue,
   onRenameKey,
   onRemove,
+  onReorder,
 }) => {
+  const rows = Object.entries(entries).map(([key, value]) => ({ key, value }));
+  const { getRowProps } = useDragReorder<{ key: string; value: string }>({
+    items: rows,
+    getId: (r) => r.key,
+    onReorder: (next) => onReorder(next.map((r) => r.key)),
+  });
+
   return (
     <section className="space-y-3 border border-[#1a1a1a] rounded-2xl p-5 bg-[#0a0a0a]">
       <header className="flex items-center justify-between">
@@ -429,17 +464,21 @@ const DepSection: React.FC<DepSectionProps> = ({
         </button>
       </header>
       <div className="space-y-1">
-        {Object.entries(entries).map(([k, v]) => (
-          <Row
-            key={k}
-            entryKey={k}
-            entryValue={v}
-            onRenameKey={onRenameKey}
-            onUpdateValue={onUpdateValue}
-            onRemove={onRemove}
-          />
-        ))}
-        {Object.keys(entries).length === 0 && (
+        {rows.map((r) => {
+          const drag = getRowProps(r);
+          return (
+            <Row
+              key={r.key}
+              entryKey={r.key}
+              entryValue={r.value}
+              onRenameKey={onRenameKey}
+              onUpdateValue={onUpdateValue}
+              onRemove={onRemove}
+              dragProps={drag}
+            />
+          );
+        })}
+        {rows.length === 0 && (
           <p className="text-[11px] text-[#555] italic">No entries yet.</p>
         )}
       </div>
@@ -453,6 +492,7 @@ interface RowProps {
   onRenameKey: (oldK: string, newK: string) => void;
   onUpdateValue: (k: string, v: string) => void;
   onRemove: (k: string) => void;
+  dragProps?: DragRowProps;
 }
 
 const Row: React.FC<RowProps> = ({
@@ -461,13 +501,33 @@ const Row: React.FC<RowProps> = ({
   onRenameKey,
   onUpdateValue,
   onRemove,
+  dragProps,
 }) => {
   const [draftKey, setDraftKey] = useState(entryKey);
   useEffect(() => {
     setDraftKey(entryKey);
   }, [entryKey]);
+  const dragTarget = dragProps?.["data-drag-target"];
+  const dragging = dragProps?.["data-dragging"];
   return (
-    <div className="grid grid-cols-[1fr_1.4fr_auto] gap-2 items-center">
+    <div
+      {...dragProps}
+      className={`grid grid-cols-[auto_1fr_1.4fr_auto] gap-2 items-center transition-opacity ${
+        dragging ? "opacity-40" : ""
+      } ${
+        dragTarget === "top"
+          ? "shadow-[inset_0_2px_0_0_#3b82f6]"
+          : dragTarget === "bottom"
+            ? "shadow-[inset_0_-2px_0_0_#3b82f6]"
+            : ""
+      }`}
+    >
+      <span
+        className="cursor-grab active:cursor-grabbing text-[#444] hover:text-[#888] transition-colors px-1"
+        aria-hidden
+      >
+        <GripVertical size={12} strokeWidth={1.4} />
+      </span>
       <input
         type="text"
         value={draftKey}

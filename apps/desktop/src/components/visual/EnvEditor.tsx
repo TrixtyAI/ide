@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical } from "lucide-react";
 import type { VisualEditorProps } from "./getVisualEditor";
+import { useDragReorder } from "@/hooks/useDragReorder";
 
 interface EnvRow {
   /** "" for blank lines / pure-comment lines, otherwise the variable name. */
@@ -154,6 +155,31 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
   const variableRows = rows.filter((r) => r.key !== "" || r.raw === null);
   const commentOnlyRows = rows.filter((r) => r.key === "" && r.raw !== null);
 
+  // Drag-to-reorder for the variable rows. We rebuild the full rows
+  // array on drop by mapping each variable-row slot in the original
+  // order to the user's new ordering — comment-only rows stay in
+  // place so they don't migrate to the bottom of the file.
+  const reorderVariables = (next: EnvRow[]) => {
+    const varIndices: number[] = [];
+    rows.forEach((r, i) => {
+      if (r.key !== "" || r.raw === null) varIndices.push(i);
+    });
+    if (varIndices.length !== next.length) {
+      commit(next.concat(commentOnlyRows));
+      return;
+    }
+    const merged = rows.slice();
+    for (let i = 0; i < varIndices.length; i++) {
+      merged[varIndices[i]] = next[i];
+    }
+    commit(merged);
+  };
+  const { getRowProps } = useDragReorder<EnvRow>({
+    items: variableRows,
+    getId: (r) => r.id,
+    onReorder: reorderVariables,
+  });
+
   return (
     <div className="h-full overflow-auto bg-[#0e0e0e] p-4 text-[12px] text-[#ccc]">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -175,7 +201,8 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         </header>
 
         <div className="border border-[#1a1a1a] rounded-xl overflow-hidden bg-[#0a0a0a]">
-          <div className="grid grid-cols-[1fr_1.4fr_1fr_auto] gap-2 px-3 py-2 border-b border-[#1a1a1a] bg-[#101010] text-[10px] font-bold text-[#666] uppercase tracking-wider">
+          <div className="grid grid-cols-[auto_1fr_1.4fr_1fr_auto] gap-2 px-3 py-2 border-b border-[#1a1a1a] bg-[#101010] text-[10px] font-bold text-[#666] uppercase tracking-wider">
+            <span className="w-3" aria-hidden />
             <span>Key</span>
             <span>Value</span>
             <span>Comment</span>
@@ -190,11 +217,29 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
 
           {variableRows.map((r) => {
             const isRevealed = !!revealed[r.id];
+            const dragProps = getRowProps(r);
             return (
               <div
                 key={r.id}
-                className="grid grid-cols-[1fr_1.4fr_1fr_auto] gap-2 px-3 py-1.5 border-b border-[#161616] last:border-b-0 items-center"
+                {...dragProps}
+                className={`grid grid-cols-[auto_1fr_1.4fr_1fr_auto] gap-2 px-3 py-1.5 border-b border-[#161616] last:border-b-0 items-center transition-opacity ${
+                  dragProps["data-dragging"] ? "opacity-40" : ""
+                } ${
+                  dragProps["data-drag-target"] === "top"
+                    ? "shadow-[inset_0_2px_0_0_#3b82f6]"
+                    : ""
+                } ${
+                  dragProps["data-drag-target"] === "bottom"
+                    ? "shadow-[inset_0_-2px_0_0_#3b82f6]"
+                    : ""
+                }`}
               >
+                <span
+                  className="cursor-grab active:cursor-grabbing text-[#444] hover:text-[#888] transition-colors"
+                  aria-hidden
+                >
+                  <GripVertical size={12} strokeWidth={1.4} />
+                </span>
                 <input
                   type="text"
                   value={r.key}
