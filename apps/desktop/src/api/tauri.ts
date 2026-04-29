@@ -107,6 +107,17 @@ export interface TauriInvokeMap {
     };
     return: { status: number; body: string };
   };
+  "cloud_proxy_stream": {
+    args: {
+      streamId: string;
+      method: string;
+      url: string;
+      headers?: Array<[string, string]>;
+      body?: unknown;
+    };
+    return: void;
+  };
+  "cloud_proxy_cancel": { args: { streamId: string }; return: void };
   "check_update": { args: { channel?: "stable" | "pre-release" }; return: { version: string; body?: string | null } | null };
   "install_update": { args: { channel?: "stable" | "pre-release" }; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };

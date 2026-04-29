@@ -24,7 +24,7 @@ import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { classifyToolError, formatToolError, failureKey } from "./toolErrors";
 import { extractPlan } from "./planExtractor";
 import { streamOllamaChat, type OllamaStreamFinalMessage } from "./ollamaStream";
-import { cloudChat, keyForProvider, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
+import { streamCloudChat, keyForProvider, type ChatMessage as ProviderChatMessage } from "@/api/providers/client";
 import { PROVIDERS, PROVIDER_IDS } from "@/api/providers/registry";
 
 type ToolArgs = Record<string, string | number | boolean | string[]>;
@@ -538,10 +538,10 @@ const AiChatComponent: React.FC = () => {
     abortControllerRef.current = controller;
 
     // Cloud-provider branch (issue #267). Routes the request through the
-    // generic `cloud_proxy` instead of Ollama's bridge. Tools / agent /
-    // streaming are intentionally not wired for cloud yet — every provider
-    // has a different SSE envelope and tool-call format. Single-shot
-    // chat works for all four providers we ship today.
+    // generic `cloud_proxy_stream` instead of Ollama's bridge. Tools /
+    // agent are not wired for cloud yet (each provider has its own
+    // tool-call shape — that lands in a follow-up); streaming text works
+    // for all four providers we ship today.
     const activeProvider = aiSettings.activeProvider ?? "ollama";
     if (activeProvider !== "ollama") {
       try {
@@ -583,26 +583,47 @@ const AiChatComponent: React.FC = () => {
             })),
           { role: "user", content: userMessage },
         ];
-        const result = await cloudChat({
-          provider: activeProvider,
-          apiKey: cloudKey,
-          model: modelToUse,
-          messages: cloudHistory,
-          temperature: aiSettings.temperature,
-          maxTokens: aiSettings.maxTokens,
-          signal: controller.signal,
-        });
+
+        // Lazily create the assistant bubble on the first delta so we
+        // don't leave an empty placeholder behind if the request fails
+        // before any content arrives. Same pattern the Ollama branch
+        // uses below.
+        let placeholderPushed = false;
+        const pushPlaceholderOnce = () => {
+          if (placeholderPushed) return;
+          addMessageToSession(activeSessionId, { role: "ai", text: "" });
+          placeholderPushed = true;
+        };
+
+        const result = await streamCloudChat(
+          {
+            provider: activeProvider,
+            apiKey: cloudKey,
+            model: modelToUse,
+            messages: cloudHistory,
+            temperature: aiSettings.temperature,
+            maxTokens: aiSettings.maxTokens,
+            signal: controller.signal,
+          },
+          (delta) => {
+            pushPlaceholderOnce();
+            appendToLastAiMessage(activeSessionId, delta);
+          },
+        );
         if (controller.signal.aborted) return;
-        if (!result.ok) {
+        if (!result.ok && !placeholderPushed) {
           addMessageToSession(activeSessionId, {
             role: "ai",
             text: `Error: ${result.error || "cloud provider returned no content"}`,
           });
-        } else {
-          addMessageToSession(activeSessionId, {
-            role: "ai",
-            text: result.text,
-          });
+        } else if (!result.ok) {
+          // Stream started, then failed mid-flight — append the error
+          // inline so the user can see how far the model got before the
+          // failure. The bubble already exists so we don't push a new one.
+          appendToLastAiMessage(
+            activeSessionId,
+            `\n\n[Error: ${result.error || "stream interrupted"}]`,
+          );
         }
       } catch (err) {
         if (!controller.signal.aborted) {
