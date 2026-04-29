@@ -6,6 +6,7 @@ import ActivityBar from "@/components/ActivityBar";
 import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
 import WelcomeScreen from "@/components/WelcomeScreen";
 import TitleBar from "@/components/TitleBar";
+import StatusBar from "@/components/StatusBar";
 import UpdaterDialog from "@/components/UpdaterDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUI } from "@/context/UIContext";
@@ -14,7 +15,23 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useFloatingDockTracker } from "@/hooks/useFloatingDockTracker";
 import { PluginManager } from "@/api/PluginManager";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
+import { useDefaultLayout, type LayoutStorage } from "react-resizable-panels";
+
+// `useDefaultLayout` defaults its `storage` prop to the global
+// `localStorage` when none is provided, which throws ReferenceError in
+// Node (Next 16 prerender of `output: 'export'`). Provide a noop fallback
+// for SSR; the browser swap-in happens on first client render.
+const NOOP_LAYOUT_STORAGE: LayoutStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+};
 
 // Code-split heavy panels so Monaco, xterm, Marketplace, AI chat, and the
 // Settings modal aren't downloaded until the user actually opens them.
@@ -45,6 +62,9 @@ export default function Home() {
     setBottomPanelOpen,
     setSettingsOpen,
     isSettingsOpen,
+    isZenMode,
+    setZenMode,
+    toggleZenMode,
   } = useUI();
   const {
     openFiles,
@@ -129,10 +149,24 @@ export default function Home() {
           closeAll();
           return;
         }
+        if (pending.leader === "K" && key === "z") {
+          // Ctrl+K Z — Toggle Zen Mode (parity with VSCode).
+          e.preventDefault();
+          toggleZenMode();
+          return;
+        }
         // Unknown follow-up — drop the chord and fall through so the key
         // reaches whoever was going to handle it.
       } else if (pending && Date.now() >= pending.expires) {
         pendingChordRef.current = null;
+      }
+
+      // Escape — exit Zen Mode if active. Falls through otherwise so
+      // other Escape consumers (modals, overlays) keep their handler.
+      if (isGlobalEscape && isZenMode) {
+        e.preventDefault();
+        setZenMode(false);
+        return;
       }
 
       // Ctrl+W / Ctrl+F4 — Close current tab. `Ctrl+F4` is the combo the
@@ -275,9 +309,77 @@ export default function Home() {
     closeFile,
     closeSaved,
     closeAll,
+    isZenMode,
+    setZenMode,
+    toggleZenMode,
   ]);
 
   const { systemSettings, isInitialLoadComplete } = useSettings();
+
+  // Persist horizontal layout. `panelIds` MUST match the Panels rendered
+  // at Group mount-time (v4 requirement), so we recompute the live id list
+  // from the open/closed UI flags. The Reviewer column is intentionally
+  // excluded — it is a transient destructive-tool approval surface and
+  // shouldn't influence the persisted main layout.
+  const layoutPanelIds = React.useMemo(() => {
+    const ids: string[] = [];
+    if (isSidebarOpen) ids.push("sidebar");
+    ids.push("center");
+    if (isRightPanelOpen) ids.push("right-panel");
+    return ids;
+  }, [isSidebarOpen, isRightPanelOpen]);
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    // `.v3` invalidates earlier dev-test layouts that were saved while
+    // numeric size props were being misinterpreted as pixels.
+    id: "trixty.layout.main-h.v3",
+    panelIds: layoutPanelIds,
+    storage: typeof window !== "undefined" ? window.localStorage : NOOP_LAYOUT_STORAGE,
+  });
+
+  // Single drag-tracker for redock UX, shared by left + right slots.
+  const { overlayViewId } = useFloatingDockTracker();
+
+  // Defer panel unmount on drag-to-zero until pointerup. Unmounting the
+  // sidebar/right/bottom Panel mid-drag detaches the Separator element
+  // from the DOM while react-resizable-panels still holds a pointer
+  // capture on it; the lib then crashes with `setPointerCapture
+  // InvalidStateError` and a follow-up `toFixed of undefined` from its
+  // layout math. Collecting the requested closes here and applying them
+  // on pointerup keeps the Separator alive for the duration of the drag.
+  const pendingCloseRef = useRef<Set<"sidebar" | "right" | "bottom">>(new Set());
+  useEffect(() => {
+    const handlePointerUp = () => {
+      if (pendingCloseRef.current.size === 0) return;
+      const pending = pendingCloseRef.current;
+      if (pending.has("sidebar")) setSidebarOpen(false);
+      if (pending.has("right")) setRightPanelOpen(false);
+      if (pending.has("bottom")) setBottomPanelOpen(false);
+      pending.clear();
+    };
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [setSidebarOpen, setRightPanelOpen, setBottomPanelOpen]);
+
+  // Vertical (editor / bottom panel) layout — separate persistence so it
+  // does not interact with the horizontal sidebar/right toggles. The bottom
+  // panel id is only listed when it is currently mounted (lib requirement).
+  const verticalPanelIds = React.useMemo(() => {
+    const ids: string[] = ["editor"];
+    if (isBottomPanelOpen) ids.push("bottom");
+    return ids;
+  }, [isBottomPanelOpen]);
+  const {
+    defaultLayout: verticalDefaultLayout,
+    onLayoutChanged: onVerticalLayoutChanged,
+  } = useDefaultLayout({
+    id: "trixty.layout.center-v.v1",
+    panelIds: verticalPanelIds,
+    storage: typeof window !== "undefined" ? window.localStorage : NOOP_LAYOUT_STORAGE,
+  });
 
   if (!isInitialLoadComplete) {
     return <div className="bg-surface-0 w-screen h-screen" />;
@@ -287,58 +389,149 @@ export default function Home() {
     return <OnboardingWizard />;
   }
 
+  // Zen Mode: hide everything except editor + status bar. Esc exits.
+  if (isZenMode) {
+    return (
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-0 text-[#999] font-sans">
+        <div className="flex-1 overflow-hidden bg-surface-2 min-h-0">
+          <ErrorBoundary name="Editor Area (Zen)">
+            {openFiles.length > 0 ? <EditorArea /> : <WelcomeScreen />}
+          </ErrorBoundary>
+        </div>
+        <StatusBar />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-0 text-[#999] font-sans">
       <TitleBar />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Activity Bar — fixed 48px */}
+        {/* Activity Bar — fixed 48px, sits outside the resizable group so
+            its width never participates in the layout math. */}
         <ActivityBar />
 
-        {/* Sidebar Slot — conditionally rendered */}
-        {isSidebarOpen && (
-          <div className="h-full border-r border-border-subtle" style={{ width: 260 }}>
-            <LeftSidebarSlot />
-          </div>
-        )}
-
-        {/* Center area: editor on top, terminal on bottom */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-          {/* Editor / Welcome — takes remaining space */}
-          <div className="flex-1 overflow-hidden bg-surface-2">
-            <ErrorBoundary name="Editor Area">
-              {openFiles.length > 0 ? (
-                <EditorArea />
-              ) : (
-                <WelcomeScreen />
-              )}
-            </ErrorBoundary>
-          </div>
-
-          {/* Bottom Panel (Terminal / Ports) — fixed height at bottom */}
-          {isBottomPanelOpen && (
-            <div className="h-[300px] shrink-0">
-              <ErrorBoundary name="Bottom Panel">
-                <BottomPanel />
-              </ErrorBoundary>
-            </div>
+        {/* Horizontal resizable group: sidebar | center | right (| reviewer).
+            Sizes persist across sessions via `autoSaveId` (localStorage).
+            Conditionally-mounted panels keep their `id` so react-resizable-
+            panels can restore the correct slice when they reappear. */}
+        <ResizablePanelGroup
+          orientation="horizontal"
+          defaultLayout={defaultLayout}
+          onLayoutChanged={onLayoutChanged}
+          className="flex-1"
+        >
+          {isSidebarOpen && (
+            <>
+              <ResizablePanel
+                id="sidebar"
+                defaultSize="18%"
+                minSize="10%"
+                maxSize="40%"
+                collapsible
+                collapsedSize="0%"
+                // v4 has no `onCollapse` — detect via `onResize` and flip
+                // the open flag when the panel reaches its collapsed size
+                // so the slot unmounts (matches the toggle / keyboard
+                // shortcut UX).
+                onResize={(panelSize) => {
+                  if (panelSize.asPercentage === 0) {
+                    pendingCloseRef.current.add("sidebar");
+                  }
+                }}
+              >
+                <div className="h-full border-r border-border-subtle">
+                  <LeftSidebarSlot overlayViewId={overlayViewId} />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle />
+            </>
           )}
-        </div>
 
-        {/* Right Panel (AI) */}
-        {isRightPanelOpen && (
-          <div className="w-[380px] shrink-0 h-full border-l border-border-subtle">
-            <ErrorBoundary name="AI Panel">
-              <RightPanelSlot />
-            </ErrorBoundary>
-          </div>
-        )}
+          {/* v4 parses bare numbers as pixels (see `bt()` in
+              react-resizable-panels), so percent values MUST be passed as
+              strings with the `%` suffix. */}
+          <ResizablePanel id="center" defaultSize="58%" minSize="30%">
+            <ResizablePanelGroup
+              orientation="vertical"
+              defaultLayout={verticalDefaultLayout}
+              onLayoutChanged={onVerticalLayoutChanged}
+              className="h-full"
+            >
+              <ResizablePanel
+                id="editor"
+                defaultSize="70%"
+                minSize="20%"
+              >
+                <div className="h-full overflow-hidden bg-surface-2">
+                  <ErrorBoundary name="Editor Area">
+                    {openFiles.length > 0 ? (
+                      <EditorArea />
+                    ) : (
+                      <WelcomeScreen />
+                    )}
+                  </ErrorBoundary>
+                </div>
+              </ResizablePanel>
+              {isBottomPanelOpen && (
+                <>
+                  <ResizableHandle />
+                  <ResizablePanel
+                    id="bottom"
+                    defaultSize="30%"
+                    minSize="10%"
+                    maxSize="70%"
+                    collapsible
+                    collapsedSize="0%"
+                    onResize={(panelSize) => {
+                      if (panelSize.asPercentage === 0) {
+                        pendingCloseRef.current.add("bottom");
+                      }
+                    }}
+                  >
+                    <div className="h-full overflow-hidden">
+                      <ErrorBoundary name="Bottom Panel">
+                        <BottomPanel />
+                      </ErrorBoundary>
+                    </div>
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
+          </ResizablePanel>
 
-        {/* Reviewer Panel — only mounts when there's a destructive tool
-            approval pending AND the viewport is wide enough to spare the
-            480 px column. On narrower windows the AI chat falls back to the
-            inline approval dialog so the approval UX never becomes unreachable. */}
-        <ReviewerColumn />
+          {isRightPanelOpen && (
+            <>
+              <ResizableHandle />
+              <ResizablePanel
+                id="right-panel"
+                defaultSize="24%"
+                minSize="14%"
+                maxSize="45%"
+                collapsible
+                collapsedSize="0%"
+                onResize={(panelSize) => {
+                  if (panelSize.asPercentage === 0) {
+                    pendingCloseRef.current.add("right");
+                  }
+                }}
+              >
+                <div className="h-full border-l border-border-subtle">
+                  <ErrorBoundary name="AI Panel">
+                    <RightPanelSlot overlayViewId={overlayViewId} />
+                  </ErrorBoundary>
+                </div>
+              </ResizablePanel>
+            </>
+          )}
+
+          {/* Reviewer Panel — only mounts when there's a destructive tool
+              approval pending AND the viewport is wide enough to spare the
+              column. On narrower windows the AI chat falls back to the inline
+              approval dialog so the approval UX never becomes unreachable. */}
+          <ReviewerColumn />
+        </ResizablePanelGroup>
       </div>
 
       {/* Settings is a modal: only mount it when open so `next/dynamic` can
@@ -348,6 +541,8 @@ export default function Home() {
 
       {/* Updater notification — checks on mount, shows toast when update is available */}
       <UpdaterDialog />
+
+      <StatusBar />
     </div>
   );
 }
@@ -363,10 +558,20 @@ function ReviewerColumn() {
     return null;
   }
   return (
-    <div className="w-[480px] shrink-0 h-full">
-      <ErrorBoundary name="Reviewer Panel">
-        <ReviewerPanel />
-      </ErrorBoundary>
-    </div>
+    <>
+      <ResizableHandle />
+      <ResizablePanel
+        id="reviewer"
+        defaultSize="30%"
+        minSize="20%"
+        maxSize="55%"
+      >
+        <div className="h-full">
+          <ErrorBoundary name="Reviewer Panel">
+            <ReviewerPanel />
+          </ErrorBoundary>
+        </div>
+      </ResizablePanel>
+    </>
   );
 }

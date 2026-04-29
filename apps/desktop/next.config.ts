@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
   output: 'export',
+  outputFileTracingRoot: path.join(__dirname, "../../"),
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     unoptimized: true,
   },
@@ -28,9 +33,6 @@ const nextConfig: NextConfig = {
       "remark-gfm",
       "tailwind-merge"
     ],
-    // Mejora el rendimiento de compilación en Windows
-    webpackBuildWorker: true,
-    parallelServerCompiles: true,
   },
   // Configuración simplificada de indicadores para evitar errores de tipos
   devIndicators: {

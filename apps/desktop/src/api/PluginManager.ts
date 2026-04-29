@@ -43,8 +43,28 @@ import { promptForApproval } from "@/api/sandbox/approvalPrompt";
 const liveSandboxes = new Map<string, SandboxHandle>();
 
 export class PluginManager {
-    static async bootstrap() {
+    /**
+     * Full bootstrap: translations + built-in addons + language addons +
+     * third-party extensions (with grant prompts and sandbox workers).
+     * Used by the main window.
+     *
+     * Pass `{ skipExternalAddons: true }` from auxiliary windows (e.g. the
+     * floating-view route) so we do not double-spawn extension workers and
+     * do not surface approval modals in a window that has no business
+     * gating grants.
+     */
+    static async bootstrap(opts: { skipExternalAddons?: boolean } = {}) {
         logger.debug("[PluginManager] Bootstrapping built-in extensions and localizations...");
+
+        // One-shot cleanup of legacy panel-layout keys saved before the
+        // `.v3` rename (numeric `defaultSize` was being treated as pixels).
+        // Idempotent on subsequent boots.
+        try {
+            const { cleanLegacyLayoutKeys } = await import("@/api/layoutReset");
+            cleanLegacyLayoutKeys();
+        } catch (e) {
+            logger.warn("[PluginManager] legacy layout cleanup failed:", e);
+        }
 
         // Load translations first
         registerBuiltinTranslations();
@@ -97,11 +117,28 @@ export class PluginManager {
             logger.error("Failed to activate language addons", e);
         }
 
+        if (opts.skipExternalAddons) {
+            logger.debug("[PluginManager] Skipping external addons (auxiliary window).");
+            return;
+        }
+
         // Dynamically load external scripts from Tauri File System
         try {
             await this.loadExternalAddons();
         } catch (e) {
             logger.error("Failed to load external addons", e);
+        }
+
+        // Restore previously-detached floating views. Runs only in the main
+        // window (skipExternalAddons=false code path) so auxiliary windows
+        // never spawn duplicates of their siblings on boot.
+        try {
+            const { floatingWindowRegistry } = await import(
+                "@/api/floatingWindowRegistry"
+            );
+            await floatingWindowRegistry.hydrateFromStore();
+        } catch (e) {
+            logger.warn("[PluginManager] floating-window hydrate failed:", e);
         }
     }
 

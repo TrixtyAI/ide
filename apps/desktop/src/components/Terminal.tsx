@@ -27,14 +27,33 @@ interface TerminalProps {
   isActive: boolean;
 }
 
+// "No PTY session with id ..." is expected noise whenever a resize lands on
+// the Rust side after `kill_pty` has already swept the session — most
+// commonly during React 18 strict-mode double-mount or while the user is
+// dragging panel handles right after closing the bottom panel. Demote
+// these to debug so the real PTY problems stay visible.
+function logPtyError(label: string, err: unknown): void {
+  const msg = typeof err === "string" ? err : JSON.stringify(err);
+  if (msg.includes("No PTY session with id")) {
+    logger.debug(`${label} (session already gone):`, err);
+    return;
+  }
+  logger.error(label, err);
+}
+
 const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
   const { t } = useL10n();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  // Set to false during effect cleanup so any in-flight ResizeObserver
+  // callback that fires after teardown can short-circuit before it tries
+  // to resize a session we just killed.
+  const aliveRef = useRef(false);
 
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
+    aliveRef.current = true;
 
     const term = new Xterm({
       cursorBlink: true,
@@ -88,13 +107,33 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
     });
 
     const resizeObserver = new ResizeObserver(() => {
-      if (terminalRef.current && terminalRef.current.clientWidth > 0) {
-        fitAddon.fit();
-        invoke("resize_pty", {
-          sessionId,
-          rows: term.rows,
-          cols: term.cols,
-        }).catch((e) => logger.error("PTY resize error:", e));
+      if (!aliveRef.current) return;
+      if (
+        terminalRef.current &&
+        terminalRef.current.clientWidth > 0 &&
+        terminalRef.current.clientHeight > 0
+      ) {
+        // xterm's fit() can throw "invalid range" when rows/cols compute to
+        // <= 0 — happens mid-resize while the bottom panel container is
+        // collapsing. Wrap to keep the observer alive.
+        try {
+          fitAddon.fit();
+        } catch (err) {
+          logger.debug("[terminal] fit skipped:", err);
+          return;
+        }
+        // Skip resize when xterm reports 0 rows/cols — happens while the
+        // bottom panel is mid-collapse (display:none container). The Rust
+        // PTY rejects these as "invalid range".
+        if (term.rows < 1 || term.cols < 1) return;
+        // `silent: true` keeps `safeInvoke` from emitting its own
+        // `[Tauri Invoke Error]` console line — we route the error through
+        // `logPtyError` so "session already gone" gets demoted to debug.
+        invoke(
+          "resize_pty",
+          { sessionId, rows: term.rows, cols: term.cols },
+          { silent: true },
+        ).catch((e) => logPtyError("PTY resize error:", e));
       }
     });
     resizeObserver.observe(terminalRef.current);
@@ -103,8 +142,20 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
     // offsetWidth on the container and can return 0 if the bottom panel is
     // still animating in.
     const initialFitTimer = window.setTimeout(() => {
-      if (terminalRef.current && terminalRef.current.clientWidth > 0) {
-        fitAddon.fit();
+      if (
+        terminalRef.current &&
+        terminalRef.current.clientWidth > 0 &&
+        terminalRef.current.clientHeight > 0
+      ) {
+        // xterm's fit() can throw "invalid range" when rows/cols compute to
+        // <= 0 — happens mid-resize while the bottom panel container is
+        // collapsing. Wrap to keep the observer alive.
+        try {
+          fitAddon.fit();
+        } catch (err) {
+          logger.debug("[terminal] fit skipped:", err);
+          return;
+        }
       }
     }, 150);
 
@@ -128,8 +179,15 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
 
         // Pre-fit before spawning so the shell starts with the correct
         // dimensions instead of reflowing on the first prompt.
-        if (terminalRef.current?.clientWidth) {
-          fitAddon.fit();
+        if (
+          terminalRef.current?.clientWidth &&
+          terminalRef.current?.clientHeight
+        ) {
+          try {
+            fitAddon.fit();
+          } catch (err) {
+            logger.debug("[terminal] pre-spawn fit skipped:", err);
+          }
         }
 
         await invoke("spawn_pty", {
@@ -151,6 +209,7 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
 
     return () => {
       isCanceled = true;
+      aliveRef.current = false;
       window.clearTimeout(initialFitTimer);
       resizeObserver.disconnect();
       if (unlisten) unlisten();
@@ -159,8 +218,8 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
       fitAddonRef.current = null;
       // Tear down the Rust-side session. `kill_pty` is a no-op on unknown
       // ids, so a double-unmount (StrictMode, fast refresh) is safe.
-      invoke("kill_pty", { sessionId }).catch((e) =>
-        logger.error("PTY cleanup error:", e),
+      invoke("kill_pty", { sessionId }, { silent: true }).catch((e) =>
+        logPtyError("PTY cleanup error:", e),
       );
     };
     // Intentional deps: sessionId and cwd are captured at mount time. If
@@ -178,12 +237,18 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
     const term = xtermRef.current;
     const fit = fitAddonRef.current;
     if (!term || !fit || !terminalRef.current?.clientWidth) return;
-    fit.fit();
-    invoke("resize_pty", {
-      sessionId,
-      rows: term.rows,
-      cols: term.cols,
-    }).catch((e) => logger.error("PTY resize error:", e));
+    try {
+      fit.fit();
+    } catch (err) {
+      logger.debug("[terminal] active-tab fit skipped:", err);
+      return;
+    }
+    if (term.rows < 1 || term.cols < 1) return;
+    invoke(
+      "resize_pty",
+      { sessionId, rows: term.rows, cols: term.cols },
+      { silent: true },
+    ).catch((e) => logPtyError("PTY resize error:", e));
   }, [isActive, sessionId]);
 
   return (

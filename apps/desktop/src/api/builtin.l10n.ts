@@ -192,6 +192,12 @@ export function registerBuiltinTranslations() {
         'panel.bottom.terminal_close_tab': 'Close terminal',
 
         'panel.right.no_addons': 'No addons active',
+        'panel.view.collapse': 'Toggle collapse',
+        'panel.view.popout': 'Open in floating window',
+        'panel.view.in_floating_window': '{name} is open in a floating window',
+        'panel.view.dock_back': 'Dock back',
+        'panel.view.bring_to_front': 'Bring window to front',
+        'panel.view.drop_to_redock': 'Drop here to dock back',
         'panel.right.toggle': 'Toggle Secondary Sidebar (Ctrl+L)',
         'panel.right.assistant': 'Assistant',
 
@@ -609,6 +615,12 @@ export function registerBuiltinTranslations() {
         'panel.bottom.terminal_close_tab': 'Cerrar terminal',
 
         'panel.right.no_addons': 'Sin addons activos',
+        'panel.view.collapse': 'Alternar colapso',
+        'panel.view.popout': 'Abrir en ventana flotante',
+        'panel.view.in_floating_window': '{name} está abierto en una ventana flotante',
+        'panel.view.dock_back': 'Acoplar al panel',
+        'panel.view.bring_to_front': 'Traer ventana al frente',
+        'panel.view.drop_to_redock': 'Suelta aquí para acoplar',
         'panel.right.toggle': 'Alternar Barra Lateral Secundaria (Ctrl+L)',
         'panel.right.assistant': 'Asistente',
 
