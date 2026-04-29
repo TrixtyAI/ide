@@ -64,6 +64,14 @@ html2text = "0.12"
 tauri-plugin-http = "2"
 notify = "6"
 url = "2"
+# OS-native secret store: macOS Keychain, Windows Credential Manager,
+# Linux Secret Service / kwallet. Used to back AI provider API keys
+# instead of writing them to `settings.json` plaintext. Pinned to 3.x
+# because keyring 4.x pulls `turso` (an embedded SQLite engine) and
+# `bon-macros` as transitive deps for its DB-backed unified store —
+# none of which we use; our `Entry::new` flow only needs the native
+# OS keychain backends that 3.x exposes by default.
+keyring = "3"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
