@@ -96,6 +96,17 @@ export interface TauriInvokeMap {
   "ollama_proxy": { args: { method: string; url: string; body: OllamaRequest }; return: { status: number; body: string } };
   "ollama_proxy_stream": { args: { streamId: string; method: string; url: string; body: OllamaRequest }; return: void };
   "ollama_proxy_cancel": { args: { streamId: string }; return: void };
+  // Generic HTTPS proxy for cloud-AI providers (OpenAI, Anthropic, Gemini,
+  // OpenRouter). Host whitelist enforced on the Rust side.
+  "cloud_proxy": {
+    args: {
+      method: string;
+      url: string;
+      headers?: Array<[string, string]>;
+      body?: unknown;
+    };
+    return: { status: number; body: string };
+  };
   "check_update": { args: { channel?: "stable" | "pre-release" }; return: { version: string; body?: string | null } | null };
   "install_update": { args: { channel?: "stable" | "pre-release" }; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };

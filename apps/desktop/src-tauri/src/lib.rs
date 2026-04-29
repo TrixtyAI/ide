@@ -1532,6 +1532,90 @@ async fn ollama_proxy(
     })
 }
 
+/// Hosts the `cloud_proxy` command is allowed to reach. Restricting this
+/// list defends against a compromised renderer or extension turning the
+/// command into a generic SSRF gadget — the Rust side, unlike the
+/// renderer's CSP, can talk to any HTTPS host on the public internet.
+const CLOUD_PROXY_ALLOWED_HOSTS: &[&str] = &[
+    "api.openai.com",
+    "api.anthropic.com",
+    "generativelanguage.googleapis.com",
+    "openrouter.ai",
+];
+
+fn validate_cloud_proxy_url(raw: &str) -> Result<(), String> {
+    let parsed =
+        reqwest::Url::parse(raw).map_err(|e| format!("Cloud URL is not a valid URL: {}", e))?;
+
+    if parsed.scheme() != "https" {
+        return Err(format!(
+            "Cloud URL scheme must be https, got: {}",
+            parsed.scheme()
+        ));
+    }
+
+    let host = parsed
+        .host_str()
+        .filter(|h| !h.is_empty())
+        .ok_or_else(|| "Cloud URL must have a host".to_string())?;
+
+    if !CLOUD_PROXY_ALLOWED_HOSTS.contains(&host) {
+        return Err(format!(
+            "Cloud URL host {} is not on the cloud-proxy allow-list",
+            host
+        ));
+    }
+
+    Ok(())
+}
+
+/// Generic HTTPS proxy for cloud-AI providers (OpenAI, Anthropic, Gemini,
+/// OpenRouter). The renderer cannot hit these hosts directly because the
+/// Tauri CSP locks `connect-src` down to `'self'` + the IPC scheme — by
+/// design, so a compromised webview cannot exfiltrate to arbitrary
+/// endpoints. The Rust side validates the host against
+/// `CLOUD_PROXY_ALLOWED_HOSTS` and forwards the request with the
+/// caller-provided auth header.
+///
+/// Headers are passed as a `[name, value]` tuple list because
+/// `serde_json::Value` would otherwise deserialize a JS object with a
+/// non-deterministic key order.
+#[tauri::command]
+async fn cloud_proxy(
+    method: String,
+    url: String,
+    headers: Option<Vec<(String, String)>>,
+    body: Option<serde_json::Value>,
+) -> Result<ProxyResponse, String> {
+    validate_cloud_proxy_url(&url)?;
+
+    let client = http::shared_client();
+    let mut request = match method.as_str() {
+        "POST" => client.post(&url),
+        "GET" => client.get(&url),
+        _ => return Err(format!("Unsupported method: {}", method)),
+    };
+
+    if let Some(pairs) = headers {
+        for (name, value) in pairs {
+            request = request.header(name, value);
+        }
+    }
+
+    if let Some(json_body) = body {
+        request = request.json(&json_body);
+    }
+
+    let response = request.send().await.map_err(|e| e.to_string())?;
+    let status = response.status().as_u16();
+    let response_body = response.text().await.map_err(|e| e.to_string())?;
+
+    Ok(ProxyResponse {
+        status,
+        body: response_body,
+    })
+}
+
 /// Payload of the `ollama-stream` event. Fields use camelCase on the wire
 /// because the TypeScript bindings in `api/tauri.ts` expect camelCase —
 /// `#[serde(rename_all = "camelCase")]` does the conversion per field.
@@ -2083,6 +2167,7 @@ pub fn run() {
             ollama_proxy,
             ollama_proxy_stream,
             ollama_proxy_cancel,
+            cloud_proxy,
             create_directory,
             reveal_path,
             delete_path,

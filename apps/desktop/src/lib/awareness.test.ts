@@ -39,6 +39,11 @@ const baseParams = {
         debounceMs: 250,
         maxTokens: 64,
       },
+      allowProviderKeys: false,
+      providerKeys: { openai: "", anthropic: "", gemini: "", openrouter: "" },
+      providerModels: { ollama: [], openai: [], anthropic: [], gemini: [], openrouter: [] },
+      activeProvider: "ollama" as const,
+      lastModelByProvider: {},
     },
     editor: {
       fontSize: 14,

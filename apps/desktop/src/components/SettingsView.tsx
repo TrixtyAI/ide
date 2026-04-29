@@ -37,6 +37,7 @@ const SettingsView: React.FC = () => {
     setLocale,
     systemSettings,
     updateSystemSettings,
+    aiSettings,
   } = useSettings();
   const { isSettingsOpen, setSettingsOpen } = useUI();
   const resetApp = useResetApp();
@@ -79,22 +80,29 @@ Node.js: ${systemInfo.node_version}
 
   if (!isSettingsOpen) return null;
 
+  const agentChildren = [
+    { id: "agent:profile", label: t('agent.tab.profile') },
+    { id: "agent:manual", label: t('agent.tab.manual') },
+    { id: "agent:user", label: t('agent.tab.user') },
+    { id: "agent:design", label: t('agent.tab.design') },
+    { id: "agent:skills", label: t('agent.tab.skills') },
+    { id: "agent:documentations", label: t('agent.tab.documentations') },
+    { id: "agent:memory", label: t('agent.tab.memory') },
+    { id: "agent:configuration", label: t('agent.tab.configuration') },
+  ];
+  // Issue #267: Provider Keys submenu only appears once the master
+  // switch in `agent.configuration` is on.
+  if (aiSettings.allowProviderKeys) {
+    agentChildren.push({ id: "agent:provider-keys", label: "Provider Keys" });
+  }
+
   const categories = [
     { id: "general", label: t('settings.general'), icon: Settings2 },
     {
       id: "agent",
       label: t('agent.title'),
       icon: Bot,
-      children: [
-        { id: "agent:profile", label: t('agent.tab.profile') },
-        { id: "agent:manual", label: t('agent.tab.manual') },
-        { id: "agent:user", label: t('agent.tab.user') },
-        { id: "agent:design", label: t('agent.tab.design') },
-        { id: "agent:skills", label: t('agent.tab.skills') },
-        { id: "agent:documentations", label: t('agent.tab.documentations') },
-        { id: "agent:memory", label: t('agent.tab.memory') },
-        { id: "agent:configuration", label: t('agent.tab.configuration') },
-      ]
+      children: agentChildren,
     },
     { id: "application", label: t('settings.application'), icon: Globe },
     { id: "about", label: t('settings.about'), icon: Info },
@@ -121,7 +129,7 @@ Node.js: ${systemInfo.node_version}
                {t(`agent.${currentSub}.desc`)}
              </p>
            </div>
-          <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration')} />
+          <AgentSettings activeTab={(currentSub as 'profile' | 'manual' | 'user' | 'skills' | 'documentations' | 'design' | 'memory' | 'configuration' | 'provider-keys')} />
         </div>
       );
     }
