@@ -576,6 +576,9 @@ async fn execute_command(
     // explicitly instead of relying on the wrapper.
     let mut cmd = silent_command(&command);
     cmd.args(&args);
+    if let Some(dir) = cwd.filter(|d| !d.is_empty()) {
+        cmd.current_dir(dir);
+    }
 
     if let Some(path) = cwd {
         cmd.current_dir(path);
@@ -1572,21 +1575,92 @@ async fn ollama_proxy(
     })
 }
 
-/// Hosts the `cloud_proxy` command is allowed to reach. Restricting this
-/// list defends against a compromised renderer or extension turning the
-/// command into a generic SSRF gadget — the Rust side, unlike the
-/// renderer's CSP, can talk to any HTTPS host on the public internet.
-const CLOUD_PROXY_ALLOWED_HOSTS: &[&str] = &[
-    "api.openai.com",
-    "api.anthropic.com",
-    "generativelanguage.googleapis.com",
-    "openrouter.ai",
-    // npm registry — used by the visual package.json installer
-    // (issue #264). Read-only public API, no auth required.
-    "registry.npmjs.org",
+/// Per-host policy for the `cloud_proxy` command. Each entry pins:
+/// - the HTTP methods the renderer may invoke,
+/// - the path prefixes those methods may target,
+/// - the request headers the renderer may forward.
+///
+/// Without this, `cloud_proxy` would degrade into a generic SSRF gadget
+/// the moment a webview was compromised — it could swap `Authorization`
+/// for an attacker-controlled key, smuggle `Host`, mint npm publish
+/// tokens via `POST /-/npm/v1/tokens`, etc. The renderer's CSP locks
+/// `connect-src` down so the webview itself cannot reach these hosts
+/// directly; this Rust gate is the second layer.
+struct CloudProxyHostPolicy {
+    host: &'static str,
+    /// `(method, path-prefix)` tuples. `*` as the prefix means "any
+    /// path on this host".
+    routes: &'static [(&'static str, &'static str)],
+    /// Lower-cased header names the renderer may forward. Anything not
+    /// on the list is dropped silently — Rust does not echo failures
+    /// because that would leak the policy shape to a probing renderer.
+    allowed_headers: &'static [&'static str],
+}
+
+const COMMON_HEADERS: &[&str] = &["authorization", "content-type", "accept"];
+const OPENAI_HEADERS: &[&str] = &[
+    "authorization",
+    "content-type",
+    "accept",
+    "openai-beta",
+    "openai-organization",
+    "openai-project",
+];
+const ANTHROPIC_HEADERS: &[&str] = &[
+    "x-api-key",
+    "anthropic-version",
+    "anthropic-beta",
+    "content-type",
+    "accept",
+];
+const GEMINI_HEADERS: &[&str] = &["x-goog-api-key", "content-type", "accept"];
+const OPENROUTER_HEADERS: &[&str] = &[
+    "authorization",
+    "content-type",
+    "accept",
+    "http-referer",
+    "x-title",
 ];
 
-fn validate_cloud_proxy_url(raw: &str) -> Result<(), String> {
+const CLOUD_PROXY_HOST_POLICIES: &[CloudProxyHostPolicy] = &[
+    CloudProxyHostPolicy {
+        host: "api.openai.com",
+        routes: &[("POST", "/v1/")],
+        allowed_headers: OPENAI_HEADERS,
+    },
+    CloudProxyHostPolicy {
+        host: "api.anthropic.com",
+        routes: &[("POST", "/v1/")],
+        allowed_headers: ANTHROPIC_HEADERS,
+    },
+    CloudProxyHostPolicy {
+        host: "generativelanguage.googleapis.com",
+        routes: &[("POST", "/v1beta/models/"), ("POST", "/v1/models/")],
+        allowed_headers: GEMINI_HEADERS,
+    },
+    CloudProxyHostPolicy {
+        host: "openrouter.ai",
+        routes: &[("POST", "/api/v1/")],
+        allowed_headers: OPENROUTER_HEADERS,
+    },
+    CloudProxyHostPolicy {
+        // npm registry — used by the visual package.json installer
+        // (issue #264). Read-only paths only: search + per-package
+        // metadata. Publish / token / login endpoints stay blocked
+        // even though they live on the same host.
+        host: "registry.npmjs.org",
+        routes: &[("GET", "/-/v1/search"), ("GET", "/")],
+        allowed_headers: COMMON_HEADERS,
+    },
+];
+
+/// Validate the URL + method against the per-host policy. Returns the
+/// matched policy on success so the caller can use it for header
+/// filtering without re-walking the table.
+fn validate_cloud_proxy_request(
+    raw: &str,
+    method: &str,
+) -> Result<&'static CloudProxyHostPolicy, String> {
     let parsed =
         reqwest::Url::parse(raw).map_err(|e| format!("Cloud URL is not a valid URL: {}", e))?;
 
@@ -1597,28 +1671,56 @@ fn validate_cloud_proxy_url(raw: &str) -> Result<(), String> {
         ));
     }
 
-    let host = parsed
+    // Normalize the host: strip trailing FQDN dots and lower-case so
+    // `Api.OpenAI.com.` does not slip past the contains-check.
+    let raw_host = parsed
         .host_str()
         .filter(|h| !h.is_empty())
         .ok_or_else(|| "Cloud URL must have a host".to_string())?;
+    let host = raw_host.trim_end_matches('.').to_ascii_lowercase();
 
-    if !CLOUD_PROXY_ALLOWED_HOSTS.contains(&host) {
+    let policy = CLOUD_PROXY_HOST_POLICIES
+        .iter()
+        .find(|p| p.host == host)
+        .ok_or_else(|| {
+            format!(
+                "Cloud URL host {} is not on the cloud-proxy allow-list",
+                host
+            )
+        })?;
+
+    let path = parsed.path();
+    let method_upper = method.to_ascii_uppercase();
+    let path_match = policy.routes.iter().any(|(m, prefix)| {
+        if *m != method_upper {
+            return false;
+        }
+        if *prefix == "*" {
+            return true;
+        }
+        path.starts_with(prefix)
+    });
+    if !path_match {
         return Err(format!(
-            "Cloud URL host {} is not on the cloud-proxy allow-list",
-            host
+            "{} {} is not allowed for {}",
+            method_upper, path, host
         ));
     }
 
-    Ok(())
+    Ok(policy)
 }
 
+/// Hard caps the response body so a slow / hostile provider cannot
+/// chew through unbounded memory while we buffer. 16 MiB is plenty for
+/// chat completions and npm metadata; oversized responses are rejected
+/// with a 413-style error so the caller can surface a useful message.
+const CLOUD_PROXY_MAX_BODY: usize = 16 * 1024 * 1024;
+const CLOUD_PROXY_TIMEOUT_SECS: u64 = 60;
+
 /// Generic HTTPS proxy for cloud-AI providers (OpenAI, Anthropic, Gemini,
-/// OpenRouter). The renderer cannot hit these hosts directly because the
-/// Tauri CSP locks `connect-src` down to `'self'` + the IPC scheme — by
-/// design, so a compromised webview cannot exfiltrate to arbitrary
-/// endpoints. The Rust side validates the host against
-/// `CLOUD_PROXY_ALLOWED_HOSTS` and forwards the request with the
-/// caller-provided auth header.
+/// OpenRouter) plus the read-only npm registry. The Rust side enforces
+/// (a) host allow-list, (b) method + path policy per host, (c) header
+/// allow-list per host, (d) request timeout, (e) response body cap.
 ///
 /// Headers are passed as a `[name, value]` tuple list because
 /// `serde_json::Value` would otherwise deserialize a JS object with a
@@ -1630,7 +1732,7 @@ async fn cloud_proxy(
     headers: Option<Vec<(String, String)>>,
     body: Option<serde_json::Value>,
 ) -> Result<ProxyResponse, String> {
-    validate_cloud_proxy_url(&url)?;
+    let policy = validate_cloud_proxy_request(&url, &method)?;
 
     let client = http::shared_client();
     let mut request = match method.as_str() {
@@ -1639,8 +1741,17 @@ async fn cloud_proxy(
         _ => return Err(format!("Unsupported method: {}", method)),
     };
 
+    request = request.timeout(std::time::Duration::from_secs(CLOUD_PROXY_TIMEOUT_SECS));
+
     if let Some(pairs) = headers {
         for (name, value) in pairs {
+            // Header allow-list is per-host. `name` is matched
+            // case-insensitively to defeat `AuThOrIzAtIoN`-style
+            // bypasses; reqwest will normalize the wire form anyway.
+            let lower = name.to_ascii_lowercase();
+            if !policy.allowed_headers.iter().any(|h| *h == lower) {
+                continue;
+            }
             request = request.header(name, value);
         }
     }
@@ -1649,9 +1760,24 @@ async fn cloud_proxy(
         request = request.json(&json_body);
     }
 
-    let response = request.send().await.map_err(|e| e.to_string())?;
+    let mut response = request.send().await.map_err(|e| e.to_string())?;
     let status = response.status().as_u16();
-    let response_body = response.text().await.map_err(|e| e.to_string())?;
+
+    // Body buffered chunk-by-chunk so we can refuse responses that
+    // exceed the cap instead of `text()` swallowing the entire stream
+    // unconditionally. `Response::chunk` is part of reqwest's own API
+    // — no extra `futures` dep needed.
+    let mut buf: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
+        if buf.len() + chunk.len() > CLOUD_PROXY_MAX_BODY {
+            return Err(format!(
+                "Cloud response exceeded the {} MiB cap",
+                CLOUD_PROXY_MAX_BODY / (1024 * 1024)
+            ));
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    let response_body = String::from_utf8_lossy(&buf).into_owned();
 
     Ok(ProxyResponse {
         status,

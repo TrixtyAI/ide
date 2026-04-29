@@ -546,6 +546,33 @@ const AiChatComponent: React.FC = () => {
     if (activeProvider !== "ollama") {
       try {
         const cloudKey = keyForProvider(aiSettings.providerKeys, activeProvider);
+        // Guard against a stale `selectedModel` that belongs to a
+        // different provider than the one currently active — e.g. the
+        // user switched provider but never reopened the model menu.
+        // Fall back to the provider's last remembered model, then to
+        // the first curated entry, then bail out with a friendly
+        // error before we send a confusing 4xx.
+        const providerModelList =
+          aiSettings.providerModels[activeProvider] ?? [];
+        let modelToUse = selectedModel;
+        if (!providerModelList.includes(modelToUse)) {
+          modelToUse =
+            aiSettings.lastModelByProvider?.[activeProvider] ??
+            providerModelList[0] ??
+            "";
+          if (!modelToUse) {
+            addMessageToSession(activeSessionId, {
+              role: "ai",
+              text: `Error: no model registered for ${activeProvider}. Add one under Settings → Provider Keys.`,
+            });
+            setIsTyping(false);
+            abortControllerRef.current = null;
+            return;
+          }
+          // Sync the chat header so the user sees the model we
+          // actually used.
+          setSelectedModel(modelToUse);
+        }
         const cloudHistory: ProviderChatMessage[] = [
           { role: "system", content: getSystemPrompt() },
           ...activeSession.messages
@@ -559,7 +586,7 @@ const AiChatComponent: React.FC = () => {
         const result = await cloudChat({
           provider: activeProvider,
           apiKey: cloudKey,
-          model: selectedModel,
+          model: modelToUse,
           messages: cloudHistory,
           temperature: aiSettings.temperature,
           maxTokens: aiSettings.maxTokens,
@@ -793,11 +820,7 @@ const AiChatComponent: React.FC = () => {
             // tuples line up on the exact same string. Generating inside
             // `requestToolApproval` was tempting but would leave this outer
             // block without a handle on the id for the history entries below.
-            const generatedId =
-              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-                ? crypto.randomUUID()
-                : `cid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-            const callId = toolCall.id || generatedId;
+            const callId = toolCall.id || crypto.randomUUID();
 
             let result;
             // `effectiveArgs` holds the args actually passed to execution.

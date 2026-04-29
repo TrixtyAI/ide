@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   ChevronDown,
   Plus,
   Trash2,
   AlertTriangle,
+  FileWarning,
 } from "lucide-react";
 import type { VisualEditorProps } from "./getVisualEditor";
+
+/**
+ * Files larger than this are kept on the source view — re-stringifying
+ * the entire tree on every keystroke (which is what `commit()` has to
+ * do to round-trip through the file content) starts to stall the UI
+ * thread well before this point. 512 KB is generous for hand-edited
+ * JSON; auto-generated files like `package-lock.json` blow past it.
+ */
+const LARGE_FILE_BYTES = 512 * 1024;
 
 type JsonValue =
   | string
@@ -136,15 +146,46 @@ function valueLabel(v: JsonValue): string {
 }
 
 const JsonTreeEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
+  const isLarge = file.content.length > LARGE_FILE_BYTES;
   // Parsed root + error are derived directly from the prop. User edits
   // flow back through onChange so the next render sees the updated
   // content via the same `useMemo`. No local mirror = no
   // setState-in-effect.
-  const state = useMemo(() => parse(file.content), [file.content]);
+  const state = useMemo(
+    () => (isLarge ? { root: null, error: null } : parse(file.content)),
+    [file.content, isLarge],
+  );
+
+  // Track the last serialization we wrote out so a no-op edit
+  // (toggling a boolean back and forth) does not bounce the
+  // surrounding system through React + Monaco unnecessarily. The size
+  // guard above keeps the file small enough that one synchronous
+  // `JSON.stringify` per keystroke is cheap, so the previous debounce
+  // + optimistic-mirror complexity is unnecessary here.
+  const lastCommittedRef = useRef<string>(file.content);
 
   const commit = (next: JsonValue) => {
-    onChange(stringify(next));
+    const serialized = stringify(next);
+    if (serialized === lastCommittedRef.current) return;
+    lastCommittedRef.current = serialized;
+    onChange(serialized);
   };
+
+  if (isLarge) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#0e0e0e] p-6 text-center">
+        <div className="max-w-md p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-[12px] text-amber-200/85 flex flex-col items-center gap-3">
+          <FileWarning size={20} strokeWidth={1.6} className="text-amber-400/80" />
+          <p className="font-bold text-amber-300/90">Large JSON file</p>
+          <p className="text-[11px] text-[#888]">
+            Files over {Math.round(LARGE_FILE_BYTES / 1024)} KB stay on the
+            source view to keep editing responsive. Switch to Source above
+            to edit this file.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (state.error) {
     return (
