@@ -15,13 +15,23 @@ import { logger } from "@/lib/logger";
  * windows even when they share the same process.
  */
 export const WINDOW_SESSION_ID = (() => {
-  // Falls back to a non-crypto id for SSR / older runtimes. The Tauri
-  // webview always has `crypto.randomUUID`, so this branch only matters
-  // for vitest / jsdom test runs where the value is not network-visible.
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  return `win-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  // Older runtimes without `randomUUID` still expose WebCrypto's
+  // `getRandomValues`. We use it instead of `Math.random` so the id is
+  // unpredictable enough that any future security-sensitive use of
+  // `WINDOW_SESSION_ID` stays safe.
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const buf = new Uint32Array(2);
+    crypto.getRandomValues(buf);
+    return `win-${buf[0].toString(36)}${buf[1].toString(36)}-${Date.now()}`;
+  }
+  // Last-resort fallback for environments without WebCrypto (very old
+  // jsdom, etc.). The id is only used to suppress event echos; in this
+  // path collisions only cause a duplicate apply, which our consumers
+  // already handle idempotently.
+  return `win-${Date.now().toString(36)}-${performance.now().toString(36)}`;
 })();
 
 /**
