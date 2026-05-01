@@ -115,8 +115,8 @@ const TabBar: React.FC = () => {
       className="flex bg-surface-1 h-[36px] overflow-x-auto scrollbar-none border-b border-border-subtle shrink-0"
     >
       {openFiles.map((file) => {
-        const isActive = currentFile && 
-          file.path.replace(/\\/g, "/").toLowerCase() === currentFile.path.replace(/\\/g, "/").toLowerCase();
+        const isActive = !!(currentFile && 
+          file.path.replace(/\\/g, "/").toLowerCase() === currentFile.path.replace(/\\/g, "/").toLowerCase());
         return (
           <div
             key={file.path}
