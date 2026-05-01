@@ -56,6 +56,11 @@ const baseParams = {
       hasCompletedOnboarding: true,
       filesExclude: ["**/node_modules"],
       updateChannel: "stable" as const,
+      discord: {
+        enabled: true,
+        showDetails: true,
+        allowCollaboration: false,
+      },
     },
     locale: "es",
   },
