@@ -300,7 +300,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       agentMeta.set("isLoading", isLoading);
     } else {
       const updateFromY = () => {
-        const remoteMode = agentMeta.get("chatMode") as any;
+        const remoteMode = agentMeta.get("chatMode") as 'agent' | 'planner' | 'ask';
         if (remoteMode) _setChatMode(remoteMode);
         
         const remoteLoading = agentMeta.get("isLoading") as boolean;

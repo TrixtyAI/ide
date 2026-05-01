@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useCollaboration } from "@/context/CollaborationContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { logger } from "@/lib/logger";
 
 import * as Y from "yjs";
 
@@ -30,7 +31,7 @@ export function useWorkspaceSync() {
       // Deep sync? Careful with performance on large repos.
       // In a real IDE, we'd only sync what's visible or use a more efficient protocol.
     } catch (err) {
-      console.error("[WorkspaceSync] Failed to sync directory:", path, err);
+      logger.error("[WorkspaceSync] Failed to sync directory:", path, err);
     }
   }, []);
 
@@ -61,7 +62,7 @@ export function useWorkspaceSync() {
               sharedText.insert(0, content);
             }
           } catch (err) {
-            console.error("[WorkspaceSync] Failed to fulfill file request:", path, err);
+            logger.error("[WorkspaceSync] Failed to fulfill file request:", path, err);
           }
         }
       }

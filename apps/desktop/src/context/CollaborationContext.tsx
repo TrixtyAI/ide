@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
@@ -65,6 +65,25 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     toast.success("Collaboration session started!");
   }, []);
 
+  const acceptJoin = useCallback(async (userId: string) => {
+    try {
+      await invoke("accept_discord_join_request", { userId });
+      toast.success("Accepted join request");
+    } catch {
+      toast.error("Failed to accept join request");
+    }
+  }, []);
+
+  const rejectJoin = useCallback(async (userId: string) => {
+    try {
+      await invoke("reject_discord_join_request", { userId });
+      toast.info("Rejected join request");
+    } catch {
+      toast.error("Failed to reject join request");
+    }
+  }, []);
+
+
   useEffect(() => {
     // Check for initial join secret from CLI
     invoke<string | null>("get_initial_join_secret").then((secret) => {
@@ -77,7 +96,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     });
 
     // Listen for Discord RPC events
-    const unlisten = listen("discord-rpc-event", (event: { payload: any }) => {
+    const unlisten = listen("discord-rpc-event", (event: { payload: { evt: string; data: { user: { username: string; id: string } } } }) => {
       const { evt, data } = event.payload;
       if (evt === "ACTIVITY_JOIN_REQUEST") {
         const { user } = data;
@@ -93,7 +112,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [acceptJoin, rejectJoin]);
 
   // Effect to manage Yjs session lifecycle
   useEffect(() => {
@@ -118,48 +137,32 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
       setActiveUsers(Array.from(webrtcProvider.awareness.getStates().values()));
     });
 
-    setProvider(webrtcProvider);
+    const timer = setTimeout(() => setProvider(webrtcProvider), 0);
 
     return () => {
+      clearTimeout(timer);
       webrtcProvider.destroy();
       setProvider(null);
     };
-  }, [isCollaborating, joinSecret, ydoc]);
+  }, [isCollaborating, joinSecret, ydoc, systemSettings.discord?.enabled]);
 
   // Sync with settings
   useEffect(() => {
-    const enabled = systemSettings.discord?.enabled;
-    const allowJoin = systemSettings.discord?.allowCollaboration;
-    const shouldHost = enabled && allowJoin;
-    
-    console.log("[Collaboration] Sync Check:", { enabled, allowJoin, shouldHost, isCollaborating, role });
-    
-    if (shouldHost && !isCollaborating) {
-      console.log("[Collaboration] Condition met: Starting Host Session...");
-      startHostSession();
-    } else if (!shouldHost && isCollaborating && role === "host") {
-      console.log("[Collaboration] Condition lost: Stopping Collaboration...");
-      stopCollaboration();
-    }
+    const syncCollaboration = async () => {
+      const enabled = systemSettings.discord?.enabled;
+      const allowJoin = systemSettings.discord?.allowCollaboration;
+      const shouldHost = enabled && allowJoin;
+      
+      if (shouldHost && !isCollaborating) {
+        setTimeout(() => startHostSession(), 0);
+      } else if (!shouldHost && isCollaborating && role === "host") {
+        setTimeout(() => stopCollaboration(), 0);
+      }
+    };
+    syncCollaboration();
   }, [systemSettings.discord?.enabled, systemSettings.discord?.allowCollaboration, isCollaborating, role, startHostSession, stopCollaboration]);
 
-  const acceptJoin = async (userId: string) => {
-    try {
-      await invoke("accept_discord_join_request", { userId });
-      toast.success("Accepted join request");
-    } catch {
-      toast.error("Failed to accept join request");
-    }
-  };
 
-  const rejectJoin = async (userId: string) => {
-    try {
-      await invoke("reject_discord_join_request", { userId });
-      toast.info("Rejected join request");
-    } catch {
-      toast.error("Failed to reject join request");
-    }
-  };
 
   const updatePresenceFile = useCallback((path: string | null) => {
     if (provider?.awareness) {
