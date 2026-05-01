@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,11 +13,12 @@ interface CollaborationContextType {
   role: "host" | "guest" | null;
   joinSecret: string | null;
   activeUsers: any[];
-  ydoc: Y.Doc | null;
+  ydoc: Y.Doc;
   provider: WebrtcProvider | null;
   acceptJoin: (userId: string) => Promise<void>;
   rejectJoin: (userId: string) => Promise<void>;
   startHostSession: () => void;
+  stopCollaboration: () => void;
 }
 
 const CollaborationContext = createContext<CollaborationContextType | null>(null);
@@ -30,35 +33,45 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   const ydoc = useMemo(() => new Y.Doc(), []);
   const [provider, setProvider] = useState<WebrtcProvider | null>(null);
 
+  const stopCollaboration = useCallback(() => {
+    setIsCollaborating(false);
+    setRole(null);
+    setJoinSecret(null);
+    setActiveUsers([]);
+    if (provider) {
+      provider.destroy();
+      setProvider(null);
+    }
+  }, [provider]);
+
+  const startHostSession = useCallback(() => {
+    const secret = `trixty-room-${Math.random().toString(36).substring(7)}`;
+    setJoinSecret(secret);
+    setRole("host");
+    setIsCollaborating(true);
+    toast.success("Collaboration session started!");
+  }, []);
+
   useEffect(() => {
     // Check for initial join secret from CLI
     invoke<string | null>("get_initial_join_secret").then((secret) => {
       if (secret) {
-        console.log("[Collaboration] Started with join secret:", secret);
         setJoinSecret(secret);
         setRole("guest");
         setIsCollaborating(true);
         toast.info("Joining collaboration session...");
-        // Here we would trigger the actual P2P/Relay connection
       }
     });
 
     // Listen for Discord RPC events
     const unlisten = listen("discord-rpc-event", (event: any) => {
       const { evt, data } = event.payload;
-
       if (evt === "ACTIVITY_JOIN_REQUEST") {
         const { user } = data;
         toast(`${user.username} wants to join your session`, {
-          description: "Do you want to allow them to edit your workspace?",
-          action: {
-            label: "Accept",
-            onClick: () => acceptJoin(user.id),
-          },
-          cancel: {
-            label: "Reject",
-            onClick: () => rejectJoin(user.id),
-          },
+          description: "Allow them to edit your workspace?",
+          action: { label: "Accept", onClick: () => acceptJoin(user.id) },
+          cancel: { label: "Reject", onClick: () => rejectJoin(user.id) },
           duration: 10000,
         });
       }
@@ -73,37 +86,32 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!isCollaborating || !joinSecret) return;
 
-    console.log(`[Collaboration] Initializing Yjs session as ${role} for room: ${joinSecret}`);
-    const doc = new Y.Doc();
-    
-    // In a real app, you'd use your own signaling server
-    const webrtcProvider = new WebrtcProvider(joinSecret, doc, {
+    const webrtcProvider = new WebrtcProvider(joinSecret, ydoc, {
       signaling: ["wss://signaling.yjs.dev"],
     });
 
-    webrtcProvider.on("peers", (params: any) => {
+    webrtcProvider.awareness.on("change", () => {
       setActiveUsers(Array.from(webrtcProvider.awareness.getStates().values()));
     });
 
-    setYdoc(doc);
     setProvider(webrtcProvider);
 
     return () => {
       webrtcProvider.destroy();
-      doc.destroy();
-      setYdoc(null);
       setProvider(null);
     };
-  }, [isCollaborating, joinSecret, role]);
+  }, [isCollaborating, joinSecret, ydoc]);
 
-  const startHostSession = () => {
-    // Host generates a secret and starts waiting for requests
-    const secret = `trixty-room-${Math.random().toString(36).substring(7)}`;
-    setJoinSecret(secret);
-    setRole("host");
-    setIsCollaborating(true);
-    toast.success("Collaboration session started!");
-  };
+  // Sync with settings
+  useEffect(() => {
+    const shouldHost = systemSettings.discord?.enabled && systemSettings.discord?.allowJoinRequests;
+    
+    if (shouldHost && !isCollaborating) {
+      startHostSession();
+    } else if (!shouldHost && isCollaborating && role === "host") {
+      stopCollaboration();
+    }
+  }, [systemSettings.discord?.enabled, systemSettings.discord?.allowJoinRequests, isCollaborating, role, startHostSession, stopCollaboration]);
 
   const acceptJoin = async (userId: string) => {
     try {
@@ -135,6 +143,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
         acceptJoin,
         rejectJoin,
         startHostSession,
+        stopCollaboration,
       }}
     >
       {children}
