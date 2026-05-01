@@ -54,7 +54,8 @@ grep-searcher = "0.1"
 regex = "1"
 dirs = "5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots", "http2", "charset", "gzip", "brotli"] }
-tokio = { version = "1", features = ["time", "rt-multi-thread", "process"] }
+tokio = { version = "1", features = ["time", "rt-multi-thread", "process", "net", "io-util"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "registry"] }
 urlencoding = "2"

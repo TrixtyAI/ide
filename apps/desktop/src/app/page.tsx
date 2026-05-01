@@ -23,6 +23,7 @@ import {
 } from "@/api/floatingWindowRegistry";
 import { Terminal as TerminalIcon } from "lucide-react";
 import { useL10n } from "@/hooks/useL10n";
+import { useDiscordRPC } from "@/hooks/useDiscordRPC";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -72,6 +73,9 @@ export default function Home() {
     setZenMode,
     toggleZenMode,
   } = useUI();
+
+  useDiscordRPC();
+
   const {
     openFiles,
     openFile,

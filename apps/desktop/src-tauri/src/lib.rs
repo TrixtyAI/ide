@@ -6,6 +6,7 @@ mod fs_guard;
 mod fs_watcher;
 mod http;
 mod pty;
+mod discord_rpc;
 
 use cli::CliWorkspace;
 use error::redact_user_paths;
@@ -285,6 +286,8 @@ impl SentryContext {
 struct SystemState {
     sys: System,
 }
+
+pub struct DiscordState(pub Arc<tokio::sync::Mutex<discord_rpc::DiscordRpc>>);
 
 #[derive(Serialize)]
 pub struct FileEntry {
@@ -798,6 +801,15 @@ struct GitLogEntry {
 /// and the JSON serialization + IPC round-trip would stall the runtime and
 /// balloon memory. 1000 is well past any UI scroll scenario.
 const GIT_LOG_MAX_LIMIT: u32 = 1000;
+
+#[tauri::command]
+async fn set_discord_activity(
+    activity: discord_rpc::Activity,
+    state: tauri::State<'_, DiscordState>,
+) -> Result<(), String> {
+    let mut rpc = state.0.lock().await;
+    rpc.set_activity(activity).await
+}
 
 #[tauri::command]
 async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry>, String> {
@@ -2728,6 +2740,7 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(FsWatcherState::new())))
         .manage::<WorkspaceState>(workspace_state)
         .manage::<InitialCliWorkspace>(new_initial_cli_workspace(initial_cli_workspace))
+        .manage(DiscordState(Arc::new(tokio::sync::Mutex::new(discord_rpc::DiscordRpc::new()))))
         .invoke_handler(tauri::generate_handler![
             read_directory,
             read_file,
@@ -2798,7 +2811,8 @@ pub fn run() {
             unwatch_all,
             set_workspace_root,
             take_initial_cli_workspace,
-            about::get_trixty_about_info
+            about::get_trixty_about_info,
+            set_discord_activity
         ])
         .setup(|app| {
             // Main window is required — failing fast with a structured error beats
