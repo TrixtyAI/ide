@@ -810,7 +810,7 @@ const GIT_LOG_MAX_LIMIT: u32 = 1000;
 
 #[tauri::command]
 async fn set_discord_activity(
-    activity: discord_rpc::Activity,
+    activity: Option<discord_rpc::Activity>,
     state: tauri::State<'_, DiscordState>,
 ) -> Result<(), String> {
     let rpc = state.0.lock().await;

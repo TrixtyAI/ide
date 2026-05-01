@@ -23,7 +23,7 @@ pub enum OpCode {
 }
 
 pub enum RpcMessage {
-    UpdateActivity(Activity),
+    UpdateActivity(Option<Activity>),
     AcceptJoin(String),
     RejectJoin(String),
 }
@@ -236,7 +236,7 @@ impl DiscordRpc {
         Ok(())
     }
 
-    pub fn set_activity(&self, activity: Activity) -> Result<(), String> {
+    pub fn set_activity(&self, activity: Option<Activity>) -> Result<(), String> {
         if let Some(tx) = &self.tx {
             tx.send(RpcMessage::UpdateActivity(activity)).map_err(|e| e.to_string())?;
             Ok(())

@@ -16,7 +16,8 @@ import {
   Trash2,
   Plus,
   Bot,
-  RefreshCw
+  RefreshCw,
+  MessageSquare
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -306,6 +307,74 @@ Node.js: ${systemInfo.node_version}
                     <option value="es">{t('settings.application.language.es')}</option>
                   </select>
                 </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-[14px] font-semibold text-white mb-4 flex items-center gap-2">
+                <MessageSquare size={16} className="text-indigo-400" />
+                {t('settings.application.discord_rpc')}
+              </h3>
+              <div className="space-y-4 max-w-md">
+                {/* Master Switch */}
+                <div className="flex items-center gap-3">
+                  <label htmlFor="settings-discord-enabled" className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      id="settings-discord-enabled"
+                      type="checkbox"
+                      checked={!!systemSettings.discord?.enabled}
+                      onChange={(e) => updateSystemSettings({ 
+                        discord: { ...systemSettings.discord, enabled: e.target.checked } 
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                  </label>
+                  <label htmlFor="settings-discord-enabled" className="text-[13px] text-[#aaa] cursor-pointer">
+                    {t('settings.application.discord_rpc.enabled')}
+                  </label>
+                </div>
+
+                {/* Sub-options (only if enabled) */}
+                {systemSettings.discord?.enabled && (
+                  <div className="ml-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="settings-discord-details" className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          id="settings-discord-details"
+                          type="checkbox"
+                          checked={!!systemSettings.discord?.showDetails}
+                          onChange={(e) => updateSystemSettings({ 
+                            discord: { ...systemSettings.discord, showDetails: e.target.checked } 
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                      </label>
+                      <label htmlFor="settings-discord-details" className="text-[13px] text-[#888] cursor-pointer">
+                        {t('settings.application.discord_rpc.details')}
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="settings-discord-collab" className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          id="settings-discord-collab"
+                          type="checkbox"
+                          checked={!!systemSettings.discord?.allowCollaboration}
+                          onChange={(e) => updateSystemSettings({ 
+                            discord: { ...systemSettings.discord, allowCollaboration: e.target.checked } 
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                      </label>
+                      <label htmlFor="settings-discord-collab" className="text-[13px] text-[#888] cursor-pointer">
+                        {t('settings.application.discord_rpc.collaboration')}
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 

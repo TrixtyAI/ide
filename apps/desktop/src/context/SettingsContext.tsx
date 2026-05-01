@@ -6,10 +6,17 @@ import { logger } from "@/lib/logger";
 
 export type UpdateChannel = "stable" | "pre-release";
 
+export interface DiscordSettings {
+  enabled: boolean;
+  showDetails: boolean;
+  allowCollaboration: boolean;
+}
+
 export interface SystemSettings {
   hasCompletedOnboarding: boolean;
   filesExclude: string[];
   updateChannel: UpdateChannel;
+  discord: DiscordSettings;
 }
 
 export interface InlineCompletionSettings {
@@ -106,7 +113,7 @@ interface SettingsContextType {
 // `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
 const AI_SETTINGS_VERSION = 3;
 const EDITOR_SETTINGS_VERSION = 1;
-const SYSTEM_SETTINGS_VERSION = 2;
+const SYSTEM_SETTINGS_VERSION = 4;
 const LOCALE_VERSION = 1;
 
 export const DEFAULT_INLINE_COMPLETIONS: InlineCompletionSettings = {
@@ -252,6 +259,12 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   lastModelByProvider: {},
 };
 
+export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
+  enabled: true,
+  showDetails: true,
+  allowCollaboration: false,
+};
+
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   fontSize: 14,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
@@ -276,6 +289,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
     "**/yarn.lock",
   ],
   updateChannel: "stable",
+  discord: DEFAULT_DISCORD_SETTINGS,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -366,6 +380,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           "trixty-system-settings",
           SYSTEM_SETTINGS_VERSION,
           null,
+          {
+            // v2 -> v3: add Discord settings (old default was true)
+            2: (prev) => ({
+              ...(prev as SystemSettings),
+              discord: { ...DEFAULT_DISCORD_SETTINGS, allowCollaboration: true },
+            }),
+            // v3 -> v4: Force allowCollaboration to false by default for safety
+            3: (prev) => ({
+              ...(prev as SystemSettings),
+              discord: { ...(prev as SystemSettings).discord, allowCollaboration: false },
+            }),
+          },
         );
         if (savedSystemSettings) {
           setSystemSettings((prev) => ({ ...prev, ...savedSystemSettings }));

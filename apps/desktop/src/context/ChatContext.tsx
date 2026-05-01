@@ -7,6 +7,7 @@ import {
   subscribeToBroadcasts,
 } from "@/api/crossWindowSync";
 import { logger } from "@/lib/logger";
+import { useCollaboration } from "@/context/CollaborationContext";
 
 export interface ChatMessage {
   role: "user" | "ai" | "tool" | "warning";
@@ -58,6 +59,7 @@ const CHAT_SYNC_KEY = "chat";
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { isCollaborating, role, ydoc } = useCollaboration();
   const [isLoaded, setIsLoaded] = useState(false);
   // When set, the next state change came from a cross-window broadcast,
   // not a local action — so the persist + re-broadcast effect skips
@@ -82,6 +84,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load chats on mount.
   useEffect(() => {
+    if (isCollaborating && role === "guest") return; // Guests load from Yjs
+
     (async () => {
       try {
         const savedChats = await trixtyStore.getVersioned<ChatSession[] | null>(
@@ -102,7 +106,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoaded(true);
       }
     })();
-  }, [createSession]);
+  }, [createSession, isCollaborating, role]);
 
   // Persist + cross-window broadcast. Both are debounced by 300 ms via
   // effect cleanup: a burst of rapid appends (streaming deltas) coalesces
@@ -140,6 +144,41 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let alive = true;
     let unlisten: (() => void) | undefined;
+    
+    // Yjs Sync for Collaboration
+    if (isCollaborating && ydoc) {
+      const sharedSessions = ydoc.getArray("chat-sessions");
+      const sharedActiveId = ydoc.getMap("chat-meta");
+
+      if (role === "host") {
+        // Host: Push to Yjs
+        const handle = setTimeout(() => {
+          ydoc.transact(() => {
+            sharedSessions.delete(0, sharedSessions.length);
+            sharedSessions.push(chatSessions);
+            sharedActiveId.set("activeId", activeSessionId);
+          });
+        }, 500);
+        return () => clearTimeout(handle);
+      } else {
+        // Guest: Pull from Yjs
+        const updateFromY = () => {
+          setChatSessions(sharedSessions.toArray()[0] as ChatSession[] || []);
+          setActiveSessionId(sharedActiveId.get("activeId") as string || null);
+        };
+        
+        sharedSessions.observe(updateFromY);
+        sharedActiveId.observe(updateFromY);
+        updateFromY();
+        setIsLoaded(true);
+        
+        return () => {
+          sharedSessions.unobserve(updateFromY);
+          sharedActiveId.unobserve(updateFromY);
+        };
+      }
+    }
+
     void subscribeToBroadcasts<ChatSyncPayload>(CHAT_SYNC_KEY, (payload) => {
       if (!alive) return;
       remoteApplyRef.current = true;
@@ -156,7 +195,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       alive = false;
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [isCollaborating, role, ydoc, chatSessions, activeSessionId]);
 
   const deleteSession = useCallback((id: string) => {
     setChatSessions((prev) => {

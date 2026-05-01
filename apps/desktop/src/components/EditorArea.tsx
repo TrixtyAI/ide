@@ -9,6 +9,8 @@ import { useSettings } from "@/context/SettingsContext";
 import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import { useInlineCompletions } from "@/hooks/useInlineCompletions";
+import { useCollaboration } from "@/context/CollaborationContext";
+import { MonacoBinding } from "y-monaco";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Code2, LayoutGrid } from "lucide-react";
 import { getVisualEditor } from "./visual/getVisualEditor";
@@ -166,6 +168,48 @@ const EditorArea: React.FC = () => {
 
     editor.focus();
   };
+
+  // Collaborative Sync
+  const { isCollaborating, ydoc, provider } = useCollaboration();
+  const bindingRef = useRef<MonacoBinding | null>(null);
+
+  React.useEffect(() => {
+    if (!isCollaborating || !ydoc || !provider || !editorRef.current || !currentFile) {
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+      return;
+    }
+
+    const editor = editorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Use the file path as the key for the shared Y.Text type
+    const ytext = ydoc.getText(currentFile.path);
+    
+    // If the doc is empty and we are the host, initialize it with current content
+    if (ytext.length === 0 && currentFile.content) {
+      ytext.insert(0, currentFile.content);
+    }
+
+    console.log(`[Collaboration] Binding Monaco to Y.Text for: ${currentFile.path}`);
+    
+    const binding = new MonacoBinding(
+      ytext,
+      model,
+      new Set([editor]),
+      provider.awareness
+    );
+
+    bindingRef.current = binding;
+
+    return () => {
+      binding.destroy();
+      bindingRef.current = null;
+    };
+  }, [isCollaborating, ydoc, provider, currentFile?.path]);
 
   // Performance: Efficient Layout handling
   React.useEffect(() => {

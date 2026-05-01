@@ -16,6 +16,7 @@ import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useL10n } from "@/hooks/useL10n";
+import { useCollaboration } from "@/context/CollaborationContext";
 import ContextMenu from "@/components/ui/ContextMenu";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { FileIcon } from "@/components/ui/FileIcon";
@@ -59,6 +60,7 @@ const GitExplorerComponent: React.FC = () => {
   const { rootPath, setRootPath } = useWorkspace();
   const { aiSettings, systemSettings } = useSettings();
   const { t } = useL10n();
+  const { isCollaborating, role, ydoc } = useCollaboration();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Record<string, boolean>>({});
@@ -152,6 +154,39 @@ const GitExplorerComponent: React.FC = () => {
   };
 
   const loadDirectory = useCallback(async (path: string, parentPath?: string) => {
+    if (isCollaborating && role === "guest" && ydoc) {
+      const workspaceMap = ydoc.getMap("workspace");
+      const data = workspaceMap.get(path) as FileEntry[];
+      
+      if (data) {
+        if (!parentPath) { setEntries(data); } else {
+          setEntries((prev) => {
+            const update = (items: FileEntry[]): FileEntry[] => items.map((i) => {
+              if (i.path === path) return { ...i, children: data };
+              if (i.children) return { ...i, children: update(i.children) };
+              return i;
+            });
+            return update(prev);
+          });
+        }
+      } else {
+        // Request from host
+        const dirRequests = ydoc.getMap("dir-requests");
+        dirRequests.set(path, Date.now());
+        
+        // Listen for results
+        const onSync = () => {
+          const newData = workspaceMap.get(path);
+          if (newData) {
+            loadDirectory(path, parentPath);
+            workspaceMap.unobserve(onSync);
+          }
+        };
+        workspaceMap.observe(onSync);
+      }
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await invoke("read_directory", { path });
@@ -612,6 +647,27 @@ const GitExplorerComponent: React.FC = () => {
       setExpandedDirs((p) => ({ ...p, [entry.path]: !exp }));
       if (!exp && (!entry.children || entry.children.length === 0)) await loadDirectory(entry.path, entry.path);
     } else {
+      if (isCollaborating && role === "guest" && ydoc) {
+        const sharedText = ydoc.getText(`file:${entry.path}`);
+        if (sharedText.length > 0) {
+          openFile(entry.path, entry.name, sharedText.toString());
+        } else {
+          // Request from host
+          const fileRequests = ydoc.getMap("file-requests");
+          fileRequests.set(entry.path, Date.now());
+          
+          // Show a temporary loading state or just wait for Yjs sync
+          const onSync = () => {
+            if (sharedText.length > 0) {
+              openFile(entry.path, entry.name, sharedText.toString());
+              sharedText.unobserve(onSync);
+            }
+          };
+          sharedText.observe(onSync);
+        }
+        return;
+      }
+
       const bins = [".png",".jpg",".jpeg",".gif",".exe",".dll",".bin",".zip",".pdf",".ico",".woff",".woff2",".ttf"];
       if (bins.some((e) => entry.name.toLowerCase().endsWith(e))) {
         openFile(entry.path, entry.name, "", "binary");

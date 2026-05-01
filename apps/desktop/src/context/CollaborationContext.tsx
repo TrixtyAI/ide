@@ -2,14 +2,19 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+import * as Y from "yjs";
+import { WebrtcProvider } from "y-webrtc";
 
 interface CollaborationContextType {
   isCollaborating: boolean;
   role: "host" | "guest" | null;
   joinSecret: string | null;
   activeUsers: any[];
+  ydoc: Y.Doc | null;
+  provider: WebrtcProvider | null;
   acceptJoin: (userId: string) => Promise<void>;
   rejectJoin: (userId: string) => Promise<void>;
+  startHostSession: () => void;
 }
 
 const CollaborationContext = createContext<CollaborationContextType | null>(null);
@@ -19,6 +24,8 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   const [role, setRole] = useState<"host" | "guest" | null>(null);
   const [joinSecret, setJoinSecret] = useState<string | null>(null);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<WebrtcProvider | null>(null);
 
   useEffect(() => {
     // Check for initial join secret from CLI
@@ -59,6 +66,42 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     };
   }, []);
 
+  // Effect to manage Yjs session lifecycle
+  useEffect(() => {
+    if (!isCollaborating || !joinSecret) return;
+
+    console.log(`[Collaboration] Initializing Yjs session as ${role} for room: ${joinSecret}`);
+    const doc = new Y.Doc();
+    
+    // In a real app, you'd use your own signaling server
+    const webrtcProvider = new WebrtcProvider(joinSecret, doc, {
+      signaling: ["wss://signaling.yjs.dev"],
+    });
+
+    webrtcProvider.on("peers", (params: any) => {
+      setActiveUsers(Array.from(webrtcProvider.awareness.getStates().values()));
+    });
+
+    setYdoc(doc);
+    setProvider(webrtcProvider);
+
+    return () => {
+      webrtcProvider.destroy();
+      doc.destroy();
+      setYdoc(null);
+      setProvider(null);
+    };
+  }, [isCollaborating, joinSecret, role]);
+
+  const startHostSession = () => {
+    // Host generates a secret and starts waiting for requests
+    const secret = `trixty-room-${Math.random().toString(36).substring(7)}`;
+    setJoinSecret(secret);
+    setRole("host");
+    setIsCollaborating(true);
+    toast.success("Collaboration session started!");
+  };
+
   const acceptJoin = async (userId: string) => {
     try {
       await invoke("accept_discord_join_request", { userId });
@@ -84,8 +127,11 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
         role,
         joinSecret,
         activeUsers,
+        ydoc,
+        provider,
         acceptJoin,
         rejectJoin,
+        startHostSession,
       }}
     >
       {children}

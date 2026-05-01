@@ -1,12 +1,14 @@
 "use client";
 
 import React from "react";
-import { Minus, Square, X, Copy, PanelRight, PanelLeft, PanelBottom, Zap } from "lucide-react";
+import { Minus, Square, X, Copy, PanelRight, PanelLeft, PanelBottom, Zap, Users } from "lucide-react";
 import { useFiles } from "@/context/FilesContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useUI } from "@/context/UIContext";
 import { useL10n } from "@/hooks/useL10n";
 import { useTauriWindow } from "@/hooks/useTauriWindow";
+import { useCollaboration } from "@/context/CollaborationContext";
+import { useSettings } from "@/context/SettingsContext";
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const TitleBar: React.FC = () => {
@@ -14,6 +16,8 @@ const TitleBar: React.FC = () => {
   const { rootPath } = useWorkspace();
   const { isRightPanelOpen, setRightPanelOpen, isSidebarOpen, setSidebarOpen, isBottomPanelOpen, setBottomPanelOpen, isZenMode, toggleZenMode } = useUI();
   const { isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
+  const { isCollaborating, startHostSession, activeUsers } = useCollaboration();
+  const { systemSettings } = useSettings();
   const { t } = useL10n();
 
   // Build dynamic title: <project> (file) | <app title>
@@ -101,6 +105,25 @@ const TitleBar: React.FC = () => {
           >
             <Zap size={14} strokeWidth={1.5} />
           </button>
+
+          <div aria-hidden="true" className="w-[1px] h-[14px] bg-border-subtle mx-1" />
+
+          {systemSettings.discord?.enabled && (
+            <button
+              onClick={startHostSession}
+              disabled={isCollaborating}
+              aria-label={isCollaborating ? t('titlebar.collab.active') : t('titlebar.collab.start')}
+              className={`relative w-[26px] h-[26px] rounded flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                isCollaborating ? "bg-indigo-500/20 text-indigo-400" : "text-muted-fg hover:bg-white/10 hover:text-white"
+              }`}
+              title={isCollaborating ? t('titlebar.collab.active') : t('titlebar.collab.start')}
+            >
+              <Users size={14} strokeWidth={1.5} />
+              {isCollaborating && activeUsers.length > 0 && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-[#1c1c1c]" />
+              )}
+            </button>
+          )}
         </div>
 
         <div aria-hidden="true" className="w-[1px] h-[14px] bg-border-subtle" />

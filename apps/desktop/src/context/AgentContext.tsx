@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useCollaboration } from "@/context/CollaborationContext";
 import { CORE_IDENTITY, CORE_SOUL } from "@/addons/builtin.agent-support/index";
 import { trixty } from "@/api/trixty";
 import { logger } from "@/lib/logger";
@@ -68,6 +69,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeDocs, setActiveDocs] = useState<string[]>([]);
   const [chatMode, _setChatMode] = useState<'agent' | 'planner' | 'ask'>('agent');
   const [isLoading, setIsLoading] = useState(false);
+  const { isCollaborating, role, ydoc } = useCollaboration();
 
   // Monotonic counter used by `refreshAgentData` to discard late responses from
   // previous refreshes. Every refresh claims a new id on entry and only writes
@@ -286,6 +288,29 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     refreshAgentData();
   }, [rootPath, refreshAgentData]);
+
+  // Yjs Sync for Agent State
+  useEffect(() => {
+    if (!isCollaborating || !ydoc) return;
+
+    const agentMeta = ydoc.getMap("agent-meta");
+
+    if (role === "host") {
+      agentMeta.set("chatMode", chatMode);
+      agentMeta.set("isLoading", isLoading);
+    } else {
+      const updateFromY = () => {
+        const remoteMode = agentMeta.get("chatMode") as any;
+        if (remoteMode) _setChatMode(remoteMode);
+        
+        const remoteLoading = agentMeta.get("isLoading") as boolean;
+        if (remoteLoading !== undefined) setIsLoading(remoteLoading);
+      };
+      agentMeta.observe(updateFromY);
+      updateFromY();
+      return () => agentMeta.unobserve(updateFromY);
+    }
+  }, [isCollaborating, role, ydoc, chatMode, isLoading]);
 
   const toggleSkill = useCallback((skillId: string) => {
     setActiveSkills(prev => {

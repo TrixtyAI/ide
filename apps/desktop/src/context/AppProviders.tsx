@@ -7,6 +7,8 @@ import { FilesProvider } from "@/context/FilesContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { UIProvider } from "@/context/UIContext";
 import { CollaborationProvider } from "@/context/CollaborationContext";
+import { useDiscordRPC } from "@/hooks/useDiscordRPC";
+import { useWorkspaceSync } from "@/hooks/useWorkspaceSync";
 
 /**
  * Composes the narrow providers that together own what used to live in
@@ -18,17 +20,25 @@ import { CollaborationProvider } from "@/context/CollaborationContext";
  * keystroke render path entirely.
  */
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <WorkspaceProvider>
-    <SettingsProvider>
-      <ChatProvider>
-        <CollaborationProvider>
+  <CollaborationProvider>
+    <WorkspaceProvider>
+      <SettingsProvider>
+        <ChatProvider>
           <UIProvider>
             <FilesProvider>
-              {children}
+              <AppLifecycleWrapper>
+                {children}
+              </AppLifecycleWrapper>
             </FilesProvider>
           </UIProvider>
-        </CollaborationProvider>
-      </ChatProvider>
-    </SettingsProvider>
-  </WorkspaceProvider>
+        </ChatProvider>
+      </SettingsProvider>
+    </WorkspaceProvider>
+  </CollaborationProvider>
 );
+
+const AppLifecycleWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  useDiscordRPC();
+  useWorkspaceSync();
+  return <>{children}</>;
+};
