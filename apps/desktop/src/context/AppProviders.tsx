@@ -6,6 +6,7 @@ import { SettingsProvider } from "@/context/SettingsContext";
 import { FilesProvider } from "@/context/FilesContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { UIProvider } from "@/context/UIContext";
+import { CollaborationProvider } from "@/context/CollaborationContext";
 
 /**
  * Composes the narrow providers that together own what used to live in
@@ -20,11 +21,13 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   <WorkspaceProvider>
     <SettingsProvider>
       <ChatProvider>
-        <UIProvider>
-          <FilesProvider>
-            {children}
-          </FilesProvider>
-        </UIProvider>
+        <CollaborationProvider>
+          <UIProvider>
+            <FilesProvider>
+              {children}
+            </FilesProvider>
+          </UIProvider>
+        </CollaborationProvider>
       </ChatProvider>
     </SettingsProvider>
   </WorkspaceProvider>

@@ -238,6 +238,12 @@ fn new_initial_cli_workspace(path: Option<PathBuf>) -> InitialCliWorkspace {
     InitialCliWorkspace(Arc::new(Mutex::new(path)))
 }
 
+pub struct InitialJoinSecret(Arc<Mutex<Option<String>>>);
+
+fn new_initial_join_secret(secret: Option<String>) -> InitialJoinSecret {
+    InitialJoinSecret(Arc::new(Mutex::new(secret)))
+}
+
 /// Returns (and consumes) the CLI-supplied workspace path. The frontend
 /// invokes this once during initial load; subsequent calls return `None`.
 ///
@@ -807,8 +813,34 @@ async fn set_discord_activity(
     activity: discord_rpc::Activity,
     state: tauri::State<'_, DiscordState>,
 ) -> Result<(), String> {
-    let mut rpc = state.0.lock().await;
-    rpc.set_activity(activity).await
+    let rpc = state.0.lock().await;
+    rpc.set_activity(activity)
+}
+
+#[tauri::command]
+async fn accept_discord_join_request(
+    user_id: String,
+    state: tauri::State<'_, DiscordState>,
+) -> Result<(), String> {
+    let rpc = state.0.lock().await;
+    rpc.accept_join_request(user_id)
+}
+
+#[tauri::command]
+async fn reject_discord_join_request(
+    user_id: String,
+    state: tauri::State<'_, DiscordState>,
+) -> Result<(), String> {
+    let rpc = state.0.lock().await;
+    rpc.reject_join_request(user_id)
+}
+
+#[tauri::command]
+async fn get_initial_join_secret(
+    state: tauri::State<'_, InitialJoinSecret>,
+) -> Result<Option<String>, String> {
+    let mut secret = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(secret.take())
 }
 
 #[tauri::command]
@@ -2684,14 +2716,14 @@ pub fn run() {
     // hook and the `take_initial_cli_workspace` command fire; reading argv
     // inside `.setup()` would work too, but keeping it at the top keeps the
     // data flow easy to follow ("CLI arg → managed state → frontend read").
-    let cli_workspace = cli::parse_cli_workspace();
-    let initial_cli_workspace = match &cli_workspace {
-        CliWorkspace::Path(p) => Some(p.clone()),
-        CliWorkspace::Empty => None,
-        CliWorkspace::Invalid { raw, reason } => {
+    // Parse the workspace path and Discord join secret from argv BEFORE
+    // handing control to Tauri.
+    let cli_result = cli::parse_cli_args();
+    let initial_cli_workspace = match &cli_result.workspace {
+        cli::CliWorkspace::Path(p) => Some(p.clone()),
+        cli::CliWorkspace::Empty => None,
+        cli::CliWorkspace::Invalid { raw, reason } => {
             // Log and fall back to a normal startup rather than aborting.
-            // Raw input is redacted because it can contain the user's home
-            // path; the reason string is already redacted in `cli.rs`.
             warn!(
                 "Ignoring invalid CLI workspace argument {}: {}",
                 redact_user_paths(raw),
@@ -2700,6 +2732,7 @@ pub fn run() {
             None
         }
     };
+    let initial_join_secret = cli_result.discord_join_secret;
 
     // Pre-populate the `WorkspaceState` guard with the CLI path so the
     // earliest `read_file` / `read_directory` calls from the frontend
@@ -2740,6 +2773,7 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(FsWatcherState::new())))
         .manage::<WorkspaceState>(workspace_state)
         .manage::<InitialCliWorkspace>(new_initial_cli_workspace(initial_cli_workspace))
+        .manage::<InitialJoinSecret>(new_initial_join_secret(initial_join_secret))
         .manage(DiscordState(Arc::new(tokio::sync::Mutex::new(discord_rpc::DiscordRpc::new()))))
         .invoke_handler(tauri::generate_handler![
             read_directory,
@@ -2812,7 +2846,10 @@ pub fn run() {
             set_workspace_root,
             take_initial_cli_workspace,
             about::get_trixty_about_info,
-            set_discord_activity
+            set_discord_activity,
+            accept_discord_join_request,
+            reject_discord_join_request,
+            get_initial_join_secret
         ])
         .setup(|app| {
             // Main window is required — failing fast with a structured error beats
@@ -2955,6 +2992,11 @@ pub fn run() {
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
             });
+
+            // Start Discord RPC background task
+            let discord_state = app.handle().state::<DiscordState>();
+            let mut discord_rpc = discord_state.0.blocking_lock();
+            discord_rpc.start(app.handle().clone());
 
             Ok(())
         })

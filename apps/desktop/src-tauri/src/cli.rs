@@ -27,43 +27,38 @@ use std::path::PathBuf;
 
 use crate::error::redact_user_paths;
 
-/// Result of parsing argv. When the user didn't supply a path (cold start
-/// from the launcher, Start Menu, Dock) every variant falls back to
-/// `Empty`, which is how we express "use the normal startup flow".
+/// Result of parsing a single workspace path.
 #[derive(Debug, PartialEq, Eq)]
 pub enum CliWorkspace {
-    /// No `--path` or positional argument was given.
+    /// No path was given.
     Empty,
-    /// The user supplied a path and it resolved to an existing directory.
+    /// User supplied a valid directory path.
     Path(PathBuf),
-    /// The user supplied something, but it failed validation. We keep the
-    /// reason so the setup hook can log it (via `redact_user_paths`) and the
-    /// frontend can optionally surface a toast later. The path is the raw
-    /// input, not the resolved form — we might not have been able to
-    /// resolve it at all (e.g. doesn't exist).
+    /// User supplied an invalid path or flag value.
     Invalid { raw: String, reason: String },
 }
 
-/// Parses the current process argv and returns the first workspace path
-/// it finds (or `Empty`). Split from [`parse_args`] so tests can drive it
-/// without shelling out.
-pub fn parse_cli_workspace() -> CliWorkspace {
+/// Result of parsing argv.
+#[derive(Debug, PartialEq, Eq)]
+pub struct CliResult {
+    /// The workspace path to open, if any.
+    pub workspace: CliWorkspace,
+    /// The Discord RPC join secret, if any.
+    pub discord_join_secret: Option<String>,
+}
+
+/// Parses the current process argv and returns the result.
+pub fn parse_cli_args() -> CliResult {
     let raw: Vec<String> = env::args().collect();
     parse_args(&raw, env::current_dir().ok())
 }
 
-/// Looks for either `--path <PATH>` or the first positional argument after
-/// the program name (argv[0]). A `--` sentinel terminates flag parsing, so
-/// `TrixtyIDE -- --path` treats `--path` as a literal workspace.
-///
-/// `cwd` is the current working directory used to resolve relative paths
-/// and the `.` shorthand. Threading it through as a parameter (instead of
-/// reading `env::current_dir()` inside) keeps the core logic
-/// deterministically testable on any platform.
-pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliWorkspace {
-    // Skip argv[0] (the program name). Nothing else to do on a bare launch.
+/// Looks for either `--path <PATH>`, the first positional argument,
+/// or Discord RPC join flags.
+pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliResult {
     let mut iter = argv.iter().skip(1).peekable();
-    let mut candidate: Option<String> = None;
+    let mut workspace_candidate: Option<String> = None;
+    let mut discord_join_secret: Option<String> = None;
     let mut seen_double_dash = false;
 
     while let Some(arg) = iter.next() {
@@ -72,43 +67,60 @@ pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliWorkspace {
                 seen_double_dash = true;
                 continue;
             }
+            
+            // Handle Discord RPC join flag
+            if arg == "--discord-rpc-join-secret" {
+                if let Some(val) = iter.next() {
+                    discord_join_secret = Some(val.clone());
+                    continue;
+                }
+            }
+            if let Some(val) = arg.strip_prefix("--discord-rpc-join-secret=") {
+                discord_join_secret = Some(val.to_string());
+                continue;
+            }
+
             if arg == "--path" {
-                // `--path X` — take the next token regardless of shape.
                 match iter.next() {
                     Some(value) => {
-                        candidate = Some(value.clone());
-                        break;
+                        workspace_candidate = Some(value.clone());
+                        continue;
                     }
                     None => {
-                        return CliWorkspace::Invalid {
-                            raw: "--path".to_string(),
-                            reason: "--path flag requires a value".to_string(),
+                        return CliResult {
+                            workspace: CliWorkspace::Invalid {
+                                raw: "--path".to_string(),
+                                reason: "--path flag requires a value".to_string(),
+                            },
+                            discord_join_secret,
                         };
                     }
                 }
             }
             if let Some(value) = arg.strip_prefix("--path=") {
-                candidate = Some(value.to_string());
-                break;
+                workspace_candidate = Some(value.to_string());
+                continue;
             }
-            // Other `--foo` tokens are not ours; ignore them so future
-            // Tauri-level flags (`--webview-version`, debug flags added by
-            // tooling) don't get mis-parsed as workspace paths.
+            
             if arg.starts_with("--") {
                 continue;
             }
         }
-        // First positional (or first token after `--`). This is where
-        // `tide .` and `tide c:\test` land when there's no explicit flag.
-        candidate = Some(arg.clone());
-        break;
+        
+        if workspace_candidate.is_none() {
+            workspace_candidate = Some(arg.clone());
+        }
     }
 
-    let Some(raw) = candidate else {
-        return CliWorkspace::Empty;
+    let workspace = match workspace_candidate {
+        Some(raw) => resolve_workspace_path(&raw, cwd.as_deref()),
+        None => CliWorkspace::Empty,
     };
 
-    resolve_workspace_path(&raw, cwd.as_deref())
+    CliResult {
+        workspace,
+        discord_join_secret,
+    }
 }
 
 /// Resolves a user-supplied path string to an absolute, canonical directory

@@ -36,6 +36,14 @@ export function useDiscordRPC() {
               small_image: currentFile ? "file" : undefined,
               small_text: currentFile ? `Editing ${fileName}` : undefined,
             },
+            party: {
+              id: "trixty-session",
+              size: [1, 1],
+            },
+            secrets: {
+              spectate: "dummy-spectate-token",
+              join: "dummy-join-token",
+            },
           },
         });
       } catch (err) {

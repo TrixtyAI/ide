@@ -32,6 +32,7 @@
     "@tauri-apps/plugin-updater": "~2",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "@xyflow/react": "^12.10.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
@@ -44,8 +45,8 @@
     "react-resizable-panels": "^4.10.0",
     "react-virtuoso": "^4.14.1",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^3.5.0",
-    "@xyflow/react": "^12.10.2"
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
