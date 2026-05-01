@@ -104,14 +104,20 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
 
   // Sync with settings
   useEffect(() => {
-    const shouldHost = systemSettings.discord?.enabled && systemSettings.discord?.allowJoinRequests;
+    const enabled = systemSettings.discord?.enabled;
+    const allowJoin = systemSettings.discord?.allowCollaboration;
+    const shouldHost = enabled && allowJoin;
+    
+    console.log("[Collaboration] Sync Check:", { enabled, allowJoin, shouldHost, isCollaborating, role });
     
     if (shouldHost && !isCollaborating) {
+      console.log("[Collaboration] Condition met: Starting Host Session...");
       startHostSession();
     } else if (!shouldHost && isCollaborating && role === "host") {
+      console.log("[Collaboration] Condition lost: Stopping Collaboration...");
       stopCollaboration();
     }
-  }, [systemSettings.discord?.enabled, systemSettings.discord?.allowJoinRequests, isCollaborating, role, startHostSession, stopCollaboration]);
+  }, [systemSettings.discord?.enabled, systemSettings.discord?.allowCollaboration, isCollaborating, role, startHostSession, stopCollaboration]);
 
   const acceptJoin = async (userId: string) => {
     try {
