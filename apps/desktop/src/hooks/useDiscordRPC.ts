@@ -1,15 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useFiles } from "@/context/FilesContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useCollaboration } from "@/context/CollaborationContext";
+import { logger } from "@/lib/logger";
 
 export function useDiscordRPC() {
   const { currentFile } = useFiles();
   const { rootPath } = useWorkspace();
   const lastUpdate = useRef<string>("");
-  const startTime = useRef<number>(Math.floor(Date.now() / 1000));
+  const [startTime] = useState(() => Math.floor(Date.now() / 1000));
 
   const { systemSettings } = useSettings();
   const discord = systemSettings.discord;
@@ -44,7 +45,7 @@ export function useDiscordRPC() {
         // which triggers the join request flow.
         const currentJoinSecret = (isCollaborating && role === "host" && joinSecret) 
           ? joinSecret 
-          : `join-request-${startTime.current}`;
+          : `join-request-${startTime}`;
 
         await invoke("set_discord_activity", {
           activity: {
@@ -52,7 +53,7 @@ export function useDiscordRPC() {
             details,
             state,
             timestamps: {
-              start: startTime.current,
+              start: startTime,
             },
             assets: {
               large_image: "logo",
@@ -65,17 +66,17 @@ export function useDiscordRPC() {
               size: [activeUsers.length + 1, 5],
             } : undefined,
             secrets: discord.allowCollaboration ? {
-              spectate: `dummy-spectate-${startTime.current}`,
+              spectate: `dummy-spectate-${startTime}`,
               join: currentJoinSecret,
             } : undefined,
           },
         });
       } catch (err) {
-        console.warn("[Discord RPC] Failed to update presence:", err);
+        logger.warn("[Discord RPC] Failed to update presence:", err);
       }
     };
 
     const timer = setTimeout(updatePresence, 1000); // Debounce to 1s
     return () => clearTimeout(timer);
-  }, [currentFile, rootPath, discord, isCollaborating, joinSecret, role, activeUsers.length]);
+  }, [currentFile, rootPath, discord, isCollaborating, joinSecret, role, activeUsers.length, startTime]);
 }

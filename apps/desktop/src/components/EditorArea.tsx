@@ -201,7 +201,7 @@ const EditorArea: React.FC = () => {
       ytext.insert(0, currentFile.content);
     }
 
-    console.log(`[Collaboration] Binding Monaco to Y.Text for: ${currentFile.path}`);
+
     
     const binding = new MonacoBinding(
       ytext,
@@ -216,7 +216,7 @@ const EditorArea: React.FC = () => {
       binding.destroy();
       bindingRef.current = null;
     };
-  }, [isCollaborating, ydoc, provider, currentFile?.path]);
+  }, [isCollaborating, ydoc, provider, currentFile]);
 
   // Performance: Efficient Layout handling
   React.useEffect(() => {
@@ -268,7 +268,7 @@ const EditorArea: React.FC = () => {
         path: currentFile.path 
       });
     }
-  }, [currentFile?.path, isLargeFile]);
+  }, [currentFile, isLargeFile]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 

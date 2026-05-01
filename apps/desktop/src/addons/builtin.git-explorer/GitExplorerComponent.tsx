@@ -221,7 +221,7 @@ const GitExplorerComponent: React.FC = () => {
         });
       }
     } catch (e) { logger.error(e); } finally { setLoading(false); }
-  }, [rootPath, systemSettings.filesExclude]);
+  }, [rootPath, systemSettings.filesExclude, isCollaborating, role, ydoc]);
 
   const handleOpenFolder = async () => {
     try {

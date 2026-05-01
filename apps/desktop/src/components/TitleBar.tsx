@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { Minus, Square, X, Copy, PanelRight, PanelLeft, PanelBottom, Zap, Users } from "lucide-react";
+import { Minus, Square, X, Copy, PanelRight, PanelLeft, PanelBottom, Zap } from "lucide-react";
 import { useFiles } from "@/context/FilesContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useUI } from "@/context/UIContext";
 import { useL10n } from "@/hooks/useL10n";
 import { useTauriWindow } from "@/hooks/useTauriWindow";
 import { useCollaboration } from "@/context/CollaborationContext";
-import { useSettings } from "@/context/SettingsContext";
+
 import logoWhite from "@/assets/branding/logo-white.png";
 
 const TitleBar: React.FC = () => {
@@ -16,8 +16,8 @@ const TitleBar: React.FC = () => {
   const { rootPath } = useWorkspace();
   const { isRightPanelOpen, setRightPanelOpen, isSidebarOpen, setSidebarOpen, isBottomPanelOpen, setBottomPanelOpen, isZenMode, toggleZenMode } = useUI();
   const { isMaximized, minimize, toggleMaximize, close } = useTauriWindow();
-  const { isCollaborating, startHostSession, activeUsers } = useCollaboration();
-  const { systemSettings } = useSettings();
+  const { isCollaborating } = useCollaboration();
+
   const { t } = useL10n();
 
   // Build dynamic title: <project> (file) | <app title>

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { GitBranch, Users } from "lucide-react";
 import { useFiles } from "@/context/FilesContext";
-import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useL10n } from "@/hooks/useL10n";
 import { isTauri, safeInvoke } from "@/api/tauri";
@@ -19,11 +18,7 @@ import { useCollaboration } from "@/context/CollaborationContext";
 // converted to a proper `<button>` at that point.
 const StatusBar: React.FC = () => {
   const { currentFile } = useFiles();
-  const {
-    setSidebarOpen,
-    setRightPanelOpen,
-    setBottomPanelOpen,
-  } = useUI();
+
   const { rootPath } = useWorkspace();
   const { t } = useL10n();
   const { isCollaborating, activeUsers, role, provider } = useCollaboration();
@@ -33,12 +28,12 @@ const StatusBar: React.FC = () => {
   // command is best-effort — if the folder is not a git repo we surface
   // nothing (the GitBranch chip hides itself).
   useEffect(() => {
-    if (!rootPath || !isTauri()) {
-      setBranch(null);
-      return;
-    }
     let cancelled = false;
     void (async () => {
+      if (!rootPath || !isTauri()) {
+        if (!cancelled) setBranch(null);
+        return;
+      }
       try {
         const result = await safeInvoke(
           "get_git_branches",

@@ -335,6 +335,7 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     closeToTheRight,
     closeSaved,
     closeAll,
+    setCurrentFile,
     updateFileContent,
     saveCurrentFile,
   ]);

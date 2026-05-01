@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { useCollaboration } from "@/context/CollaborationContext";
 import * as Sentry from "@sentry/nextjs";
 import "@xterm/xterm/css/xterm.css";
+import * as Y from "yjs";
 
 interface TerminalProps {
   /**
@@ -182,9 +183,11 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
         term.write(sharedText.toString());
         
         // Listen for new data
-        const observer = (event: any) => {
-          event.changes.delta.forEach((item: any) => {
-            if (item.insert) term.write(item.insert);
+        const observer = (event: Y.YTextEvent) => {
+          event.changes.delta.forEach((item) => {
+            if (item.insert && typeof item.insert === "string") {
+              term.write(item.insert);
+            }
           });
         };
         sharedText.observe(observer);
