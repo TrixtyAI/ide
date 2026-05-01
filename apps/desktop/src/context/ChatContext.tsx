@@ -1,8 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { trixtyStore } from "@/api/store";
+import {
+  broadcastState,
+  subscribeToBroadcasts,
+} from "@/api/crossWindowSync";
 import { logger } from "@/lib/logger";
+import { useCollaboration } from "@/context/CollaborationContext";
 
 export interface ChatMessage {
   role: "user" | "ai" | "tool" | "warning";
@@ -44,10 +49,23 @@ const CHATS_VERSION = 1;
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+interface ChatSyncPayload {
+  sessions: ChatSession[];
+  activeSessionId: string | null;
+}
+
+const CHAT_SYNC_KEY = "chat";
+
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { isCollaborating, role, ydoc } = useCollaboration();
   const [isLoaded, setIsLoaded] = useState(false);
+  // When set, the next state change came from a cross-window broadcast,
+  // not a local action — so the persist + re-broadcast effect skips
+  // emitting (which would echo the change right back to the origin).
+  // Reset on the first effect tick that sees it.
+  const remoteApplyRef = useRef(false);
 
   const createSession = useCallback(() => {
     const id = Date.now().toString();
@@ -66,6 +84,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load chats on mount.
   useEffect(() => {
+    if (isCollaborating && role === "guest") return; // Guests load from Yjs
+
     (async () => {
       try {
         const savedChats = await trixtyStore.getVersioned<ChatSession[] | null>(
@@ -86,20 +106,96 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoaded(true);
       }
     })();
-  }, [createSession]);
+  }, [createSession, isCollaborating, role]);
 
-  // Persist chats. Writes are debounced by 300 ms via effect cleanup: a burst
-  // of rapid appends (streaming deltas) coalesces into a single persisted
-  // write instead of firing once per token.
+  // Persist + cross-window broadcast. Both are debounced by 300 ms via
+  // effect cleanup: a burst of rapid appends (streaming deltas) coalesces
+  // into a single persisted write + a single broadcast instead of firing
+  // once per token. The `remoteApplyRef` short-circuit prevents an
+  // incoming sync from immediately echoing back to the origin.
   const PERSIST_DEBOUNCE_MS = 300;
   useEffect(() => {
     if (!isLoaded) return;
     if (chatSessions.length === 0) return;
+    if (remoteApplyRef.current) {
+      // The current state was painted from a remote broadcast; persist
+      // it (so a restart sees the latest) but do NOT re-broadcast.
+      remoteApplyRef.current = false;
+      const handle = setTimeout(() => {
+        trixtyStore.setVersioned("trixty-chats", chatSessions, CHATS_VERSION);
+      }, PERSIST_DEBOUNCE_MS);
+      return () => clearTimeout(handle);
+    }
     const handle = setTimeout(() => {
       trixtyStore.setVersioned("trixty-chats", chatSessions, CHATS_VERSION);
+      void broadcastState<ChatSyncPayload>(CHAT_SYNC_KEY, {
+        sessions: chatSessions,
+        activeSessionId,
+      });
     }, PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [chatSessions, isLoaded]);
+  }, [chatSessions, activeSessionId, isLoaded]);
+
+  // Subscribe to cross-window broadcasts. Each Tauri WebviewWindow
+  // (main + every detached float) subscribes to `trixty:state-sync:chat`
+  // on mount. When a sibling window broadcasts, we replace local state
+  // wholesale — last-write-wins. Single-user IDE, so realistic conflict
+  // is when the user edits in one window and the other catches up.
+  useEffect(() => {
+    let alive = true;
+    let unlisten: (() => void) | undefined;
+    
+    // Yjs Sync for Collaboration
+    if (isCollaborating && ydoc) {
+      const sharedSessions = ydoc.getArray("chat-sessions");
+      const sharedActiveId = ydoc.getMap("chat-meta");
+
+      if (role === "host") {
+        // Host: Push to Yjs
+        const handle = setTimeout(() => {
+          ydoc.transact(() => {
+            sharedSessions.delete(0, sharedSessions.length);
+            sharedSessions.push(chatSessions);
+            sharedActiveId.set("activeId", activeSessionId);
+          });
+        }, 500);
+        return () => clearTimeout(handle);
+      } else {
+        // Guest: Pull from Yjs
+        const updateFromY = () => {
+          setChatSessions(sharedSessions.toArray()[0] as ChatSession[] || []);
+          setActiveSessionId(sharedActiveId.get("activeId") as string || null);
+        };
+        
+        sharedSessions.observe(updateFromY);
+        sharedActiveId.observe(updateFromY);
+        updateFromY();
+        setIsLoaded(true);
+        
+        return () => {
+          sharedSessions.unobserve(updateFromY);
+          sharedActiveId.unobserve(updateFromY);
+        };
+      }
+    }
+
+    void subscribeToBroadcasts<ChatSyncPayload>(CHAT_SYNC_KEY, (payload) => {
+      if (!alive) return;
+      remoteApplyRef.current = true;
+      setChatSessions(payload.sessions);
+      setActiveSessionId(payload.activeSessionId);
+    }).then((u) => {
+      if (!alive) {
+        u();
+        return;
+      }
+      unlisten = u;
+    });
+    return () => {
+      alive = false;
+      if (unlisten) unlisten();
+    };
+  }, [isCollaborating, role, ydoc, chatSessions, activeSessionId]);
 
   const deleteSession = useCallback((id: string) => {
     setChatSessions((prev) => {

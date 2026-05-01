@@ -107,6 +107,28 @@ export interface TauriInvokeMap {
     };
     return: { status: number; body: string };
   };
+  "cloud_proxy_stream": {
+    args: {
+      streamId: string;
+      method: string;
+      url: string;
+      headers?: Array<[string, string]>;
+      body?: unknown;
+    };
+    return: void;
+  };
+  "cloud_proxy_cancel": { args: { streamId: string }; return: void };
+  // OS keychain-backed AI provider secrets. `provider` must be on the
+  // Rust-side allow-list (`openai` / `anthropic` / `gemini` / `openrouter`).
+  "set_provider_secret": { args: { provider: string; secret: string }; return: void };
+  "get_provider_secret": { args: { provider: string }; return: string | null };
+  "clear_provider_secret": { args: { provider: string }; return: void };
+  "has_provider_secret": { args: { provider: string }; return: boolean };
+  /** Spawn a new TrixtyIDE process pointing at the given workspace
+   *  folder. Each instance gets its own JS realm and its own Rust
+   *  state. The path must be an absolute, existing directory; the
+   *  Rust side canonicalises and rejects invalid inputs. */
+  "spawn_workspace_instance": { args: { path: string }; return: void };
   "check_update": { args: { channel?: "stable" | "pre-release" }; return: { version: string; body?: string | null } | null };
   "install_update": { args: { channel?: "stable" | "pre-release" }; return: void };
   "spawn_pty": { args: { sessionId: string; cwd?: string; rows?: number; cols?: number }; return: void };
@@ -178,24 +200,73 @@ export const isTauri = (): boolean => {
 
 /**
  * A safe wrapper around Tauri's 'invoke' command.
- * 
- * If running in a browser environment where Tauri internals are missing, 
- * it will log a warning and return a meaningful default or reject gracefully, 
+ *
+ * If running in a browser environment where Tauri internals are missing,
+ * it will log a warning and return a meaningful default or reject gracefully,
  * preventing the application from crashing.
  */
 export async function safeInvoke<K extends keyof TauriInvokeMap>(
-  cmd: K, 
+  cmd: K,
   args?: TauriInvokeMap[K]["args"],
   options: { silent?: boolean } = {}
 ): Promise<TauriInvokeMap[K]["return"]> {
-  const payload = args as Record<string, unknown> | undefined;
+  let payload = (args as Record<string, unknown> | undefined) || {};
+  const startTime = performance.now();
+
+  // Inject Sentry tracing context for distributed tracing
+  try {
+    const Sentry = await import("@sentry/nextjs");
+    const span = Sentry.getActiveSpan();
+    if (span) {
+      const traceData = Sentry.getTraceData();
+      payload = {
+        ...payload,
+        _sentry_context: {
+          sentry_trace: traceData["sentry-trace"],
+          baggage: traceData["baggage"],
+        },
+      };
+    }
+    
+    // Track command invocation
+    Sentry.metrics.count('tauri_command_call', 1, {
+      attributes: { command: cmd }
+    });
+  } catch {
+    // Sentry not initialized or failed to load, ignore
+  }
+
   if (isTauri()) {
     try {
-      return await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
+      const result = await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
+      
+      // Success metrics
+      try {
+        const Sentry = await import("@sentry/nextjs");
+        Sentry.metrics.distribution('tauri_command_duration', performance.now() - startTime, {
+          unit: 'millisecond',
+          attributes: { command: cmd, status: 'success' }
+        });
+      } catch {}
+      
+      return result;
     } catch (error) {
       if (!options.silent) {
         logger.error(`[Tauri Invoke Error] ${cmd}:`, error);
       }
+      
+      // Error metrics
+      try {
+        const Sentry = await import("@sentry/nextjs");
+        Sentry.metrics.count('tauri_command_error', 1, {
+          attributes: { command: cmd }
+        });
+        Sentry.metrics.distribution('tauri_command_duration', performance.now() - startTime, {
+          unit: 'millisecond',
+          attributes: { command: cmd, status: 'error' }
+        });
+      } catch {}
+      
       throw error;
     }
   }

@@ -6,10 +6,17 @@ import { logger } from "@/lib/logger";
 
 export type UpdateChannel = "stable" | "pre-release";
 
+export interface DiscordSettings {
+  enabled: boolean;
+  showDetails: boolean;
+  allowCollaboration: boolean;
+}
+
 export interface SystemSettings {
   hasCompletedOnboarding: boolean;
   filesExclude: string[];
   updateChannel: UpdateChannel;
+  discord: DiscordSettings;
 }
 
 export interface InlineCompletionSettings {
@@ -106,7 +113,7 @@ interface SettingsContextType {
 // `getVersioned(..., { [prev]: (prev) => migrated })` in the load effect.
 const AI_SETTINGS_VERSION = 3;
 const EDITOR_SETTINGS_VERSION = 1;
-const SYSTEM_SETTINGS_VERSION = 2;
+const SYSTEM_SETTINGS_VERSION = 4;
 const LOCALE_VERSION = 1;
 
 export const DEFAULT_INLINE_COMPLETIONS: InlineCompletionSettings = {
@@ -252,6 +259,12 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   lastModelByProvider: {},
 };
 
+export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
+  enabled: true,
+  showDetails: true,
+  allowCollaboration: false,
+};
+
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   fontSize: 14,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
@@ -276,6 +289,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
     "**/yarn.lock",
   ],
   updateChannel: "stable",
+  discord: DEFAULT_DISCORD_SETTINGS,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -366,6 +380,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           "trixty-system-settings",
           SYSTEM_SETTINGS_VERSION,
           null,
+          {
+            // v2 -> v3: add Discord settings (old default was true)
+            2: (prev) => ({
+              ...(prev as SystemSettings),
+              discord: { ...DEFAULT_DISCORD_SETTINGS, allowCollaboration: true },
+            }),
+            // v3 -> v4: Force allowCollaboration to false by default for safety
+            3: (prev) => ({
+              ...(prev as SystemSettings),
+              discord: { ...(prev as SystemSettings).discord, allowCollaboration: false },
+            }),
+          },
         );
         if (savedSystemSettings) {
           setSystemSettings((prev) => ({ ...prev, ...savedSystemSettings }));
@@ -382,6 +408,51 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadInitialState();
   }, [setLocale]);
+
+  // One-shot lazy migration: any provider key still living in
+  // `aiSettings.providerKeys` (the pre-keychain plaintext field) gets
+  // moved to the OS keychain on the first load that detects it, then
+  // the settings field is cleared so the next persist doesn't write
+  // the secret back to disk. Idempotent — once `providerKeys` is empty
+  // this effect short-circuits on every subsequent boot.
+  useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    const entries = Object.entries(aiSettings.providerKeys ?? {}).filter(
+      ([, v]) => typeof v === "string" && v.length > 0,
+    ) as Array<[keyof ProviderKeys, string]>;
+    if (entries.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { setProviderSecret } = await import("@/api/providerSecrets");
+      for (const [provider, secret] of entries) {
+        try {
+          await setProviderSecret(
+            provider as "openai" | "anthropic" | "gemini" | "openrouter",
+            secret,
+          );
+        } catch (err) {
+          logger.warn(
+            `[SettingsContext] keychain migration failed for ${provider}:`,
+            err,
+          );
+          // Bail out without clearing — the next boot will retry. Better
+          // to leave the plaintext in place than lose the key entirely.
+          return;
+        }
+      }
+      if (cancelled) return;
+      setAiSettings((prev) => ({
+        ...prev,
+        providerKeys: { ...DEFAULT_PROVIDER_KEYS },
+      }));
+      logger.debug(
+        `[SettingsContext] migrated ${entries.length} provider key(s) from settings.json to OS keychain.`,
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInitialLoadComplete, aiSettings.providerKeys]);
 
   // Persistence effects — ONLY run after initial load to avoid overwriting the
   // store with defaults. Writes are debounced by 300 ms via effect cleanup:

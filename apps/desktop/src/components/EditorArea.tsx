@@ -9,9 +9,12 @@ import { useSettings } from "@/context/SettingsContext";
 import TabBar, { EDITOR_TABPANEL_ID, tabIdFor } from "./TabBar";
 import { useL10n } from "@/hooks/useL10n";
 import { useInlineCompletions } from "@/hooks/useInlineCompletions";
+import { useCollaboration } from "@/context/CollaborationContext";
+import { MonacoBinding } from "y-monaco";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Code2, LayoutGrid } from "lucide-react";
 import { getVisualEditor } from "./visual/getVisualEditor";
+import * as Sentry from "@sentry/nextjs";
 
 // Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
 // Loading it with `next/dynamic` keeps it off the boot path; it only arrives
@@ -166,6 +169,55 @@ const EditorArea: React.FC = () => {
     editor.focus();
   };
 
+  // Collaborative Sync
+  const { isCollaborating, ydoc, provider, updatePresenceFile } = useCollaboration();
+  const bindingRef = useRef<MonacoBinding | null>(null);
+
+  // Sync our current file path with peers
+  React.useEffect(() => {
+    if (isCollaborating) {
+      updatePresenceFile(currentFile?.path || null);
+    }
+  }, [isCollaborating, currentFile?.path, updatePresenceFile]);
+
+  React.useEffect(() => {
+    if (!isCollaborating || !ydoc || !provider || !editorRef.current || !currentFile) {
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+      return;
+    }
+
+    const editor = editorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Use the file path as the key for the shared Y.Text type
+    const ytext = ydoc.getText(currentFile.path);
+    
+    // If the doc is empty and we are the host, initialize it with current content
+    if (ytext.length === 0 && currentFile.content) {
+      ytext.insert(0, currentFile.content);
+    }
+
+    console.log(`[Collaboration] Binding Monaco to Y.Text for: ${currentFile.path}`);
+    
+    const binding = new MonacoBinding(
+      ytext,
+      model,
+      new Set([editor]),
+      provider.awareness
+    );
+
+    bindingRef.current = binding;
+
+    return () => {
+      binding.destroy();
+      bindingRef.current = null;
+    };
+  }, [isCollaborating, ydoc, provider, currentFile?.path]);
+
   // Performance: Efficient Layout handling
   React.useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
@@ -190,37 +242,33 @@ const EditorArea: React.FC = () => {
     };
   }, [openFiles.length, currentFile?.path]);
 
-  // Memory: Clean up Monaco models when files are closed.
-  const openPathKeys = openFiles.map(f => f.path).join("\n");
+  // Derive the threshold as a primitive boolean so the memo below only rebuilds
+  // options when we cross `LARGE_FILE_BYTES`, not on every keystroke.
+  const isLargeFile = (currentFile?.content?.length ?? 0) >= LARGE_FILE_BYTES;
+
+  // Memory: We previously tried to clean up Monaco models here, but it was causing
+  // "TextModelPart is disposed" errors and UI flickering during rapid switching.
+  // Monaco can handle many models; we'll revisit a safer disposal strategy later.
   React.useEffect(() => {
-    if (!monacoRef.current || !currentFile) return;
+    if (!currentFile) return;
 
-    const normalize = (p: string) => {
-      const slashed = p.replace(/\\/g, "/");
-      const isWindowsPath = /^[A-Za-z]:\//.test(slashed) || slashed.startsWith("//");
-      const result = isWindowsPath ? slashed.toLowerCase() : slashed;
-      return result;
-    };
-
-    const openPathsArray = openFiles.map(f => normalize(f.path));
-    const openPaths = new Set(openPathsArray);
-    const activeModelPath = normalize(currentFile.path);
-
-    const models = monacoRef.current.editor.getModels();
-    for (const model of models) {
-      if (model.uri.scheme === "inmemory") continue;
-
-      const modelPath = normalize(model.uri.fsPath);
-
-      // Safety: Never dispose of the current file's model
-      if (modelPath === activeModelPath) continue;
-
-      if (!openPaths.has(modelPath)) {
-        model.dispose();
+    // Sentry Tracking for File Open
+    Sentry.metrics.count('editor_file_open', 1, {
+      attributes: { 
+        language: currentFile.language || 'unknown',
+        extension: currentFile.path.split('.').pop() || 'none',
+        type: currentFile.type || 'text'
       }
+    });
+    
+    if (isLargeFile) {
+      Sentry.metrics.count('editor_large_file_open', 1);
+      Sentry.logger.info(`Large file opened: ${currentFile.path}`, { 
+        size: currentFile.content?.length,
+        path: currentFile.path 
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPathKeys, currentFile?.path]);
+  }, [currentFile?.path, isLargeFile]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -250,11 +298,6 @@ const EditorArea: React.FC = () => {
       updateFileContent(path, content);
     }, 300);
   };
-
-  // Derive the threshold as a primitive boolean so the memo below only rebuilds
-  // options when we cross `LARGE_FILE_BYTES`, not on every keystroke.
-  const isLargeFile = (currentFile?.content?.length ?? 0) >= LARGE_FILE_BYTES;
-
   const editorOptions = useMemo<editor.IStandaloneEditorConstructionOptions>(
     () => ({
       minimap: { enabled: editorSettings.minimapEnabled },
@@ -348,6 +391,7 @@ const EditorArea: React.FC = () => {
     }
   };
   const activeTabId = currentFile ? tabIdFor(currentFile.path) : undefined;
+  const showEditor = !!currentFile;
 
   return (
     <div className="flex-1 w-full h-full overflow-hidden flex flex-col bg-[#0e0e0e]">
@@ -361,7 +405,11 @@ const EditorArea: React.FC = () => {
         className="flex-1 overflow-hidden relative focus:outline-none"
         ref={containerRef}
       >
-        {isVirtualTab ? (
+        {!showEditor ? (
+           <div className="flex-1 flex flex-col items-center justify-center h-full text-[#333]">
+             <p className="text-[11px] opacity-40">{t('editor.empty_desc')}</p>
+           </div>
+        ) : isVirtualTab ? (
           renderVirtualView()
         ) : isBinaryTab ? (
           <div className="flex-1 h-full flex items-center justify-center p-8">
@@ -369,29 +417,31 @@ const EditorArea: React.FC = () => {
               {t('editor.bin_file')}
             </p>
           </div>
-        ) : currentFile ? (
+        ) : (
           <FileViewSurface
-            file={currentFile}
-            onContentChange={(next) => updateFileContent(currentFile.path, next)}
+            file={currentFile!}
+            onContentChange={(next) => updateFileContent(currentFile!.path, next)}
             monacoElement={
               <div className="h-full" data-allow-global-shortcuts="true">
-                <MonacoEditor
+                  <MonacoEditor
                   height="100%"
-                  language={currentFile.language}
-                  value={currentFile.content}
+                  language={currentFile!.language}
+                  value={currentFile!.content}
                   theme={MONACO_THEME_NAME}
                   onMount={handleEditorDidMount}
                   onChange={handleEditorChange}
-                  path={currentFile.path}
+                  path={currentFile!.path}
                   options={editorOptions}
+                  keepCurrentModel={true}
                 />
               </div>
             }
           />
-        ) : null}
+        )}
       </div>
     </div>
   );
+
 };
 
 export default EditorArea;
@@ -418,23 +468,32 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
   onContentChange,
   monacoElement,
 }) => {
-  const visual = useMemo(() => getVisualEditor(file), [file]);
-  const [modeByPath, setModeByPath] = useState<Map<string, "source" | "visual">>(
+  const { t } = useL10n();
+  const visuals = useMemo(() => getVisualEditor(file), [file]);
+  // Mode tracks "source" or one of the visual entry ids. Per-path so
+  // switching files of the same kind preserves the user's last choice.
+  const [modeByPath, setModeByPath] = useState<Map<string, string>>(
     () => new Map(),
   );
 
-  if (!visual) return <>{monacoElement}</>;
+  if (visuals.length === 0) return <>{monacoElement}</>;
 
-  // Default to "source" when the path has no remembered choice yet —
-  // computed inline so we don't need an effect to seed the map.
-  const mode = modeByPath.get(file.path) ?? "source";
-  const setMode = (next: "source" | "visual") => {
+  // Default to the first visual mode if available, otherwise "source".
+  // This ensures that .json, .env, etc., open directly in their visual view.
+  const defaultMode = visuals[0]?.id ?? "source";
+  const mode = modeByPath.get(file.path) ?? defaultMode;
+  const setMode = (next: string) => {
+    Sentry.metrics.count('editor_mode_switch', 1, {
+      attributes: { to_mode: next, file_type: file.language }
+    });
     setModeByPath((prev) => {
       const map = new Map(prev);
       map.set(file.path, next);
       return map;
     });
   };
+
+  const activeVisual = visuals.find((v) => v.id === mode);
 
   return (
     <div className="h-full flex flex-col">
@@ -443,17 +502,20 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
           active={mode === "source"}
           onClick={() => setMode("source")}
           icon={<Code2 size={11} strokeWidth={1.6} />}
-          label="Source"
+          label={t('editor.source')}
         />
-        <SubTabButton
-          active={mode === "visual"}
-          onClick={() => setMode("visual")}
-          icon={<LayoutGrid size={11} strokeWidth={1.6} />}
-          label={visual.label}
-        />
+        {visuals.map((v) => (
+          <SubTabButton
+            key={v.id}
+            active={mode === v.id}
+            onClick={() => setMode(v.id)}
+            icon={<LayoutGrid size={11} strokeWidth={1.6} />}
+            label={v.label}
+          />
+        ))}
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
-        {mode === "source" ? (
+        {mode === "source" || !activeVisual ? (
           monacoElement
         ) : (
           <Suspense
@@ -464,7 +526,7 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
             }
           >
             <ErrorBoundary name="Visual editor">
-              <visual.Component file={file} onChange={onContentChange} />
+              <activeVisual.Component file={file} onChange={onContentChange} />
             </ErrorBoundary>
           </Suspense>
         )}

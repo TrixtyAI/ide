@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical } from "lucide-react";
 import type { VisualEditorProps } from "./getVisualEditor";
+import { useDragReorder } from "@/hooks/useDragReorder";
+import { useL10n } from "@/hooks/useL10n";
 
 interface EnvRow {
   /** "" for blank lines / pure-comment lines, otherwise the variable name. */
@@ -121,6 +123,7 @@ function serializeEnv(rows: EnvRow[]): string {
 }
 
 const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
+  const { t } = useL10n();
   // Parsed rows are fully derived from `file.content`; user edits flow
   // back through `onChange` so the next render re-derives from the
   // updated prop. Avoids the cascading-render trap of mirroring the
@@ -154,14 +157,39 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
   const variableRows = rows.filter((r) => r.key !== "" || r.raw === null);
   const commentOnlyRows = rows.filter((r) => r.key === "" && r.raw !== null);
 
+  // Drag-to-reorder for the variable rows. We rebuild the full rows
+  // array on drop by mapping each variable-row slot in the original
+  // order to the user's new ordering — comment-only rows stay in
+  // place so they don't migrate to the bottom of the file.
+  const reorderVariables = (next: EnvRow[]) => {
+    const varIndices: number[] = [];
+    rows.forEach((r, i) => {
+      if (r.key !== "" || r.raw === null) varIndices.push(i);
+    });
+    if (varIndices.length !== next.length) {
+      commit(next.concat(commentOnlyRows));
+      return;
+    }
+    const merged = rows.slice();
+    for (let i = 0; i < varIndices.length; i++) {
+      merged[varIndices[i]] = next[i];
+    }
+    commit(merged);
+  };
+  const { getRowProps } = useDragReorder<EnvRow>({
+    items: variableRows,
+    getId: (r) => r.id,
+    onReorder: reorderVariables,
+  });
+
   return (
     <div className="h-full overflow-auto bg-[#0e0e0e] p-4 text-[12px] text-[#ccc]">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="flex items-center justify-between">
           <div>
-            <h2 className="text-[14px] font-semibold text-white">Environment variables</h2>
+            <h2 className="text-[14px] font-semibold text-white">{t('visual.env.title')}</h2>
             <p className="text-[11px] text-[#666] mt-1">
-              Edits sync to the source view. Comments and blank lines are preserved.
+              {t('visual.env.desc')}
             </p>
           </div>
           <button
@@ -170,31 +198,50 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 transition-colors"
           >
             <Plus size={12} strokeWidth={1.8} />
-            Add variable
+            {t('visual.env.add')}
           </button>
         </header>
 
         <div className="border border-[#1a1a1a] rounded-xl overflow-hidden bg-[#0a0a0a]">
-          <div className="grid grid-cols-[1fr_1.4fr_1fr_auto] gap-2 px-3 py-2 border-b border-[#1a1a1a] bg-[#101010] text-[10px] font-bold text-[#666] uppercase tracking-wider">
-            <span>Key</span>
-            <span>Value</span>
-            <span>Comment</span>
+          <div className="grid grid-cols-[auto_1fr_1.4fr_1fr_auto] gap-2 px-3 py-2 border-b border-[#1a1a1a] bg-[#101010] text-[10px] font-bold text-[#666] uppercase tracking-wider">
+            <span className="w-3" aria-hidden />
+            <span>{t('visual.env.key_placeholder')}</span>
+            <span>{t('visual.env.value_placeholder')}</span>
+            <span>{t('visual.env.comment_placeholder')}</span>
             <span className="w-8" aria-hidden />
           </div>
 
           {variableRows.length === 0 && (
             <div className="px-3 py-6 text-center text-[11px] text-[#555] italic">
-              No variables yet. Click &quot;Add variable&quot; to start.
+              {t('common.no_entries')}
             </div>
           )}
 
           {variableRows.map((r) => {
             const isRevealed = !!revealed[r.id];
+            const dragProps = getRowProps(r);
             return (
               <div
                 key={r.id}
-                className="grid grid-cols-[1fr_1.4fr_1fr_auto] gap-2 px-3 py-1.5 border-b border-[#161616] last:border-b-0 items-center"
+                {...dragProps}
+                className={`grid grid-cols-[auto_1fr_1.4fr_1fr_auto] gap-2 px-3 py-1.5 border-b border-[#161616] last:border-b-0 items-center transition-opacity ${
+                  dragProps["data-dragging"] ? "opacity-40" : ""
+                } ${
+                  dragProps["data-drag-target"] === "top"
+                    ? "shadow-[inset_0_2px_0_0_#3b82f6]"
+                    : ""
+                } ${
+                  dragProps["data-drag-target"] === "bottom"
+                    ? "shadow-[inset_0_-2px_0_0_#3b82f6]"
+                    : ""
+                }`}
               >
+                <span
+                  className="cursor-grab active:cursor-grabbing text-[#444] hover:text-[#888] transition-colors"
+                  aria-hidden
+                >
+                  <GripVertical size={12} strokeWidth={1.4} />
+                </span>
                 <input
                   type="text"
                   value={r.key}
@@ -207,7 +254,7 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
                     const trimmed = e.target.value.trim();
                     if (trimmed !== r.key) updateRow(r.id, { key: trimmed });
                   }}
-                  placeholder="KEY"
+                  placeholder={t('visual.env.key_placeholder')}
                   className="bg-[#0e0e0e] border border-[#1a1a1a] rounded px-2 py-1 text-[12px] font-mono text-white focus:border-blue-500/50 outline-none transition-colors"
                 />
                 <div className="relative">
@@ -217,7 +264,7 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
                     spellCheck={false}
                     value={r.value}
                     onChange={(e) => updateRow(r.id, { value: e.target.value })}
-                    placeholder="value"
+                    placeholder={t('visual.env.value_placeholder')}
                     className="w-full bg-[#0e0e0e] border border-[#1a1a1a] rounded px-2 py-1 pr-8 text-[12px] font-mono text-white focus:border-blue-500/50 outline-none transition-colors"
                   />
                   <button
@@ -225,9 +272,9 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
                     onClick={() =>
                       setRevealed((s) => ({ ...s, [r.id]: !isRevealed }))
                     }
-                    title={isRevealed ? "Hide value" : "Reveal value"}
+                    title={isRevealed ? t('visual.env.hide') : t('visual.env.reveal')}
                     className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-[#555] hover:text-white transition-colors"
-                    aria-label={isRevealed ? "Hide value" : "Reveal value"}
+                    aria-label={isRevealed ? t('visual.env.hide') : t('visual.env.reveal')}
                   >
                     {isRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
                   </button>
@@ -236,15 +283,15 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
                   type="text"
                   value={r.comment}
                   onChange={(e) => updateRow(r.id, { comment: e.target.value })}
-                  placeholder="comment (optional)"
+                  placeholder={t('visual.env.comment_placeholder')}
                   className="bg-[#0e0e0e] border border-[#1a1a1a] rounded px-2 py-1 text-[12px] text-[#aaa] focus:border-blue-500/50 outline-none transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => removeRow(r.id)}
-                  title="Remove"
+                  title={t('common.remove')}
                   className="p-1 text-[#666] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                  aria-label={`Remove ${r.key || "variable"}`}
+                  aria-label={t('common.remove')}
                 >
                   <Trash2 size={13} strokeWidth={1.6} />
                 </button>
@@ -255,7 +302,7 @@ const EnvEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
 
         {commentOnlyRows.length > 0 && (
           <p className="text-[10px] text-[#444] italic">
-            {commentOnlyRows.length} comment / blank line preserved verbatim.
+            {t('visual.env.preserved', { count: commentOnlyRows.length })}
           </p>
         )}
       </div>

@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { GitBranch, Wifi, Bell, Cloud, LayoutTemplate, Zap, ChevronDown } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { GitBranch, Users } from "lucide-react";
 import { useFiles } from "@/context/FilesContext";
 import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useL10n } from "@/hooks/useL10n";
-import { resetLayout } from "@/api/layoutReset";
 import { isTauri, safeInvoke } from "@/api/tauri";
-import { logger } from "@/lib/logger";
+import { useCollaboration } from "@/context/CollaborationContext";
 
-type LayoutPreset = "default" | "editor-only" | "compact";
 
 // StatusBar items are informational surfaces today (no click handlers). The
 // previous `cursor-pointer` + `hover:bg-blue-500` styles advertised them as
@@ -22,17 +20,14 @@ type LayoutPreset = "default" | "editor-only" | "compact";
 const StatusBar: React.FC = () => {
   const { currentFile } = useFiles();
   const {
-    isZenMode,
-    toggleZenMode,
     setSidebarOpen,
     setRightPanelOpen,
     setBottomPanelOpen,
   } = useUI();
   const { rootPath } = useWorkspace();
   const { t } = useL10n();
+  const { isCollaborating, activeUsers, role, provider } = useCollaboration();
   const [branch, setBranch] = useState<string | null>(null);
-  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
-  const presetMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch the active git branch whenever the workspace root changes. The
   // command is best-effort — if the folder is not a git repo we surface
@@ -61,64 +56,6 @@ const StatusBar: React.FC = () => {
     };
   }, [rootPath]);
 
-  // Close the preset menu when clicking outside.
-  useEffect(() => {
-    if (!presetMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
-        setPresetMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [presetMenuOpen]);
-
-  const applyPreset = useCallback(
-    (preset: LayoutPreset) => {
-      switch (preset) {
-        case "default":
-          setSidebarOpen(true);
-          setRightPanelOpen(true);
-          setBottomPanelOpen(false);
-          break;
-        case "editor-only":
-          setSidebarOpen(false);
-          setRightPanelOpen(false);
-          setBottomPanelOpen(false);
-          break;
-        case "compact":
-          setSidebarOpen(false);
-          setRightPanelOpen(true);
-          setBottomPanelOpen(false);
-          break;
-      }
-      setPresetMenuOpen(false);
-    },
-    [setSidebarOpen, setRightPanelOpen, setBottomPanelOpen],
-  );
-
-  const handleResetLayout = useCallback(async () => {
-    let confirmed = false;
-    if (isTauri()) {
-      try {
-        const { ask } = await import("@tauri-apps/plugin-dialog");
-        confirmed = await ask(
-          "Reset panel sizes, open/closed flags, and detached views to defaults? Workspace, settings, and chat history are not touched.",
-          { title: "Reset Layout?", kind: "warning" },
-        );
-      } catch (err) {
-        logger.warn("[StatusBar] reset confirm failed:", err);
-        return;
-      }
-    } else if (typeof window !== "undefined") {
-      confirmed = window.confirm(
-        "Reset layout to defaults? Workspace and settings are unchanged.",
-      );
-    }
-    if (!confirmed) return;
-    await resetLayout();
-    if (typeof window !== "undefined") window.location.reload();
-  }, []);
 
   return (
     <div className="h-[22px] bg-[#0a0a0a] text-[#999] border-t border-[#1a1a1a] flex items-center justify-between px-3 text-[11px] select-none z-50">
@@ -132,58 +69,34 @@ const StatusBar: React.FC = () => {
             <span className="truncate max-w-[180px]">{branch}</span>
           </div>
         )}
-        <div ref={presetMenuRef} className="relative h-full">
-          <button
-            type="button"
-            onClick={() => setPresetMenuOpen((v) => !v)}
-            title="Layout presets"
-            className="flex items-center gap-1 px-1.5 h-full hover:bg-white/5 hover:text-[#ccc] transition-colors"
-            aria-haspopup="menu"
-            aria-expanded={presetMenuOpen}
+
+        {isCollaborating && (
+          <div 
+            className="flex items-center gap-1.5 px-1.5 h-full text-indigo-400 border-x border-white/5 bg-indigo-500/5 group relative"
           >
-            <LayoutTemplate size={12} strokeWidth={1.5} />
-            <ChevronDown size={10} strokeWidth={1.5} />
-          </button>
-          {presetMenuOpen && (
-            <div
-              role="menu"
-              className="absolute bottom-full left-0 mb-1 w-44 bg-[#1e1e1e] border border-[#2b2b2b] rounded-md shadow-2xl text-[11px] text-[#ccc] overflow-hidden z-50"
-            >
-              <button
-                type="button"
-                onClick={() => applyPreset("default")}
-                className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors"
-              >
-                Default (sidebar + AI)
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset("compact")}
-                className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors"
-              >
-                Compact (AI only)
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset("editor-only")}
-                className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors"
-              >
-                Editor-only
-              </button>
-              <div className="border-t border-[#2b2b2b]" />
-              <button
-                type="button"
-                onClick={() => {
-                  setPresetMenuOpen(false);
-                  void handleResetLayout();
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors text-amber-300/90"
-              >
-                Reset layout…
-              </button>
+            <Users size={12} strokeWidth={1.5} />
+            <span className="font-medium">{activeUsers.length}</span>
+
+            {/* Collaborators Hover List */}
+            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg shadow-2xl p-2 animate-in slide-in-from-bottom-1 duration-200 z-[100]">
+              <div className="text-[10px] text-[#555] uppercase tracking-wider mb-2 px-1">Collaborators</div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                  <span className="text-[11px] text-white">You ({role === 'host' ? 'Host' : 'Guest'})</span>
+                </div>
+                {activeUsers
+                  .filter(u => u.user && u.user.clientId !== (provider?.awareness?.clientID))
+                  .map((u, i) => (
+                    <div key={i} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: u.user.color }} />
+                      <span className="text-[11px] text-[#bbb]">{u.user.name}</span>
+                    </div>
+                  ))}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3 h-full">
@@ -200,28 +113,6 @@ const StatusBar: React.FC = () => {
             </div>
           </>
         )}
-        <div className="flex items-center gap-1 px-1.5 h-full">
-          <Cloud size={12} strokeWidth={1.5} />
-          <span>{t('status.powered_by', { engine: 'Rust' })}</span>
-        </div>
-        <div className="flex items-center gap-1 px-1.5 h-full">
-          <Wifi size={12} strokeWidth={1.5} />
-        </div>
-        <div className="flex items-center gap-1 px-1.5 h-full">
-          <Bell size={12} strokeWidth={1.5} />
-        </div>
-        <button
-          type="button"
-          onClick={toggleZenMode}
-          title={isZenMode ? "Exit Zen Mode (Esc)" : "Enter Zen Mode (Ctrl+K Z)"}
-          className={`flex items-center gap-1 px-1.5 h-full transition-colors ${
-            isZenMode
-              ? "bg-[#3b82f6]/15 text-[#3b82f6]"
-              : "hover:bg-white/5 hover:text-[#ccc]"
-          }`}
-        >
-          <Zap size={12} strokeWidth={1.5} />
-        </button>
       </div>
     </div>
   );

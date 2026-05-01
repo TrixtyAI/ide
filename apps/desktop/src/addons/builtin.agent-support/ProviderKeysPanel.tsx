@@ -1,33 +1,114 @@
 "use client";
 
-import React, { useState } from "react";
-import { Eye, EyeOff, Plus, Trash2, ExternalLink, Check } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Eye, EyeOff, Plus, Trash2, ExternalLink, Check, ShieldCheck } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
-import type { ProviderId, ProviderKeys } from "@/context/SettingsContext";
+import { useL10n } from "@/hooks/useL10n";
+import type { ProviderId } from "@/context/SettingsContext";
 import { PROVIDER_IDS, PROVIDERS } from "@/api/providers/registry";
+import {
+  type SecretProvider,
+  getProviderSecret,
+  setProviderSecret,
+  clearProviderSecret,
+} from "@/api/providerSecrets";
 
 const CLOUD_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
   (id) => PROVIDERS[id].kind === "cloud",
 );
 
 /**
- * Settings → Agent → Provider Keys (issue #267).
+ * Settings → Agent → Provider Keys (issue #267, hardened in this PR).
  *
- * Per-provider API key + curated model list. Mirrors the File-Exclusion
- * pattern the issue calls out: simple add/remove inputs, one section per
- * provider. Keys persist via `aiSettings.providerKeys`; models via
- * `aiSettings.providerModels`. Shown only when
- * `aiSettings.allowProviderKeys` is true (gated from the parent).
+ * Per-provider API key + curated model list. Keys are now stored in the
+ * OS native keychain (macOS Keychain / Windows Credential Manager /
+ * Linux Secret Service) instead of `settings.json` plaintext. The
+ * settings file still owns the curated model list and the active
+ * provider — only the secret material moved.
  */
 export const ProviderKeysPanel: React.FC = () => {
   const { aiSettings, updateAISettings } = useSettings();
+  const { t } = useL10n();
   const [revealedKey, setRevealedKey] = useState<ProviderId | null>(null);
   const [draftModels, setDraftModels] = useState<Record<string, string>>({});
+  // Keys live in component state instead of `aiSettings.providerKeys`
+  // — they're loaded once from the keychain on mount, mutated locally
+  // as the user types, and persisted to the keychain on blur. The
+  // settings file never sees the secret material.
+  const [keys, setKeys] = useState<Partial<Record<SecretProvider, string>>>({});
+  const [keyLoadDone, setKeyLoadDone] = useState(false);
+  // Tracks which providers have a key stored in the keychain right now.
+  // Mirrors the on-disk truth so the "Key set" pill stays accurate even
+  // before the user has typed anything in this session.
+  const [configured, setConfigured] = useState<Partial<Record<SecretProvider, boolean>>>({});
+
+  // Load existing secrets on mount. We pull the full key (not just the
+  // configured flag) because the input field needs to render the user's
+  // existing value behind the reveal toggle.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const initial: Partial<Record<SecretProvider, string>> = {};
+      const flags: Partial<Record<SecretProvider, boolean>> = {};
+      for (const provider of CLOUD_PROVIDERS) {
+        const secret = await getProviderSecret(provider as SecretProvider);
+        initial[provider as SecretProvider] = secret;
+        flags[provider as SecretProvider] = secret.length > 0;
+      }
+      if (!alive) return;
+      setKeys(initial);
+      setConfigured(flags);
+      setKeyLoadDone(true);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Debounce keychain writes so a fast typer doesn't fire one IPC call
+  // per keystroke. We commit on blur explicitly via `commitKey`, and
+  // also on a 500 ms idle window so the user doesn't lose changes if
+  // they navigate away mid-edit.
+  const writeTimers = useRef<Partial<Record<SecretProvider, ReturnType<typeof setTimeout>>>>({});
+  useEffect(() => {
+    // Snapshot the ref so the cleanup runs against the same object the
+    // effect set up, even if the ref is mutated again before unmount.
+    const timersSnapshot = writeTimers.current;
+    return () => {
+      for (const handle of Object.values(timersSnapshot)) {
+        if (handle) clearTimeout(handle);
+      }
+    };
+  }, []);
 
   const setKey = (provider: ProviderId, value: string) => {
     if (provider === "ollama") return;
-    const next: ProviderKeys = { ...aiSettings.providerKeys, [provider]: value };
-    updateAISettings({ providerKeys: next });
+    const sp = provider as SecretProvider;
+    setKeys((prev) => ({ ...prev, [sp]: value }));
+    if (writeTimers.current[sp]) clearTimeout(writeTimers.current[sp]);
+    writeTimers.current[sp] = setTimeout(() => {
+      void persistKey(sp, value);
+    }, 500);
+  };
+
+  const persistKey = async (provider: SecretProvider, value: string) => {
+    if (value) {
+      await setProviderSecret(provider, value);
+      setConfigured((flags) => ({ ...flags, [provider]: true }));
+    } else {
+      await clearProviderSecret(provider);
+      setConfigured((flags) => ({ ...flags, [provider]: false }));
+    }
+  };
+
+  const commitKey = (provider: ProviderId) => {
+    if (provider === "ollama") return;
+    const sp = provider as SecretProvider;
+    if (writeTimers.current[sp]) {
+      clearTimeout(writeTimers.current[sp]);
+      writeTimers.current[sp] = undefined;
+    }
+    void persistKey(sp, keys[sp] ?? "");
   };
 
   const addModel = (provider: ProviderId) => {
@@ -57,18 +138,22 @@ export const ProviderKeysPanel: React.FC = () => {
     });
   };
 
+  const renderedProviders = useMemo(() => CLOUD_PROVIDERS, []);
+
   return (
     <div className="space-y-10">
-      <div className="p-4 bg-amber-500/[0.04] border border-amber-500/15 rounded-2xl text-[12px] text-amber-200/85 leading-relaxed">
-        Provider keys are stored locally in <code className="font-mono">settings.json</code>.
-        Treat the IDE app data dir as the trust boundary — anyone with disk
-        access to that directory can read these keys. Encryption via the
-        OS keychain is on the roadmap.
+      <div className="p-4 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-2xl text-[12px] text-emerald-200/85 leading-relaxed flex gap-3">
+        <ShieldCheck size={16} strokeWidth={1.6} className="shrink-0 mt-[1px] text-emerald-300/80" />
+        <span>
+          {t('agent.provider-keys.keychain_info')}
+        </span>
       </div>
 
-      {CLOUD_PROVIDERS.map((provider) => {
+      {renderedProviders.map((provider) => {
         const meta = PROVIDERS[provider];
-        const key = aiSettings.providerKeys[provider as keyof ProviderKeys] ?? "";
+        const sp = provider as SecretProvider;
+        const key = keys[sp] ?? "";
+        const isConfigured = configured[sp] ?? false;
         const models = aiSettings.providerModels[provider] ?? [];
         const isRevealed = revealedKey === provider;
         return (
@@ -88,17 +173,17 @@ export const ProviderKeysPanel: React.FC = () => {
                   className="inline-flex items-center gap-1 text-[10px] text-[#666] hover:text-blue-400 transition-colors mt-1 uppercase tracking-wider"
                 >
                   <ExternalLink size={10} strokeWidth={1.6} />
-                  Docs
+                  {t('agent.provider-keys.docs_link')}
                 </a>
               </div>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  key
+                  isConfigured
                     ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
                     : "bg-[#1a1a1a] text-[#555] border border-white/5"
                 }`}
               >
-                {key ? "Key set" : "No key"}
+                {isConfigured ? t('agent.provider-keys.key_set') : t('agent.provider-keys.no_key')}
               </span>
             </div>
 
@@ -107,7 +192,7 @@ export const ProviderKeysPanel: React.FC = () => {
                 htmlFor={`provider-key-${provider}`}
                 className="text-[10px] font-bold text-[#888] uppercase tracking-wider"
               >
-                API key
+                {t('agent.provider-keys.api_key_label')}
               </label>
               <div className="relative">
                 <input
@@ -117,15 +202,17 @@ export const ProviderKeysPanel: React.FC = () => {
                   spellCheck={false}
                   value={key}
                   onChange={(e) => setKey(provider, e.target.value)}
-                  placeholder={`Paste your ${meta.label} API key`}
-                  className="w-full bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg px-3 py-2 pr-10 text-[12px] text-white font-mono focus:border-blue-500/50 outline-none transition-colors"
+                  onBlur={() => commitKey(provider)}
+                  disabled={!keyLoadDone}
+                  placeholder={t('agent.provider-keys.api_key_placeholder', { name: meta.label })}
+                  className="w-full bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg px-3 py-2 pr-10 text-[12px] text-white font-mono focus:border-blue-500/50 outline-none transition-colors disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setRevealedKey(isRevealed ? null : provider)}
-                  title={isRevealed ? "Hide key" : "Reveal key"}
+                  title={isRevealed ? t('agent.provider-keys.hide_key') : t('agent.provider-keys.reveal_key')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#555] hover:text-white transition-colors"
-                  aria-label={isRevealed ? "Hide API key" : "Reveal API key"}
+                  aria-label={isRevealed ? t('agent.provider-keys.hide_key') : t('agent.provider-keys.reveal_key')}
                 >
                   {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
@@ -138,10 +225,12 @@ export const ProviderKeysPanel: React.FC = () => {
                   htmlFor={`provider-model-input-${provider}`}
                   className="text-[10px] font-bold text-[#888] uppercase tracking-wider"
                 >
-                  Models
+                  {t('agent.provider-keys.models_label')}
                 </label>
                 <span className="text-[10px] text-[#444] font-mono">
-                  {models.length} entr{models.length === 1 ? "y" : "ies"}
+                  {models.length === 1
+                    ? t('agent.provider-keys.models_count_singular', { count: 1 })
+                    : t('agent.provider-keys.models_count_plural', { count: models.length })}
                 </span>
               </div>
 
@@ -169,14 +258,13 @@ export const ProviderKeysPanel: React.FC = () => {
                   className="px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus size={12} strokeWidth={1.8} />
-                  Add
+                  {t('common.add')}
                 </button>
               </div>
 
               {models.length === 0 ? (
                 <p className="text-[11px] text-[#555] italic">
-                  No models added yet. Add the exact model IDs you want
-                  available in the chat header.
+                  {t('agent.provider-keys.no_models')}
                 </p>
               ) : (
                 <ul className="flex flex-wrap gap-1.5 pt-1">
@@ -206,7 +294,7 @@ export const ProviderKeysPanel: React.FC = () => {
 
       <div className="flex items-center gap-2 text-[11px] text-emerald-400/80">
         <Check size={12} strokeWidth={1.8} />
-        Changes save automatically.
+        {t('agent.provider-keys.auto_save')}
       </div>
     </div>
   );

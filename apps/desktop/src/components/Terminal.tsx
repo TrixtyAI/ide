@@ -7,6 +7,8 @@ import { listen } from "@tauri-apps/api/event";
 import { safeInvoke as invoke, type PtyOutputEvent } from "@/api/tauri";
 import { useL10n } from "@/hooks/useL10n";
 import { logger } from "@/lib/logger";
+import { useCollaboration } from "@/context/CollaborationContext";
+import * as Sentry from "@sentry/nextjs";
 import "@xterm/xterm/css/xterm.css";
 
 interface TerminalProps {
@@ -34,6 +36,11 @@ interface TerminalProps {
 // these to debug so the real PTY problems stay visible.
 function logPtyError(label: string, err: unknown): void {
   const msg = typeof err === "string" ? err : JSON.stringify(err);
+  
+  Sentry.metrics.count('terminal_pty_error', 1, {
+    attributes: { label, is_silent: msg.includes("No PTY session with id") ? 'yes' : 'no' }
+  });
+
   if (msg.includes("No PTY session with id")) {
     logger.debug(`${label} (session already gone):`, err);
     return;
@@ -43,6 +50,7 @@ function logPtyError(label: string, err: unknown): void {
 
 const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
   const { t } = useL10n();
+  const { isCollaborating, role, ydoc } = useCollaboration();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Xterm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -101,6 +109,10 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
     fitAddonRef.current = fitAddon;
 
     term.onData((data) => {
+      if (isCollaborating && role === "guest") {
+        // TODO: Support guest input if needed via ydoc
+        return;
+      }
       invoke("write_to_pty", { sessionId, data }).catch((e) =>
         logger.error("PTY write error:", e),
       );
@@ -126,9 +138,9 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
         // bottom panel is mid-collapse (display:none container). The Rust
         // PTY rejects these as "invalid range".
         if (term.rows < 1 || term.cols < 1) return;
-        // `silent: true` keeps `safeInvoke` from emitting its own
-        // `[Tauri Invoke Error]` console line — we route the error through
-        // `logPtyError` so "session already gone" gets demoted to debug.
+
+        if (isCollaborating && role === "guest") return;
+
         invoke(
           "resize_pty",
           { sessionId, rows: term.rows, cols: term.cols },
@@ -163,10 +175,34 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
     let unlisten: (() => void) | undefined;
 
     const setupPty = async () => {
+      if (isCollaborating && role === "guest" && ydoc) {
+        const sharedText = ydoc.getText(`terminal-${sessionId}`);
+        
+        // Initial fill
+        term.write(sharedText.toString());
+        
+        // Listen for new data
+        const observer = (event: any) => {
+          event.changes.delta.forEach((item: any) => {
+            if (item.insert) term.write(item.insert);
+          });
+        };
+        sharedText.observe(observer);
+        
+        // Clean up observer on unmount is handled by the return below via a ref if needed,
+        // but since this is inside a large useEffect, we'll need to handle it.
+        return () => sharedText.unobserve(observer);
+      }
+
       try {
         const u = await listen<PtyOutputEvent>("pty-output", (event) => {
-          // Multiple tabs share one event channel; route by sessionId.
           if (event.payload.sessionId !== sessionId) return;
+          
+          if (isCollaborating && role === "host" && ydoc) {
+            const sharedText = ydoc.getText(`terminal-${sessionId}`);
+            sharedText.insert(sharedText.length, event.payload.data);
+          }
+
           if (!isCanceled && xtermRef.current) {
             xtermRef.current.write(event.payload.data);
           }
@@ -177,8 +213,6 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
         }
         unlisten = u;
 
-        // Pre-fit before spawning so the shell starts with the correct
-        // dimensions instead of reflowing on the first prompt.
         if (
           terminalRef.current?.clientWidth &&
           terminalRef.current?.clientHeight
@@ -196,7 +230,10 @@ const Terminal: React.FC<TerminalProps> = ({ sessionId, cwd, isActive }) => {
           rows: term.rows,
           cols: term.cols,
         });
+
+        Sentry.metrics.count('terminal_pty_spawn', 1);
       } catch (err) {
+        Sentry.metrics.count('terminal_pty_error', 1, { attributes: { label: 'setup_failed' } });
         if (!isCanceled && xtermRef.current) {
           xtermRef.current.writeln(
             "\x1b[31m" + t("terminal.error_connect") + "\x1b[0m " + err,

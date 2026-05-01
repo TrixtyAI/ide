@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { Plus, Trash2, AlertTriangle, Package } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, Package, GripVertical } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import type { VisualEditorProps } from "./getVisualEditor";
 import NpmInstallerModal from "./NpmInstallerModal";
+import { useDragReorder, type DragRowProps } from "@/hooks/useDragReorder";
+import { useL10n } from "@/hooks/useL10n";
 
 type DepGroup = "dependencies" | "devDependencies" | "peerDependencies";
 
@@ -46,6 +48,7 @@ function stringify(data: PackageJson): string {
 }
 
 const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
+  const { t } = useL10n();
   const { rootPath } = useWorkspace();
   // Parsed package.json is derived directly from the prop — user edits
   // flow back through onChange and re-derive on next render.
@@ -126,6 +129,28 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
     commit(next);
   };
 
+  /** Drag-reorder support: rebuild the section's map preserving the
+   *  caller-provided key order. JS spec keeps insertion order for
+   *  string keys, so the on-disk JSON.stringify output reflects the
+   *  user's drag exactly. */
+  const reorderMapKeys = (
+    key: "scripts" | DepGroup | "engines",
+    keysInOrder: string[],
+  ) => {
+    const map = (data[key] ?? {}) as Record<string, string>;
+    const reordered: Record<string, string> = {};
+    for (const k of keysInOrder) {
+      if (k in map) reordered[k] = map[k];
+    }
+    // Preserve any keys we didn't see in `keysInOrder` (defensive —
+    // the caller supplies the visible row order; if it gets out of
+    // sync with `entries`, we still keep the extras at the tail).
+    for (const k of Object.keys(map)) {
+      if (!(k in reordered)) reordered[k] = map[k];
+    }
+    commit({ ...data, [key]: reordered });
+  };
+
   const addMapEntry = (
     key: "scripts" | "engines",
     name: string,
@@ -146,8 +171,8 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
   return (
     <div className="h-full overflow-auto bg-[#0e0e0e] p-4 text-[12px] text-[#ccc]">
       <div className="max-w-3xl mx-auto space-y-8">
-        <Section title="Identity">
-          <Field label="Name">
+        <Section title={t('visual.package.identity')}>
+          <Field label={t('visual.package.name')}>
             <input
               type="text"
               value={data.name ?? ""}
@@ -156,7 +181,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Version">
+          <Field label={t('visual.package.version')}>
             <input
               type="text"
               value={data.version ?? ""}
@@ -165,7 +190,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Description">
+          <Field label={t('visual.package.description')}>
             <input
               type="text"
               value={data.description ?? ""}
@@ -174,7 +199,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="License">
+          <Field label={t('visual.package.license')}>
             <input
               type="text"
               value={data.license ?? ""}
@@ -183,7 +208,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Author">
+          <Field label={t('visual.package.author')}>
             <input
               type="text"
               value={
@@ -199,7 +224,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         </Section>
 
         <MapSection
-          title="Scripts"
+          title={t('visual.package.scripts')}
           entries={data.scripts ?? {}}
           placeholderKey="dev"
           placeholderValue="next dev"
@@ -210,7 +235,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         />
 
         <DepSection
-          title="Dependencies"
+          title={t('visual.package.dependencies')}
           target="dependencies"
           entries={data.dependencies ?? {}}
           rootPath={rootPath}
@@ -218,9 +243,10 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("dependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("dependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("dependencies", k)}
+          onReorder={(keys) => reorderMapKeys("dependencies", keys)}
         />
         <DepSection
-          title="Dev dependencies"
+          title={t('visual.package.dev_dependencies')}
           target="devDependencies"
           entries={data.devDependencies ?? {}}
           rootPath={rootPath}
@@ -228,9 +254,10 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("devDependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("devDependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("devDependencies", k)}
+          onReorder={(keys) => reorderMapKeys("devDependencies", keys)}
         />
         <DepSection
-          title="Peer dependencies"
+          title={t('visual.package.peer_dependencies')}
           target="peerDependencies"
           entries={data.peerDependencies ?? {}}
           rootPath={rootPath}
@@ -238,10 +265,11 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onUpdateValue={(k, v) => updateMapEntry("peerDependencies", k, v)}
           onRenameKey={(oldK, newK) => renameMapKey("peerDependencies", oldK, newK)}
           onRemove={(k) => removeMapEntry("peerDependencies", k)}
+          onReorder={(keys) => reorderMapKeys("peerDependencies", keys)}
         />
 
         <MapSection
-          title="Engines"
+          title={t('visual.package.engines')}
           entries={data.engines ?? {}}
           placeholderKey="node"
           placeholderValue=">=20"
@@ -313,6 +341,7 @@ const MapSection: React.FC<MapSectionProps> = ({
   onRemove,
   onAdd,
 }) => {
+  const { t } = useL10n();
   const [draftKey, setDraftKey] = useState("");
   const [draftValue, setDraftValue] = useState("");
 
@@ -328,8 +357,7 @@ const MapSection: React.FC<MapSectionProps> = ({
       <header className="flex items-center justify-between">
         <h3 className="text-[13px] font-bold text-white tracking-tight">{title}</h3>
         <span className="text-[10px] text-[#444] font-mono">
-          {Object.keys(entries).length} entr
-          {Object.keys(entries).length === 1 ? "y" : "ies"}
+          {Object.keys(entries).length} {t('marketplace.metadata.identifier').toLowerCase()}
         </span>
       </header>
 
@@ -345,7 +373,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           />
         ))}
         {Object.keys(entries).length === 0 && (
-          <p className="text-[11px] text-[#555] italic">No entries yet.</p>
+          <p className="text-[11px] text-[#555] italic">{t('common.no_entries')}</p>
         )}
       </div>
 
@@ -383,7 +411,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           className="px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={11} strokeWidth={1.8} />
-          Add
+          {t('common.add')}
         </button>
       </div>
     </section>
@@ -399,6 +427,7 @@ interface DepSectionProps {
   onUpdateValue: (k: string, v: string) => void;
   onRenameKey: (oldK: string, newK: string) => void;
   onRemove: (k: string) => void;
+  onReorder: (keysInOrder: string[]) => void;
 }
 
 const DepSection: React.FC<DepSectionProps> = ({
@@ -409,7 +438,16 @@ const DepSection: React.FC<DepSectionProps> = ({
   onUpdateValue,
   onRenameKey,
   onRemove,
+  onReorder,
 }) => {
+  const { t } = useL10n();
+  const rows = Object.entries(entries).map(([key, value]) => ({ key, value }));
+  const { getRowProps } = useDragReorder<{ key: string; value: string }>({
+    items: rows,
+    getId: (r) => r.key,
+    onReorder: (next) => onReorder(next.map((r) => r.key)),
+  });
+
   return (
     <section className="space-y-3 border border-[#1a1a1a] rounded-2xl p-5 bg-[#0a0a0a]">
       <header className="flex items-center justify-between">
@@ -425,22 +463,26 @@ const DepSection: React.FC<DepSectionProps> = ({
           className="px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={11} strokeWidth={1.8} />
-          Add
+          {t('common.add')}
         </button>
       </header>
       <div className="space-y-1">
-        {Object.entries(entries).map(([k, v]) => (
-          <Row
-            key={k}
-            entryKey={k}
-            entryValue={v}
-            onRenameKey={onRenameKey}
-            onUpdateValue={onUpdateValue}
-            onRemove={onRemove}
-          />
-        ))}
-        {Object.keys(entries).length === 0 && (
-          <p className="text-[11px] text-[#555] italic">No entries yet.</p>
+        {rows.map((r) => {
+          const drag = getRowProps(r);
+          return (
+            <Row
+              key={r.key}
+              entryKey={r.key}
+              entryValue={r.value}
+              onRenameKey={onRenameKey}
+              onUpdateValue={onUpdateValue}
+              onRemove={onRemove}
+              dragProps={drag}
+            />
+          );
+        })}
+        {rows.length === 0 && (
+          <p className="text-[11px] text-[#555] italic">{t('common.no_entries')}</p>
         )}
       </div>
     </section>
@@ -453,6 +495,7 @@ interface RowProps {
   onRenameKey: (oldK: string, newK: string) => void;
   onUpdateValue: (k: string, v: string) => void;
   onRemove: (k: string) => void;
+  dragProps?: DragRowProps;
 }
 
 const Row: React.FC<RowProps> = ({
@@ -461,13 +504,34 @@ const Row: React.FC<RowProps> = ({
   onRenameKey,
   onUpdateValue,
   onRemove,
+  dragProps,
 }) => {
+  const { t } = useL10n();
   const [draftKey, setDraftKey] = useState(entryKey);
   useEffect(() => {
     setDraftKey(entryKey);
   }, [entryKey]);
+  const dragTarget = dragProps?.["data-drag-target"];
+  const dragging = dragProps?.["data-dragging"];
   return (
-    <div className="grid grid-cols-[1fr_1.4fr_auto] gap-2 items-center">
+    <div
+      {...dragProps}
+      className={`grid grid-cols-[auto_1fr_1.4fr_auto] gap-2 items-center transition-opacity ${
+        dragging ? "opacity-40" : ""
+      } ${
+        dragTarget === "top"
+          ? "shadow-[inset_0_2px_0_0_#3b82f6]"
+          : dragTarget === "bottom"
+            ? "shadow-[inset_0_-2px_0_0_#3b82f6]"
+            : ""
+      }`}
+    >
+      <span
+        className="cursor-grab active:cursor-grabbing text-[#444] hover:text-[#888] transition-colors px-1"
+        aria-hidden
+      >
+        <GripVertical size={12} strokeWidth={1.4} />
+      </span>
       <input
         type="text"
         value={draftKey}
@@ -490,9 +554,9 @@ const Row: React.FC<RowProps> = ({
       <button
         type="button"
         onClick={() => onRemove(entryKey)}
-        title="Remove"
+        title={t('common.remove')}
         className="p-1 text-[#666] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-        aria-label={`Remove ${entryKey}`}
+        aria-label={t('common.remove')}
       >
         <Trash2 size={13} strokeWidth={1.6} />
       </button>

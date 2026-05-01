@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
 import { useL10n } from "@/hooks/useL10n";
+import * as Sentry from "@sentry/nextjs";
 
 function resolveIconUrl(entry: MarketplaceEntry): string | null {
   const icon = entry.manifest?.icon?.trim();
@@ -86,7 +87,14 @@ const DetailsView: React.FC<{
 
   const handleInstall = async () => {
     setLoadingAction("install");
-    try { await installExtension(entry); } catch (e) { alert(e); }
+    try { 
+      await installExtension(entry);
+      Sentry.metrics.count('extension_install_success', 1, { attributes: { extension_id: entry.id } });
+      Sentry.logger.info(`Extension installed: ${entry.id}`);
+    } catch (e) { 
+      Sentry.metrics.count('extension_install_error', 1, { attributes: { extension_id: entry.id } });
+      alert(e); 
+    }
     setLoadingAction(null);
   };
 
@@ -105,7 +113,12 @@ const DetailsView: React.FC<{
 
   const handleToggleActive = async () => {
     setLoadingAction("toggle");
-    try { await toggleActive(entry.id, !isActive); } catch (e) { alert(e); }
+    try { 
+      await toggleActive(entry.id, !isActive);
+      Sentry.metrics.count('extension_toggle_active', 1, { 
+        attributes: { extension_id: entry.id, active: (!isActive).toString() } 
+      });
+    } catch (e) { alert(e); }
     setLoadingAction(null);
   };
 
@@ -256,6 +269,15 @@ const MarketplaceView: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedEntry, setSelectedEntry] = useState<MarketplaceEntry | null>(null);
 
+  useEffect(() => {
+    if (search.length > 2) {
+      const timer = setTimeout(() => {
+        Sentry.metrics.count('marketplace_search', 1, { attributes: { query_length: search.length.toString() } });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [search]);
+
   // Load the remote catalog lazily: the marketplace used to fetch registry +
   // per-entry manifests + GitHub stars on every boot even when the user never
   // opened it. We now defer that work to the first mount of this view.
@@ -336,7 +358,10 @@ const MarketplaceView: React.FC = () => {
               <button
                 key={ext.id}
                 type="button"
-                onClick={() => setSelectedEntry(ext)}
+                onClick={() => {
+                  Sentry.metrics.count('extension_view_details', 1, { attributes: { extension_id: ext.id } });
+                  setSelectedEntry(ext);
+                }}
                 aria-label={ext.manifest?.name || ext.id}
                 className="text-left bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#333] transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >

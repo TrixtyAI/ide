@@ -114,7 +114,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 <Bot size={32} strokeWidth={1.5} className="text-blue-400" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-lg leading-tight">Trixty AI Agent</h4>
+                <h4 className="text-white font-bold text-lg leading-tight">{t('welcome.title')} {t('agent.configuration.ai_agent_suffix')}</h4>
                 <p className="text-[11px] text-blue-400/80 font-mono mt-1 flex items-center gap-1">
                   <Lock size={10} strokeWidth={1.5} /> {t('agent.profile.protected')}
                 </p>
@@ -322,12 +322,10 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 <div className="flex items-center justify-between group">
                   <div className="flex flex-col gap-1">
                     <label className="text-[12px] font-bold text-white tracking-tight">
-                      Allow Provider Keys
+                      {t('agent.configuration.provider_keys_label')}
                     </label>
                     <p className="text-[11px] text-[#555] max-w-sm">
-                      Unlocks cloud providers (OpenAI, Anthropic, Gemini,
-                      OpenRouter) in the chat header and reveals the
-                      Provider Keys submenu where you store API credentials.
+                      {t('agent.configuration.provider_keys_desc')}
                     </p>
                   </div>
                   <button
@@ -375,9 +373,9 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   className="w-full h-1.5 bg-[#1a1a1a] rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
                 <div aria-hidden="true" className="flex justify-between text-[10px] text-[#444] font-mono">
-                  <span>5m</span>
-                  <span>12h</span>
-                  <span>24h</span>
+                  <span>{t('agent.configuration.time_m', { n: 5 })}</span>
+                  <span>{t('agent.configuration.time_h', { n: 12 })}</span>
+                  <span>{t('agent.configuration.time_h', { n: 24 })}</span>
                 </div>
                 <p id="agent-config-keepalive-desc" className="text-[11px] text-[#666]">{t('agent.configuration.keepalive_desc')}</p>
                 
@@ -433,11 +431,10 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                 <div className="flex items-center justify-between group">
                   <div className="flex flex-col gap-1">
                     <label className="text-[12px] font-bold text-white tracking-tight">
-                      Inline code suggestions
+                      {t('agent.configuration.inline_suggestions_label')}
                     </label>
                     <p className="text-[11px] text-[#555] max-w-sm">
-                      Ghost-text completions in the editor powered by Ollama (FIM).
-                      Tab accepts, Esc dismisses.
+                      {t('agent.configuration.inline_suggestions_desc')}
                     </p>
                   </div>
                   <button
@@ -471,12 +468,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                         htmlFor="inline-completions-model"
                         className="text-[10px] text-[#888] uppercase tracking-wider"
                       >
-                        Model override
+                        {t('agent.configuration.model_override_label')}
                       </label>
                       <input
                         id="inline-completions-model"
                         type="text"
-                        placeholder="qwen2.5-coder:7b (chat model if empty)"
+                        placeholder={t('agent.configuration.model_override_placeholder')}
                         value={aiSettings.inlineCompletions.model}
                         onChange={(e) =>
                           updateAISettings({
@@ -494,7 +491,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                         htmlFor="inline-completions-debounce"
                         className="text-[10px] text-[#888] uppercase tracking-wider"
                       >
-                        Debounce (ms)
+                        {t('agent.configuration.debounce_label')}
                       </label>
                       <input
                         id="inline-completions-debounce"

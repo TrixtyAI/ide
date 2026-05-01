@@ -144,3 +144,34 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Yjs Remote Cursors & Selections */
+.yRemoteSelection {
+  background-color: var(--yjs-color, rgba(250, 129, 0, 0.35));
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: var(--yjs-color, orange) solid 2px;
+  border-top: var(--yjs-color, orange) solid 2px;
+  border-bottom: var(--yjs-color, orange) solid 2px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: attr(data-user-name);
+  border: 1px solid var(--yjs-color, orange);
+  border-radius: 2px;
+  padding: 1px 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+  top: -16px;
+  left: -1px;
+  background-color: var(--yjs-color, orange);
+  pointer-events: none;
+  z-index: 10;
+}

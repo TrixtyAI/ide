@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, FileCode, FileText, FileJson, FileType, Package, CircleOff, ArrowRight, FileCheck, Trash2 } from "lucide-react";
 import { useFiles, FileState } from "@/context/FilesContext";
 import { useL10n } from "@/hooks/useL10n";
+import { useCollaboration } from "@/context/CollaborationContext";
 import ContextMenu, { ContextMenuItem } from "./ui/ContextMenu";
 
 // Derive a stable, HTML-id-safe handle from the file path. Shared with
@@ -16,6 +17,7 @@ export const tabIdFor = (path: string): string =>
 const TabBar: React.FC = () => {
   const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useFiles();
   const { t } = useL10n();
+  const { isCollaborating, activeUsers } = useCollaboration();
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetPath: string } | null>(null);
 
   const getFileIcon = (file: FileState) => {
@@ -87,7 +89,9 @@ const TabBar: React.FC = () => {
       setCurrentFile(file);
       return;
     }
-    const idx = openFiles.findIndex(f => f.path === file.path);
+    const idx = openFiles.findIndex(f => 
+      f.path.replace(/\\/g, "/").toLowerCase() === file.path.replace(/\\/g, "/").toLowerCase()
+    );
     if (idx === -1) return;
     const len = openFiles.length;
     let nextIdx: number | null = null;
@@ -111,7 +115,8 @@ const TabBar: React.FC = () => {
       className="flex bg-surface-1 h-[36px] overflow-x-auto scrollbar-none border-b border-border-subtle shrink-0"
     >
       {openFiles.map((file) => {
-        const isActive = currentFile?.path === file.path;
+        const isActive = currentFile && 
+          file.path.replace(/\\/g, "/").toLowerCase() === currentFile.path.replace(/\\/g, "/").toLowerCase();
         return (
           <div
             key={file.path}
@@ -140,6 +145,21 @@ const TabBar: React.FC = () => {
 
             {file.isModified && (
               <div aria-hidden="true" className="w-[6px] h-[6px] rounded-full bg-white/40 shrink-0" />
+            )}
+
+            {isCollaborating && (
+              <div className="flex -space-x-1.5 ml-1">
+                {activeUsers
+                  .filter(u => u.user?.currentFile === file.path && u.user?.name !== "You")
+                  .map((u, i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full border border-[#141414] shadow-sm shrink-0"
+                      style={{ backgroundColor: u.user?.color || "#888" }}
+                      title={u.user?.name}
+                    />
+                  ))}
+              </div>
             )}
 
             <button

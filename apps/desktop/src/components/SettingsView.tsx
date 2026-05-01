@@ -16,7 +16,8 @@ import {
   Trash2,
   Plus,
   Bot,
-  RefreshCw
+  RefreshCw,
+  MessageSquare
 } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -93,7 +94,7 @@ Node.js: ${systemInfo.node_version}
   // Issue #267: Provider Keys submenu only appears once the master
   // switch in `agent.configuration` is on.
   if (aiSettings.allowProviderKeys) {
-    agentChildren.push({ id: "agent:provider-keys", label: "Provider Keys" });
+    agentChildren.push({ id: "agent:provider-keys", label: t('agent.provider-keys.title') });
   }
 
   const categories = [
@@ -216,7 +217,7 @@ Node.js: ${systemInfo.node_version}
             <section>
               <div className="mb-4">
                 <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-                  Files: <span className="font-bold">Exclude</span>
+                  {t('settings.general.exclude_title_part1')}<span className="font-bold">{t('settings.general.exclude_title_part2')}</span>
                 </h3>
                 <p className="text-[12px] text-[#666] mt-1.5 leading-relaxed max-w-xl">
                   {t('settings.general.exclude_desc')}
@@ -302,10 +303,78 @@ Node.js: ${systemInfo.node_version}
                     onChange={(e) => setLocale(e.target.value)}
                     className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors appearance-none"
                   >
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
+                    <option value="en">{t('settings.application.language.en')}</option>
+                    <option value="es">{t('settings.application.language.es')}</option>
                   </select>
                 </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-[14px] font-semibold text-white mb-4 flex items-center gap-2">
+                <MessageSquare size={16} className="text-indigo-400" />
+                {t('settings.application.discord_rpc')}
+              </h3>
+              <div className="space-y-4 max-w-md">
+                {/* Master Switch */}
+                <div className="flex items-center gap-3">
+                  <label htmlFor="settings-discord-enabled" className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      id="settings-discord-enabled"
+                      type="checkbox"
+                      checked={!!systemSettings.discord?.enabled}
+                      onChange={(e) => updateSystemSettings({ 
+                        discord: { ...systemSettings.discord, enabled: e.target.checked } 
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                  </label>
+                  <label htmlFor="settings-discord-enabled" className="text-[13px] text-[#aaa] cursor-pointer">
+                    {t('settings.application.discord_rpc.enabled')}
+                  </label>
+                </div>
+
+                {/* Sub-options (only if enabled) */}
+                {systemSettings.discord?.enabled && (
+                  <div className="ml-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="settings-discord-details" className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          id="settings-discord-details"
+                          type="checkbox"
+                          checked={!!systemSettings.discord?.showDetails}
+                          onChange={(e) => updateSystemSettings({ 
+                            discord: { ...systemSettings.discord, showDetails: e.target.checked } 
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                      </label>
+                      <label htmlFor="settings-discord-details" className="text-[13px] text-[#888] cursor-pointer">
+                        {t('settings.application.discord_rpc.details')}
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="settings-discord-collab" className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          id="settings-discord-collab"
+                          type="checkbox"
+                          checked={!!systemSettings.discord?.allowCollaboration}
+                          onChange={(e) => updateSystemSettings({ 
+                            discord: { ...systemSettings.discord, allowCollaboration: e.target.checked } 
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div aria-hidden="true" className="w-9 h-5 bg-[#2a2a2a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#888] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                      </label>
+                      <label htmlFor="settings-discord-collab" className="text-[13px] text-[#888] cursor-pointer">
+                        {t('settings.application.discord_rpc.collaboration')}
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -372,10 +441,10 @@ Node.js: ${systemInfo.node_version}
                 <div className="flex items-center gap-5">
                   <div className="w-14 h-14 bg-white/[0.03] rounded-2xl flex items-center justify-center border border-white/5">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoWhite.src} alt="Trixty Logo" className="w-8 h-8 object-contain" />
+                    <img src={logoWhite.src} alt={t('settings.about.logo_alt')} className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h4 className="text-[18px] font-bold text-white tracking-tight">Trixty</h4>
+                    <h4 className="text-[18px] font-bold text-white tracking-tight">{t('welcome.title')}</h4>
                     <p className="text-[12px] text-[#555] font-mono mt-0.5">v{systemInfo?.app_version || "---"}</p>
                   </div>
                 </div>

@@ -7,6 +7,8 @@ import { ReviewProvider } from "@/context/ReviewContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import HtmlLangSync from "@/components/HtmlLangSync";
 
+import { Toaster } from "sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,6 +23,7 @@ export default function RootLayout({
               <ExtensionProvider>
                 <ReviewProvider>
                   <HtmlLangSync />
+                  <Toaster richColors position="top-right" theme="dark" />
                   {children}
                 </ReviewProvider>
               </ExtensionProvider>
