@@ -8,7 +8,7 @@ mod http;
 mod pty;
 mod discord_rpc;
 
-use cli::CliWorkspace;
+
 use error::redact_user_paths;
 
 mod extensions;

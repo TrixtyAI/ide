@@ -8,11 +8,23 @@ import { useSettings } from "@/context/SettingsContext";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 
+export interface CollaborationUser {
+  name: string;
+  color: string;
+  clientId: number;
+  currentFile?: string | null;
+}
+
+export interface AwarenessState {
+  user?: CollaborationUser;
+}
+
+
 interface CollaborationContextType {
   isCollaborating: boolean;
   role: "host" | "guest" | null;
   joinSecret: string | null;
-  activeUsers: any[];
+  activeUsers: AwarenessState[];
   ydoc: Y.Doc;
   provider: WebrtcProvider | null;
   acceptJoin: (userId: string) => Promise<void>;
@@ -28,7 +40,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   const [isCollaborating, setIsCollaborating] = useState(false);
   const [role, setRole] = useState<"host" | "guest" | null>(null);
   const [joinSecret, setJoinSecret] = useState<string | null>(null);
-  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [activeUsers, setActiveUsers] = useState<AwarenessState[]>([]);
   const { systemSettings } = useSettings();
   
   const ydoc = useMemo(() => new Y.Doc(), []);
@@ -65,7 +77,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     });
 
     // Listen for Discord RPC events
-    const unlisten = listen("discord-rpc-event", (event: any) => {
+    const unlisten = listen("discord-rpc-event", (event: { payload: any }) => {
       const { evt, data } = event.payload;
       if (evt === "ACTIVITY_JOIN_REQUEST") {
         const { user } = data;
@@ -135,7 +147,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     try {
       await invoke("accept_discord_join_request", { userId });
       toast.success("Accepted join request");
-    } catch (err) {
+    } catch {
       toast.error("Failed to accept join request");
     }
   };
@@ -144,7 +156,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     try {
       await invoke("reject_discord_join_request", { userId });
       toast.info("Rejected join request");
-    } catch (err) {
+    } catch {
       toast.error("Failed to reject join request");
     }
   };

@@ -2,7 +2,7 @@ import { useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useCollaboration } from "@/context/CollaborationContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { useSettings } from "@/context/SettingsContext";
+
 import * as Y from "yjs";
 
 interface FileEntry {
@@ -15,9 +15,9 @@ interface FileEntry {
 export function useWorkspaceSync() {
   const { isCollaborating, role, ydoc } = useCollaboration();
   const { rootPath } = useWorkspace();
-  const { systemSettings } = useSettings();
 
-  const syncDirectory = useCallback(async (path: string, map: Y.Map<any>) => {
+
+  const syncDirectory = useCallback(async (path: string, map: Y.Map<unknown>) => {
     try {
       const data = await invoke<FileEntry[]>("read_directory", { path });
       
@@ -46,14 +46,14 @@ export function useWorkspaceSync() {
     syncDirectory(rootPath, workspaceMap);
 
     // Listen for file requests from guests
-    const requestObserver = async (event: any) => {
+    const requestObserver = async (event: Y.YMapEvent<unknown>) => {
       for (const [path, action] of event.keys) {
         if (action.action === "add" || action.action === "update") {
           const req = fileRequests.get(path);
           if (!req) continue;
 
           try {
-            const content = await invoke<string>("read_file", { path }, { silent: true });
+            const content = await invoke<string>("read_file", { path });
             const sharedText = ydoc.getText(`file:${path}`);
             
             // Only populate if empty to avoid overwriting current edits

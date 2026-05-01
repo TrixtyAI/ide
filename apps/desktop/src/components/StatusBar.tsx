@@ -89,8 +89,8 @@ const StatusBar: React.FC = () => {
                   .filter(u => u.user && u.user.clientId !== (provider?.awareness?.clientID))
                   .map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: u.user.color }} />
-                      <span className="text-[11px] text-[#bbb]">{u.user.name}</span>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: u.user?.color }} />
+                      <span className="text-[11px] text-[#bbb]">{u.user?.name}</span>
                     </div>
                   ))}
               </div>
