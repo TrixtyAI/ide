@@ -190,14 +190,14 @@ mod tests {
     #[test]
     fn no_args_is_empty() {
         let out = parse_args(&argv(&[]), None);
-        assert_eq!(out, CliWorkspace::Empty);
+        assert_eq!(out.workspace, CliWorkspace::Empty);
     }
 
     #[test]
     fn positional_existing_directory_is_accepted() {
         let dir = TempDir::new().unwrap();
         let out = parse_args(&argv(&[dir.path().to_str().unwrap()]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => assert!(p.is_dir()),
             other => panic!("expected Path, got {:?}", other),
         }
@@ -207,7 +207,7 @@ mod tests {
     fn dash_path_flag_existing_directory_is_accepted() {
         let dir = TempDir::new().unwrap();
         let out = parse_args(&argv(&["--path", dir.path().to_str().unwrap()]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => assert!(p.is_dir()),
             other => panic!("expected Path, got {:?}", other),
         }
@@ -218,7 +218,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let arg = format!("--path={}", dir.path().to_str().unwrap());
         let out = parse_args(&argv(&[&arg]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => assert!(p.is_dir()),
             other => panic!("expected Path, got {:?}", other),
         }
@@ -229,7 +229,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let canonical_cwd = dir.path().canonicalize().unwrap();
         let out = parse_args(&argv(&["."]), Some(canonical_cwd.clone()));
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => assert_eq!(p, canonical_cwd),
             other => panic!("expected Path, got {:?}", other),
         }
@@ -242,7 +242,7 @@ mod tests {
         fs::create_dir(&child).unwrap();
         let cwd = Some(parent.path().canonicalize().unwrap());
         let out = parse_args(&argv(&["sub"]), cwd);
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => {
                 assert!(p.is_dir());
                 assert!(p.ends_with("sub"));
@@ -257,7 +257,7 @@ mod tests {
             &argv(&["C:/definitely/not/a/real/path/for/this/test"]),
             None,
         );
-        assert!(matches!(out, CliWorkspace::Invalid { .. }));
+        assert!(matches!(out.workspace, CliWorkspace::Invalid { .. }));
     }
 
     #[test]
@@ -266,7 +266,7 @@ mod tests {
         let file = dir.path().join("a.txt");
         fs::write(&file, "hi").unwrap();
         let out = parse_args(&argv(&[file.to_str().unwrap()]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Invalid { reason, .. } => {
                 assert!(reason.contains("not a directory"), "got: {}", reason);
             }
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn dash_path_without_value_is_invalid() {
         let out = parse_args(&argv(&["--path"]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Invalid { reason, .. } => {
                 assert!(reason.contains("requires a value"), "got: {}", reason);
             }
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn empty_path_is_invalid() {
         let out = parse_args(&argv(&["--path", "   "]), None);
-        match out {
+        match out.workspace {
             CliWorkspace::Invalid { reason, .. } => {
                 assert!(reason.contains("empty"), "got: {}", reason);
             }
@@ -309,7 +309,7 @@ mod tests {
             ]),
             None,
         );
-        match out {
+        match out.workspace {
             CliWorkspace::Path(p) => assert!(p.is_dir()),
             other => panic!("expected Path, got {:?}", other),
         }
@@ -321,6 +321,6 @@ mod tests {
         // positional. It will fail validation (no such dir), but we're
         // checking that flag parsing stopped at `--`.
         let out = parse_args(&argv(&["--", "--path"]), None);
-        assert!(matches!(out, CliWorkspace::Invalid { .. }));
+        assert!(matches!(out.workspace, CliWorkspace::Invalid { .. }));
     }
 }
