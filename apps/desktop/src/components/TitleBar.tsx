@@ -105,26 +105,17 @@ const TitleBar: React.FC = () => {
           >
             <Zap size={14} strokeWidth={1.5} />
           </button>
-
-          <div aria-hidden="true" className="w-[1px] h-[14px] bg-border-subtle mx-1" />
-
-          {systemSettings.discord?.enabled && (
-            <button
-              onClick={startHostSession}
-              disabled={isCollaborating}
-              aria-label={isCollaborating ? t('titlebar.collab.active') : t('titlebar.collab.start')}
-              className={`relative w-[26px] h-[26px] rounded flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
-                isCollaborating ? "bg-indigo-500/20 text-indigo-400" : "text-muted-fg hover:bg-white/10 hover:text-white"
-              }`}
-              title={isCollaborating ? t('titlebar.collab.active') : t('titlebar.collab.start')}
-            >
-              <Users size={14} strokeWidth={1.5} />
-              {isCollaborating && activeUsers.length > 0 && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-[#1c1c1c]" />
-              )}
-            </button>
-          )}
         </div>
+
+        {isCollaborating && (
+          <>
+            <div aria-hidden="true" className="w-[1px] h-[14px] bg-white/10 mx-2" />
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter">Collab Live</span>
+            </div>
+          </>
+        )}
 
         <div aria-hidden="true" className="w-[1px] h-[14px] bg-border-subtle" />
         <button

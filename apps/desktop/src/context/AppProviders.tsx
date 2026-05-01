@@ -10,19 +10,10 @@ import { CollaborationProvider } from "@/context/CollaborationContext";
 import { useDiscordRPC } from "@/hooks/useDiscordRPC";
 import { useWorkspaceSync } from "@/hooks/useWorkspaceSync";
 
-/**
- * Composes the narrow providers that together own what used to live in
- * `AppContext`. The nesting order is intentional but not load-bearing for
- * React-semantic reasons — none of the providers call hooks from another.
- * It is chosen so the hottest, most frequently re-rendered provider
- * (`FilesProvider` — keystroke-scale updates through `updateFileContent`)
- * sits below the session-scoped ones, keeping the slower providers off the
- * keystroke render path entirely.
- */
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <CollaborationProvider>
-    <WorkspaceProvider>
-      <SettingsProvider>
+  <SettingsProvider>
+    <CollaborationProvider>
+      <WorkspaceProvider>
         <ChatProvider>
           <UIProvider>
             <FilesProvider>
@@ -32,9 +23,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
             </FilesProvider>
           </UIProvider>
         </ChatProvider>
-      </SettingsProvider>
-    </WorkspaceProvider>
-  </CollaborationProvider>
+      </WorkspaceProvider>
+    </CollaborationProvider>
+  </SettingsProvider>
 );
 
 const AppLifecycleWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {

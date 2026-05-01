@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+import { useSettings } from "@/context/SettingsContext";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 
@@ -24,7 +25,9 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   const [role, setRole] = useState<"host" | "guest" | null>(null);
   const [joinSecret, setJoinSecret] = useState<string | null>(null);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const { systemSettings } = useSettings();
+  
+  const ydoc = useMemo(() => new Y.Doc(), []);
   const [provider, setProvider] = useState<WebrtcProvider | null>(null);
 
   useEffect(() => {

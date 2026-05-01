@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Users } from "lucide-react";
 import { useFiles } from "@/context/FilesContext";
 import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useL10n } from "@/hooks/useL10n";
 import { isTauri, safeInvoke } from "@/api/tauri";
+import { useCollaboration } from "@/context/CollaborationContext";
 
 
 // StatusBar items are informational surfaces today (no click handlers). The
@@ -25,6 +26,7 @@ const StatusBar: React.FC = () => {
   } = useUI();
   const { rootPath } = useWorkspace();
   const { t } = useL10n();
+  const { isCollaborating, activeUsers } = useCollaboration();
   const [branch, setBranch] = useState<string | null>(null);
 
   // Fetch the active git branch whenever the workspace root changes. The
@@ -65,6 +67,16 @@ const StatusBar: React.FC = () => {
           >
             <GitBranch size={12} strokeWidth={1.5} />
             <span className="truncate max-w-[180px]">{branch}</span>
+          </div>
+        )}
+
+        {isCollaborating && (
+          <div 
+            className="flex items-center gap-1.5 px-1.5 h-full text-indigo-400 border-x border-white/5 bg-indigo-500/5"
+            title={`${activeUsers.length + 1} users collaborating`}
+          >
+            <Users size={12} strokeWidth={1.5} />
+            <span className="font-medium">{activeUsers.length + 1}</span>
           </div>
         )}
       </div>
