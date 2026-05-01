@@ -22,7 +22,7 @@ pub enum OpCode {
 }
 
 pub enum RpcMessage {
-    UpdateActivity(Option<Activity>),
+    UpdateActivity(Box<Option<Activity>>),
     AcceptJoin(String),
     RejectJoin(String),
 }
@@ -125,7 +125,7 @@ impl DiscordRpc {
                                     let payload = match msg {
                                         RpcMessage::UpdateActivity(activity) => json!({
                                             "cmd": "SET_ACTIVITY",
-                                            "args": { "pid": std::process::id(), "activity": activity },
+                                            "args": { "pid": std::process::id(), "activity": *activity },
                                             "nonce": Uuid::new_v4().to_string()
                                         }).to_string(),
                                         RpcMessage::AcceptJoin(user_id) => json!({
@@ -149,13 +149,8 @@ impl DiscordRpc {
                                     match res {
                                         Ok((_opcode, payload)) => {
                                             if let Ok(v) = serde_json::from_str::<Value>(&payload) {
-                                                if let Some(evt) = v["evt"].as_str() {
-                                                    match evt {
-                                                        "ACTIVITY_JOIN" | "ACTIVITY_SPECTATE" | "ACTIVITY_JOIN_REQUEST" => {
-                                                            let _ = app_handle.emit("discord-rpc-event", v);
-                                                        }
-                                                        _ => {}
-                                                    }
+                                                if let Some("ACTIVITY_JOIN" | "ACTIVITY_SPECTATE" | "ACTIVITY_JOIN_REQUEST") = v["evt"].as_str() {
+                                                    let _ = app_handle.emit("discord-rpc-event", v);
                                                 }
                                             }
                                         }
@@ -237,7 +232,7 @@ impl DiscordRpc {
 
     pub fn set_activity(&self, activity: Option<Activity>) -> Result<(), String> {
         if let Some(tx) = &self.tx {
-            tx.send(RpcMessage::UpdateActivity(activity)).map_err(|e| e.to_string())?;
+            tx.send(RpcMessage::UpdateActivity(Box::new(activity))).map_err(|e| e.to_string())?;
             Ok(())
         } else {
             Err("RPC not started".to_string())
