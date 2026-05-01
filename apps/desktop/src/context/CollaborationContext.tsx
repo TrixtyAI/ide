@@ -99,6 +99,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     webrtcProvider.awareness.setLocalStateField("user", {
       name: systemSettings.discord?.enabled ? "You" : `User-${Math.floor(Math.random() * 1000)}`,
       color: randomColor,
+      clientId: webrtcProvider.awareness.clientID,
     });
 
     webrtcProvider.awareness.on("change", () => {
