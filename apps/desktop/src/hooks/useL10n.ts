@@ -22,7 +22,7 @@ export function useL10n() {
         getL10nServerSnapshot,
     );
 
-    const t = useCallback((key: string, params?: Record<string, string>) => {
+    const t = useCallback((key: string, params?: Record<string, string | number>) => {
         return trixty.l10n.t(key, params);
     }, []);
 

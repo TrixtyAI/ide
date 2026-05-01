@@ -121,7 +121,7 @@ function DetachableLeftView({ view, slotRef, t }: DetachableLeftViewProps) {
                 own UI underneath. */}
             <div
                 onMouseDown={onMouseDown}
-                className="absolute top-1 right-1 z-10 flex items-center gap-1 select-none"
+                className="absolute top-2.5 right-2 z-10 flex items-center gap-1 select-none"
             >
                 <button
                     {...popOutButtonProps}

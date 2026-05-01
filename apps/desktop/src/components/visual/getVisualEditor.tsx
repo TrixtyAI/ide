@@ -24,6 +24,7 @@ const EnvEditor = React.lazy(() => import("./EnvEditor"));
 const JsonTreeEditor = React.lazy(() => import("./JsonTreeEditor"));
 const JsonGraphEditor = React.lazy(() => import("./JsonGraphEditor"));
 const PackageJsonEditor = React.lazy(() => import("./PackageJsonEditor"));
+const GitignoreEditor = React.lazy(() => import("./GitignoreEditor"));
 
 const ENV_NAME_RE = /(^|\.)env(\.[\w-]+)?$/i;
 
@@ -45,6 +46,9 @@ export function getVisualEditor(file: FileState): VisualEditorRegistryEntry[] {
       { id: "form", Component: PackageJsonEditor, label: "Form" },
       { id: "graph", Component: JsonGraphEditor, label: "Graph" },
     ];
+  }
+  if (name === ".gitignore") {
+    return [{ id: "form", Component: GitignoreEditor, label: "Form" }];
   }
   if (ENV_NAME_RE.test(name) || name === ".env") {
     return [{ id: "table", Component: EnvEditor, label: "Table" }];

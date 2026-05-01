@@ -65,7 +65,7 @@ export function useInlineCompletions(monaco: Monaco | null): void {
           )) ?? "";
         }
         if (!modelId) return null;
-        if (token.isCancellationRequested) return null;
+        if (token.isCancellationRequested || model.isDisposed()) return null;
 
         const fullText = model.getValue();
         const offset = model.getOffsetAt(position);

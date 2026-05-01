@@ -106,13 +106,13 @@ class L10nRegistry {
         return this.currentLocale;
     }
 
-    t(key: string, params?: Record<string, string>): string {
+    t(key: string, params?: Record<string, string | number>): string {
         const bundle = this.bundles.get(this.currentLocale) || this.bundles.get('en') || {};
         let text = bundle[key] || key;
 
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
-                text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+                text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
             });
         }
         return text;

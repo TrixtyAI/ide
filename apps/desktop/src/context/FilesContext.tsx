@@ -54,9 +54,20 @@ const getLanguageFromExtension = (filename: string) => {
   return map[ext!] || "plaintext";
 };
 
+interface FilesState {
+  openFiles: FileState[];
+  currentFile: FileState | null;
+}
+
+const normalizePath = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+
 export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [openFiles, setOpenFiles] = useState<FileState[]>([]);
-  const [currentFile, setCurrentFile] = useState<FileState | null>(null);
+  const [state, setState] = useState<FilesState>({
+    openFiles: [],
+    currentFile: null,
+  });
+
+  const { openFiles, currentFile } = state;
 
   // Track openFiles via a ref so the close-requested listener registered once
   // below can always read the latest modified state without re-registering.
@@ -116,119 +127,192 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const openFile = useCallback((path: string, name: string, content: string, type: "file" | "virtual" | "binary" = "file") => {
-    setOpenFiles((prev) => {
-      const existing = prev.find((f) => f.path === path);
+    const normalizedPath = normalizePath(path);
+    setState((prev) => {
+      const existing = prev.openFiles.find((f) => normalizePath(f.path) === normalizedPath);
       if (existing) {
-        setCurrentFile(existing);
-        return prev;
+        return { ...prev, currentFile: existing };
       }
 
       // Enforce 10-tab limit
-      const newOpenFiles = [...prev];
+      const newOpenFiles = [...prev.openFiles];
       if (newOpenFiles.length >= 10) {
         newOpenFiles.shift(); // Remove the oldest tab
       }
 
       const newFile: FileState = {
-        path,
+        path, // Store original path for disk operations
         name,
         content,
         isModified: false,
         language: getLanguageFromExtension(name),
         type,
       };
-      setCurrentFile(newFile);
-      return [...newOpenFiles, newFile];
+      
+      return {
+        openFiles: [...newOpenFiles, newFile],
+        currentFile: newFile,
+      };
     });
   }, []);
 
+
   const closeFile = useCallback((path: string) => {
-    setOpenFiles((prev) => {
-      const filtered = prev.filter((f) => f.path !== path);
-      if (currentFile?.path === path) {
-        setCurrentFile(filtered.length > 0 ? filtered[filtered.length - 1] : null);
+    const normalizedTarget = normalizePath(path);
+    setState((prev) => {
+      const filtered = prev.openFiles.filter((f) => normalizePath(f.path) !== normalizedTarget);
+      let nextCurrent = prev.currentFile;
+      
+      if (prev.currentFile && normalizePath(prev.currentFile.path) === normalizedTarget) {
+        nextCurrent = filtered.length > 0 ? filtered[filtered.length - 1] : null;
       }
-      return filtered;
+      
+      return {
+        openFiles: filtered,
+        currentFile: nextCurrent,
+      };
     });
-  }, [currentFile]);
+  }, []);
 
   const closeOthers = useCallback((path: string) => {
-    setOpenFiles((prev) => {
-      const newFiles = prev.filter((f) => f.path === path);
-      if (currentFile?.path !== path) {
-        setCurrentFile(newFiles[0] || null);
+    const normalizedTarget = normalizePath(path);
+    setState((prev) => {
+      const newFiles = prev.openFiles.filter((f) => normalizePath(f.path) === normalizedTarget);
+      let nextCurrent = prev.currentFile;
+      
+      if (prev.currentFile && normalizePath(prev.currentFile.path) !== normalizedTarget) {
+        nextCurrent = newFiles[0] || null;
       }
-      return newFiles;
+      
+      return {
+        openFiles: newFiles,
+        currentFile: nextCurrent,
+      };
     });
-  }, [currentFile]);
+  }, []);
 
   const closeToTheRight = useCallback((path: string) => {
-    setOpenFiles((prev) => {
-      const index = prev.findIndex((f) => f.path === path);
+    const normalizedTarget = normalizePath(path);
+    setState((prev) => {
+      const index = prev.openFiles.findIndex((f) => normalizePath(f.path) === normalizedTarget);
       if (index === -1) return prev;
-      const newFiles = prev.slice(0, index + 1);
+      
+      const newFiles = prev.openFiles.slice(0, index + 1);
+      let nextCurrent = prev.currentFile;
 
       // If current file was to the right, switch to the target tab
-      if (currentFile && prev.findIndex((f) => f.path === currentFile.path) > index) {
-        setCurrentFile(newFiles[index]);
+      if (prev.currentFile && prev.openFiles.findIndex((f) => normalizePath(f.path) === normalizePath(prev.currentFile!.path)) > index) {
+        nextCurrent = newFiles[index];
       }
 
-      return newFiles;
+      return {
+        openFiles: newFiles,
+        currentFile: nextCurrent,
+      };
     });
-  }, [currentFile]);
+  }, []);
 
   const closeSaved = useCallback(() => {
-    setOpenFiles((prev) => {
-      const newFiles = prev.filter((f) => f.isModified);
+    setState((prev) => {
+      const newFiles = prev.openFiles.filter((f) => f.isModified);
+      let nextCurrent = prev.currentFile;
 
       // If current file was closed, switch to the first remaining one
-      if (currentFile && !currentFile.isModified) {
-        setCurrentFile(newFiles.length > 0 ? newFiles[0] : null);
+      if (prev.currentFile && !prev.currentFile.isModified) {
+        nextCurrent = newFiles.length > 0 ? newFiles[0] : null;
       }
 
-      return newFiles;
+      return {
+        openFiles: newFiles,
+        currentFile: nextCurrent,
+      };
     });
-  }, [currentFile]);
+  }, []);
 
   const closeAll = useCallback(() => {
-    setOpenFiles([]);
-    setCurrentFile(null);
+    setState({
+      openFiles: [],
+      currentFile: null,
+    });
+  }, []);
+
+  const setCurrentFile = useCallback((file: FileState | null) => {
+    if (!file) {
+      setState((prev) => ({ ...prev, currentFile: null }));
+      return;
+    }
+    const normalizedPath = normalizePath(file.path);
+    setState((prev) => {
+      const exists = prev.openFiles.find((f) => normalizePath(f.path) === normalizedPath);
+      return { ...prev, currentFile: exists || prev.currentFile };
+    });
   }, []);
 
   const updateFileContent = useCallback((path: string, content: string) => {
-    setOpenFiles((prev) =>
-      prev.map((f) =>
-        f.path === path ? { ...f, content, isModified: true } : f,
-      ),
-    );
-    // Perform the path check inside the setter so debounced callers can't
-    // overwrite a tab that happens to be active now but wasn't when the edit
-    // was made. `updateFileContent` stays stable (no `currentFile` dep) so
-    // consumers don't see it change when the active tab changes.
-    setCurrentFile((prev) =>
-      prev && prev.path === path ? { ...prev, content, isModified: true } : prev,
-    );
+    const normalizedPath = normalizePath(path);
+    setState((prev) => {
+      const nextOpenFiles = prev.openFiles.map((f) =>
+        normalizePath(f.path) === normalizedPath ? { ...f, content, isModified: true } : f,
+      );
+      
+      let nextCurrent = prev.currentFile;
+      if (prev.currentFile && normalizePath(prev.currentFile.path) === normalizedPath) {
+        nextCurrent = { ...prev.currentFile, content, isModified: true };
+      }
+      
+      return {
+        openFiles: nextOpenFiles,
+        currentFile: nextCurrent,
+      };
+    });
   }, []);
 
+
   const saveCurrentFile = useCallback(async () => {
-    if (!currentFile) return;
+    // Access current state via a ref-like pattern if needed, but since this is async, 
+    // we should probably just use the closure's currentFile if it's stable enough,
+    // or better, check the state inside the callback if we can.
+    // However, the existing logic used the currentFile from the closure.
+    // Let's use a functional update to get the latest state safely.
+    
+    let targetFile: FileState | null = null;
+    setState(prev => {
+      targetFile = prev.currentFile;
+      return prev;
+    });
+
+    if (!targetFile) return;
+    const file = targetFile as FileState;
+    
     // Only real file tabs are writable. Virtual tabs have no on-disk path,
     // and binary tabs carry an empty content string that would overwrite the file.
-    if (currentFile.type && currentFile.type !== "file") return;
+    if (file.type && file.type !== "file") return;
+    
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("write_file", { path: currentFile.path, content: currentFile.content });
+      await invoke("write_file", { path: file.path, content: file.content });
 
-      setOpenFiles((prev) =>
-        prev.map((f) =>
-          f.path === currentFile.path ? { ...f, isModified: false } : f,
-        ),
-      );
-      setCurrentFile((prev) => (prev ? { ...prev, isModified: false } : null));
+      setState((prev) => {
+        const nextOpenFiles = prev.openFiles.map((f) =>
+          normalizePath(f.path) === normalizePath(file.path) ? { ...f, isModified: false } : f,
+        );
+        
+        let nextCurrent = prev.currentFile;
+        if (prev.currentFile && normalizePath(prev.currentFile.path) === normalizePath(file.path)) {
+          nextCurrent = { ...prev.currentFile, isModified: false };
+        }
+        
+        return {
+          openFiles: nextOpenFiles,
+          currentFile: nextCurrent,
+        };
+      });
+
     } catch (error) {
       logger.error("Failed to save file:", error);
     }
-  }, [currentFile]);
+  }, []);
+
 
   const value = useMemo(() => ({
     openFiles,

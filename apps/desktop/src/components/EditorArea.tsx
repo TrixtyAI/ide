@@ -191,35 +191,16 @@ const EditorArea: React.FC = () => {
     };
   }, [openFiles.length, currentFile?.path]);
 
-  // Memory: Clean up Monaco models when files are closed.
-  const openPathKeys = openFiles.map(f => f.path).join("\n");
+  // Derive the threshold as a primitive boolean so the memo below only rebuilds
+  // options when we cross `LARGE_FILE_BYTES`, not on every keystroke.
+  const isLargeFile = (currentFile?.content?.length ?? 0) >= LARGE_FILE_BYTES;
+
+  // Memory: We previously tried to clean up Monaco models here, but it was causing
+  // "TextModelPart is disposed" errors and UI flickering during rapid switching.
+  // Monaco can handle many models; we'll revisit a safer disposal strategy later.
   React.useEffect(() => {
-    if (!monacoRef.current || !currentFile) return;
+    if (!currentFile) return;
 
-    const normalize = (p: string) => {
-      const slashed = p.replace(/\\/g, "/");
-      const isWindowsPath = /^[A-Za-z]:\//.test(slashed) || slashed.startsWith("//");
-      const result = isWindowsPath ? slashed.toLowerCase() : slashed;
-      return result;
-    };
-
-    const openPathsArray = openFiles.map(f => normalize(f.path));
-    const openPaths = new Set(openPathsArray);
-    const activeModelPath = normalize(currentFile.path);
-
-    const models = monacoRef.current.editor.getModels();
-    for (const model of models) {
-      if (model.uri.scheme === "inmemory") continue;
-
-      const modelPath = normalize(model.uri.fsPath);
-
-      // Safety: Never dispose of the current file's model
-      if (modelPath === activeModelPath) continue;
-
-      if (!openPaths.has(modelPath)) {
-        model.dispose();
-      }
-    }
     // Sentry Tracking for File Open
     Sentry.metrics.count('editor_file_open', 1, {
       attributes: { 
@@ -236,8 +217,7 @@ const EditorArea: React.FC = () => {
         path: currentFile.path 
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPathKeys, currentFile?.path]);
+  }, [currentFile?.path, isLargeFile]);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -267,11 +247,6 @@ const EditorArea: React.FC = () => {
       updateFileContent(path, content);
     }, 300);
   };
-
-  // Derive the threshold as a primitive boolean so the memo below only rebuilds
-  // options when we cross `LARGE_FILE_BYTES`, not on every keystroke.
-  const isLargeFile = (currentFile?.content?.length ?? 0) >= LARGE_FILE_BYTES;
-
   const editorOptions = useMemo<editor.IStandaloneEditorConstructionOptions>(
     () => ({
       minimap: { enabled: editorSettings.minimapEnabled },
@@ -365,6 +340,7 @@ const EditorArea: React.FC = () => {
     }
   };
   const activeTabId = currentFile ? tabIdFor(currentFile.path) : undefined;
+  const showEditor = !!currentFile;
 
   return (
     <div className="flex-1 w-full h-full overflow-hidden flex flex-col bg-[#0e0e0e]">
@@ -378,7 +354,11 @@ const EditorArea: React.FC = () => {
         className="flex-1 overflow-hidden relative focus:outline-none"
         ref={containerRef}
       >
-        {isVirtualTab ? (
+        {!showEditor ? (
+           <div className="flex-1 flex flex-col items-center justify-center h-full text-[#333]">
+             <p className="text-[11px] opacity-40">{t('editor.empty_desc')}</p>
+           </div>
+        ) : isVirtualTab ? (
           renderVirtualView()
         ) : isBinaryTab ? (
           <div className="flex-1 h-full flex items-center justify-center p-8">
@@ -386,29 +366,31 @@ const EditorArea: React.FC = () => {
               {t('editor.bin_file')}
             </p>
           </div>
-        ) : currentFile ? (
+        ) : (
           <FileViewSurface
-            file={currentFile}
-            onContentChange={(next) => updateFileContent(currentFile.path, next)}
+            file={currentFile!}
+            onContentChange={(next) => updateFileContent(currentFile!.path, next)}
             monacoElement={
               <div className="h-full" data-allow-global-shortcuts="true">
-                <MonacoEditor
+                  <MonacoEditor
                   height="100%"
-                  language={currentFile.language}
-                  value={currentFile.content}
+                  language={currentFile!.language}
+                  value={currentFile!.content}
                   theme={MONACO_THEME_NAME}
                   onMount={handleEditorDidMount}
                   onChange={handleEditorChange}
-                  path={currentFile.path}
+                  path={currentFile!.path}
                   options={editorOptions}
+                  keepCurrentModel={true}
                 />
               </div>
             }
           />
-        ) : null}
+        )}
       </div>
     </div>
   );
+
 };
 
 export default EditorArea;
@@ -435,6 +417,7 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
   onContentChange,
   monacoElement,
 }) => {
+  const { t } = useL10n();
   const visuals = useMemo(() => getVisualEditor(file), [file]);
   // Mode tracks "source" or one of the visual entry ids. Per-path so
   // switching files of the same kind preserves the user's last choice.
@@ -444,10 +427,10 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
 
   if (visuals.length === 0) return <>{monacoElement}</>;
 
-  // Default to "source" — the source view is the safe baseline for
-  // every kind, and it preserves the editor flow for files the user
-  // didn't explicitly switch.
-  const mode = modeByPath.get(file.path) ?? "source";
+  // Default to the first visual mode if available, otherwise "source".
+  // This ensures that .json, .env, etc., open directly in their visual view.
+  const defaultMode = visuals[0]?.id ?? "source";
+  const mode = modeByPath.get(file.path) ?? defaultMode;
   const setMode = (next: string) => {
     Sentry.metrics.count('editor_mode_switch', 1, {
       attributes: { to_mode: next, file_type: file.language }
@@ -468,7 +451,7 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
           active={mode === "source"}
           onClick={() => setMode("source")}
           icon={<Code2 size={11} strokeWidth={1.6} />}
-          label="Source"
+          label={t('editor.source')}
         />
         {visuals.map((v) => (
           <SubTabButton

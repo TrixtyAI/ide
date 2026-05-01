@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import FloatingPanel from "@/components/ui/FloatingPanel";
 import { cn } from "@/lib/utils";
@@ -107,14 +108,14 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const adjustedX = Math.min(x, typeof window !== "undefined" ? window.innerWidth - 300 : x);
   const adjustedY = Math.min(y, typeof window !== "undefined" ? window.innerHeight - items.length * 45 : y);
 
-  return (
+  const menuContent = (
     <FloatingPanel
       ref={menuRef}
       role="menu"
       onKeyDown={handleMenuKeyDown}
       shape="menu"
       style={{ top: adjustedY, left: adjustedX }}
-      className="fixed z-menu w-72 py-2.5 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-menu min-w-[16rem] w-max max-w-sm py-1.5 animate-in fade-in zoom-in-95 duration-100"
     >
       {items.map((item, index) => (
         <React.Fragment key={index}>
@@ -137,18 +138,18 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
               onFocus={() => setActiveIndex(index)}
               disabled={item.disabled}
               className={cn(
-                "w-full flex items-center justify-between px-4 py-2.5 text-ui transition-all",
+                "w-full flex items-center justify-between px-4 py-1.5 text-[12px] transition-all whitespace-nowrap",
                 item.disabled
                   ? "opacity-30 cursor-not-allowed"
                   : "text-[#ccc] hover:bg-white/10 hover:text-white cursor-default",
               )}
             >
               <div className="flex items-center gap-3">
-                <span className="opacity-70 scale-110">{item.icon}</span>
-                <span className="font-medium tracking-tight">{item.label}</span>
+                <span className="opacity-70">{item.icon}</span>
+                <span className="font-medium tracking-tight text-left">{item.label}</span>
               </div>
               {item.shortcut && (
-                <span className="text-caption opacity-40 font-mono ml-4 tracking-tighter">{item.shortcut}</span>
+                <span className="text-[10px] opacity-40 font-mono ml-6 tracking-tighter text-right">{item.shortcut}</span>
               )}
             </button>
           )}
@@ -156,6 +157,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
       ))}
     </FloatingPanel>
   );
+
+  return typeof document !== "undefined" ? createPortal(menuContent, document.body) : menuContent;
 };
 
 export default ContextMenu;

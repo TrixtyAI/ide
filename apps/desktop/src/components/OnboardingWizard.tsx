@@ -159,7 +159,7 @@ const OnboardingWizard: React.FC = () => {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
-            <span className="font-bold tracking-tight text-white/90">Trixty IDE</span>
+            <span className="font-bold tracking-tight text-white/90">{t('welcome.title')} IDE</span>
           </div>
 
           <nav className="flex-1 space-y-2">
@@ -227,8 +227,8 @@ const OnboardingWizard: React.FC = () => {
 
                     <div className="space-y-3">
                       {[
-                        { id: "en", label: "English", native: "US English", icon: "🇺🇸" },
-                        { id: "es", label: "Español", native: "Spanish", icon: "🇪🇸" }
+                        { id: "en", label: t('settings.application.language.en'), native: t('onboarding.language.en_native'), icon: "🇺🇸" },
+                        { id: "es", label: t('settings.application.language.es'), native: t('onboarding.language.es_native'), icon: "🇪🇸" }
                       ].map((lang) => (
                         <button
                           key={lang.id}

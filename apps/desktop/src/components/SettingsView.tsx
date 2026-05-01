@@ -26,7 +26,6 @@ import { useResetApp } from "@/context/useResetApp";
 import { useL10n } from "@/hooks/useL10n";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
-import * as Sentry from "@sentry/nextjs";
 import logoWhite from "@/assets/branding/logo-white.png";
 import AgentSettings from "@/addons/builtin.agent-support/AgentSettings";
 
@@ -94,7 +93,7 @@ Node.js: ${systemInfo.node_version}
   // Issue #267: Provider Keys submenu only appears once the master
   // switch in `agent.configuration` is on.
   if (aiSettings.allowProviderKeys) {
-    agentChildren.push({ id: "agent:provider-keys", label: "Provider Keys" });
+    agentChildren.push({ id: "agent:provider-keys", label: t('agent.provider-keys.title') });
   }
 
   const categories = [
@@ -217,7 +216,7 @@ Node.js: ${systemInfo.node_version}
             <section>
               <div className="mb-4">
                 <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-                  Files: <span className="font-bold">Exclude</span>
+                  {t('settings.general.exclude_title_part1')}<span className="font-bold">{t('settings.general.exclude_title_part2')}</span>
                 </h3>
                 <p className="text-[12px] text-[#666] mt-1.5 leading-relaxed max-w-xl">
                   {t('settings.general.exclude_desc')}
@@ -303,8 +302,8 @@ Node.js: ${systemInfo.node_version}
                     onChange={(e) => setLocale(e.target.value)}
                     className="bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-[13px] text-white focus:border-blue-500 outline-none transition-colors appearance-none"
                   >
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
+                    <option value="en">{t('settings.application.language.en')}</option>
+                    <option value="es">{t('settings.application.language.es')}</option>
                   </select>
                 </div>
               </div>
@@ -373,10 +372,10 @@ Node.js: ${systemInfo.node_version}
                 <div className="flex items-center gap-5">
                   <div className="w-14 h-14 bg-white/[0.03] rounded-2xl flex items-center justify-center border border-white/5">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoWhite.src} alt="Trixty Logo" className="w-8 h-8 object-contain" />
+                    <img src={logoWhite.src} alt={t('settings.about.logo_alt')} className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h4 className="text-[18px] font-bold text-white tracking-tight">Trixty</h4>
+                    <h4 className="text-[18px] font-bold text-white tracking-tight">{t('welcome.title')}</h4>
                     <p className="text-[12px] text-[#555] font-mono mt-0.5">v{systemInfo?.app_version || "---"}</p>
                   </div>
                 </div>
@@ -443,22 +442,6 @@ Node.js: ${systemInfo.node_version}
       default:
         return null;
     }
-  };
-
-  const testFunction = () => {
-    Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
-    
-    // Test Sentry Metrics
-    Sentry.metrics.count('user_action_test', 1, {
-      attributes: { action_type: 'click', view: 'settings' }
-    });
-    
-    Sentry.metrics.distribution('api_response_time_test', 150, {
-      unit: 'millisecond',
-      attributes: { endpoint: 'test_sentry' }
-    });
-
-    throw new Error("Sentry Test Error from Trixty IDE");
   };
 
   return (
@@ -553,9 +536,6 @@ Node.js: ${systemInfo.node_version}
               className="absolute top-8 right-8 text-[#555] hover:text-white transition-colors"
             >
               <X size={20} />
-            </button>
-            <button onClick={testFunction}>
-              test sentry
             </button>
             {renderContent()}
           </div>

@@ -6,6 +6,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import type { VisualEditorProps } from "./getVisualEditor";
 import NpmInstallerModal from "./NpmInstallerModal";
 import { useDragReorder, type DragRowProps } from "@/hooks/useDragReorder";
+import { useL10n } from "@/hooks/useL10n";
 
 type DepGroup = "dependencies" | "devDependencies" | "peerDependencies";
 
@@ -47,6 +48,7 @@ function stringify(data: PackageJson): string {
 }
 
 const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
+  const { t } = useL10n();
   const { rootPath } = useWorkspace();
   // Parsed package.json is derived directly from the prop — user edits
   // flow back through onChange and re-derive on next render.
@@ -169,8 +171,8 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
   return (
     <div className="h-full overflow-auto bg-[#0e0e0e] p-4 text-[12px] text-[#ccc]">
       <div className="max-w-3xl mx-auto space-y-8">
-        <Section title="Identity">
-          <Field label="Name">
+        <Section title={t('visual.package.identity')}>
+          <Field label={t('visual.package.name')}>
             <input
               type="text"
               value={data.name ?? ""}
@@ -179,7 +181,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Version">
+          <Field label={t('visual.package.version')}>
             <input
               type="text"
               value={data.version ?? ""}
@@ -188,7 +190,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Description">
+          <Field label={t('visual.package.description')}>
             <input
               type="text"
               value={data.description ?? ""}
@@ -197,7 +199,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="License">
+          <Field label={t('visual.package.license')}>
             <input
               type="text"
               value={data.license ?? ""}
@@ -206,7 +208,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
               className={fieldClass}
             />
           </Field>
-          <Field label="Author">
+          <Field label={t('visual.package.author')}>
             <input
               type="text"
               value={
@@ -222,7 +224,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         </Section>
 
         <MapSection
-          title="Scripts"
+          title={t('visual.package.scripts')}
           entries={data.scripts ?? {}}
           placeholderKey="dev"
           placeholderValue="next dev"
@@ -233,7 +235,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         />
 
         <DepSection
-          title="Dependencies"
+          title={t('visual.package.dependencies')}
           target="dependencies"
           entries={data.dependencies ?? {}}
           rootPath={rootPath}
@@ -244,7 +246,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onReorder={(keys) => reorderMapKeys("dependencies", keys)}
         />
         <DepSection
-          title="Dev dependencies"
+          title={t('visual.package.dev_dependencies')}
           target="devDependencies"
           entries={data.devDependencies ?? {}}
           rootPath={rootPath}
@@ -255,7 +257,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
           onReorder={(keys) => reorderMapKeys("devDependencies", keys)}
         />
         <DepSection
-          title="Peer dependencies"
+          title={t('visual.package.peer_dependencies')}
           target="peerDependencies"
           entries={data.peerDependencies ?? {}}
           rootPath={rootPath}
@@ -267,7 +269,7 @@ const PackageJsonEditor: React.FC<VisualEditorProps> = ({ file, onChange }) => {
         />
 
         <MapSection
-          title="Engines"
+          title={t('visual.package.engines')}
           entries={data.engines ?? {}}
           placeholderKey="node"
           placeholderValue=">=20"
@@ -339,6 +341,7 @@ const MapSection: React.FC<MapSectionProps> = ({
   onRemove,
   onAdd,
 }) => {
+  const { t } = useL10n();
   const [draftKey, setDraftKey] = useState("");
   const [draftValue, setDraftValue] = useState("");
 
@@ -354,8 +357,7 @@ const MapSection: React.FC<MapSectionProps> = ({
       <header className="flex items-center justify-between">
         <h3 className="text-[13px] font-bold text-white tracking-tight">{title}</h3>
         <span className="text-[10px] text-[#444] font-mono">
-          {Object.keys(entries).length} entr
-          {Object.keys(entries).length === 1 ? "y" : "ies"}
+          {Object.keys(entries).length} {t('marketplace.metadata.identifier').toLowerCase()}
         </span>
       </header>
 
@@ -371,7 +373,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           />
         ))}
         {Object.keys(entries).length === 0 && (
-          <p className="text-[11px] text-[#555] italic">No entries yet.</p>
+          <p className="text-[11px] text-[#555] italic">{t('common.no_entries')}</p>
         )}
       </div>
 
@@ -409,7 +411,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           className="px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={11} strokeWidth={1.8} />
-          Add
+          {t('common.add')}
         </button>
       </div>
     </section>
@@ -438,6 +440,7 @@ const DepSection: React.FC<DepSectionProps> = ({
   onRemove,
   onReorder,
 }) => {
+  const { t } = useL10n();
   const rows = Object.entries(entries).map(([key, value]) => ({ key, value }));
   const { getRowProps } = useDragReorder<{ key: string; value: string }>({
     items: rows,
@@ -460,7 +463,7 @@ const DepSection: React.FC<DepSectionProps> = ({
           className="px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={11} strokeWidth={1.8} />
-          Add
+          {t('common.add')}
         </button>
       </header>
       <div className="space-y-1">
@@ -479,7 +482,7 @@ const DepSection: React.FC<DepSectionProps> = ({
           );
         })}
         {rows.length === 0 && (
-          <p className="text-[11px] text-[#555] italic">No entries yet.</p>
+          <p className="text-[11px] text-[#555] italic">{t('common.no_entries')}</p>
         )}
       </div>
     </section>
@@ -503,6 +506,7 @@ const Row: React.FC<RowProps> = ({
   onRemove,
   dragProps,
 }) => {
+  const { t } = useL10n();
   const [draftKey, setDraftKey] = useState(entryKey);
   useEffect(() => {
     setDraftKey(entryKey);
@@ -550,9 +554,9 @@ const Row: React.FC<RowProps> = ({
       <button
         type="button"
         onClick={() => onRemove(entryKey)}
-        title="Remove"
+        title={t('common.remove')}
         className="p-1 text-[#666] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-        aria-label={`Remove ${entryKey}`}
+        aria-label={t('common.remove')}
       >
         <Trash2 size={13} strokeWidth={1.6} />
       </button>

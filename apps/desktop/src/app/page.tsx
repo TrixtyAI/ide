@@ -441,10 +441,11 @@ export default function Home() {
     return <OnboardingWizard />;
   }
 
-  // Zen Mode: hide everything except editor + status bar. Esc exits.
+  // Zen Mode: hide everything except editor + status bar + title bar. Esc exits.
   if (isZenMode) {
     return (
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-surface-0 text-[#999] font-sans">
+        <TitleBar />
         <div className="flex-1 overflow-hidden bg-surface-2 min-h-0">
           <ErrorBoundary name="Editor Area (Zen)">
             {openFiles.length > 0 ? <EditorArea /> : <WelcomeScreen />}

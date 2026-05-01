@@ -1324,6 +1324,9 @@ const AiChatComponent: React.FC = () => {
                   const keyMissing =
                     meta.kind === "cloud" &&
                     !aiSettings.providerKeys[pid as Exclude<typeof pid, "ollama">];
+                  
+                  if (keyMissing) return null;
+
                   return (
                     <button
                       key={pid}
@@ -1338,11 +1341,6 @@ const AiChatComponent: React.FC = () => {
                       }`}
                     >
                       <span>{meta.label}</span>
-                      {keyMissing && (
-                        <span className="text-[9px] text-amber-300/80 uppercase tracking-wider">
-                          No key
-                        </span>
-                      )}
                     </button>
                   );
                 })}
@@ -1373,7 +1371,7 @@ const AiChatComponent: React.FC = () => {
           </button>
 
           {showModelMenu && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, EyeOff, Plus, Trash2, ExternalLink, Check, ShieldCheck } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
+import { useL10n } from "@/hooks/useL10n";
 import type { ProviderId } from "@/context/SettingsContext";
 import { PROVIDER_IDS, PROVIDERS } from "@/api/providers/registry";
 import {
@@ -27,6 +28,7 @@ const CLOUD_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
  */
 export const ProviderKeysPanel: React.FC = () => {
   const { aiSettings, updateAISettings } = useSettings();
+  const { t } = useL10n();
   const [revealedKey, setRevealedKey] = useState<ProviderId | null>(null);
   const [draftModels, setDraftModels] = useState<Record<string, string>>({});
   // Keys live in component state instead of `aiSettings.providerKeys`
@@ -143,9 +145,7 @@ export const ProviderKeysPanel: React.FC = () => {
       <div className="p-4 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-2xl text-[12px] text-emerald-200/85 leading-relaxed flex gap-3">
         <ShieldCheck size={16} strokeWidth={1.6} className="shrink-0 mt-[1px] text-emerald-300/80" />
         <span>
-          Keys are stored in your OS native secret store — macOS Keychain,
-          Windows Credential Manager, or Linux Secret Service / kwallet —
-          and never written to <code className="font-mono">settings.json</code>.
+          {t('agent.provider-keys.keychain_info')}
         </span>
       </div>
 
@@ -173,7 +173,7 @@ export const ProviderKeysPanel: React.FC = () => {
                   className="inline-flex items-center gap-1 text-[10px] text-[#666] hover:text-blue-400 transition-colors mt-1 uppercase tracking-wider"
                 >
                   <ExternalLink size={10} strokeWidth={1.6} />
-                  Docs
+                  {t('agent.provider-keys.docs_link')}
                 </a>
               </div>
               <span
@@ -183,7 +183,7 @@ export const ProviderKeysPanel: React.FC = () => {
                     : "bg-[#1a1a1a] text-[#555] border border-white/5"
                 }`}
               >
-                {isConfigured ? "Key set" : "No key"}
+                {isConfigured ? t('agent.provider-keys.key_set') : t('agent.provider-keys.no_key')}
               </span>
             </div>
 
@@ -192,7 +192,7 @@ export const ProviderKeysPanel: React.FC = () => {
                 htmlFor={`provider-key-${provider}`}
                 className="text-[10px] font-bold text-[#888] uppercase tracking-wider"
               >
-                API key
+                {t('agent.provider-keys.api_key_label')}
               </label>
               <div className="relative">
                 <input
@@ -204,15 +204,15 @@ export const ProviderKeysPanel: React.FC = () => {
                   onChange={(e) => setKey(provider, e.target.value)}
                   onBlur={() => commitKey(provider)}
                   disabled={!keyLoadDone}
-                  placeholder={`Paste your ${meta.label} API key`}
+                  placeholder={t('agent.provider-keys.api_key_placeholder', { name: meta.label })}
                   className="w-full bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg px-3 py-2 pr-10 text-[12px] text-white font-mono focus:border-blue-500/50 outline-none transition-colors disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setRevealedKey(isRevealed ? null : provider)}
-                  title={isRevealed ? "Hide key" : "Reveal key"}
+                  title={isRevealed ? t('agent.provider-keys.hide_key') : t('agent.provider-keys.reveal_key')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#555] hover:text-white transition-colors"
-                  aria-label={isRevealed ? "Hide API key" : "Reveal API key"}
+                  aria-label={isRevealed ? t('agent.provider-keys.hide_key') : t('agent.provider-keys.reveal_key')}
                 >
                   {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
@@ -225,10 +225,12 @@ export const ProviderKeysPanel: React.FC = () => {
                   htmlFor={`provider-model-input-${provider}`}
                   className="text-[10px] font-bold text-[#888] uppercase tracking-wider"
                 >
-                  Models
+                  {t('agent.provider-keys.models_label')}
                 </label>
                 <span className="text-[10px] text-[#444] font-mono">
-                  {models.length} entr{models.length === 1 ? "y" : "ies"}
+                  {models.length === 1
+                    ? t('agent.provider-keys.models_count_singular', { count: 1 })
+                    : t('agent.provider-keys.models_count_plural', { count: models.length })}
                 </span>
               </div>
 
@@ -256,14 +258,13 @@ export const ProviderKeysPanel: React.FC = () => {
                   className="px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus size={12} strokeWidth={1.8} />
-                  Add
+                  {t('common.add')}
                 </button>
               </div>
 
               {models.length === 0 ? (
                 <p className="text-[11px] text-[#555] italic">
-                  No models added yet. Add the exact model IDs you want
-                  available in the chat header.
+                  {t('agent.provider-keys.no_models')}
                 </p>
               ) : (
                 <ul className="flex flex-wrap gap-1.5 pt-1">
@@ -293,7 +294,7 @@ export const ProviderKeysPanel: React.FC = () => {
 
       <div className="flex items-center gap-2 text-[11px] text-emerald-400/80">
         <Check size={12} strokeWidth={1.8} />
-        Changes save automatically.
+        {t('agent.provider-keys.auto_save')}
       </div>
     </div>
   );
