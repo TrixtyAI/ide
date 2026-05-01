@@ -19,6 +19,7 @@ interface CollaborationContextType {
   rejectJoin: (userId: string) => Promise<void>;
   startHostSession: () => void;
   stopCollaboration: () => void;
+  updatePresenceFile: (path: string | null) => void;
 }
 
 const CollaborationContext = createContext<CollaborationContextType | null>(null);
@@ -90,6 +91,16 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
       signaling: ["wss://signaling.yjs.dev"],
     });
 
+    // Set local awareness state
+    const colors = ["#f87171", "#fb923c", "#fbbf24", "#34d399", "#22d3ee", "#818cf8", "#c084fc", "#f472b6"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    // In a real app we'd get this from Discord, for now we use a placeholder or random name
+    webrtcProvider.awareness.setLocalStateField("user", {
+      name: systemSettings.discord?.enabled ? "You" : `User-${Math.floor(Math.random() * 1000)}`,
+      color: randomColor,
+    });
+
     webrtcProvider.awareness.on("change", () => {
       setActiveUsers(Array.from(webrtcProvider.awareness.getStates().values()));
     });
@@ -137,6 +148,16 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const updatePresenceFile = useCallback((path: string | null) => {
+    if (provider?.awareness) {
+      const currentState = provider.awareness.getLocalState();
+      provider.awareness.setLocalStateField("user", {
+        ...currentState?.user,
+        currentFile: path,
+      });
+    }
+  }, [provider]);
+
   return (
     <CollaborationContext.Provider
       value={{
@@ -150,6 +171,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
         rejectJoin,
         startHostSession,
         stopCollaboration,
+        updatePresenceFile,
       }}
     >
       {children}

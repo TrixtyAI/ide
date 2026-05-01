@@ -72,11 +72,27 @@ const StatusBar: React.FC = () => {
 
         {isCollaborating && (
           <div 
-            className="flex items-center gap-1.5 px-1.5 h-full text-indigo-400 border-x border-white/5 bg-indigo-500/5"
-            title={`${activeUsers.length + 1} users collaborating`}
+            className="flex items-center gap-1.5 px-1.5 h-full text-indigo-400 border-x border-white/5 bg-indigo-500/5 group relative"
           >
             <Users size={12} strokeWidth={1.5} />
             <span className="font-medium">{activeUsers.length + 1}</span>
+
+            {/* Collaborators Hover List */}
+            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg shadow-2xl p-2 animate-in slide-in-from-bottom-1 duration-200 z-[100]">
+              <div className="text-[10px] text-[#555] uppercase tracking-wider mb-2 px-1">Collaborators</div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                  <span className="text-[11px] text-white">You (Host)</span>
+                </div>
+                {activeUsers.filter(u => u.user && u.user.name !== "You").map((u, i) => (
+                  <div key={i} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: u.user.color }} />
+                    <span className="text-[11px] text-[#bbb]">{u.user.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

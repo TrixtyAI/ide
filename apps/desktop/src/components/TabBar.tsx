@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, FileCode, FileText, FileJson, FileType, Package, CircleOff, ArrowRight, FileCheck, Trash2 } from "lucide-react";
 import { useFiles, FileState } from "@/context/FilesContext";
 import { useL10n } from "@/hooks/useL10n";
+import { useCollaboration } from "@/context/CollaborationContext";
 import ContextMenu, { ContextMenuItem } from "./ui/ContextMenu";
 
 // Derive a stable, HTML-id-safe handle from the file path. Shared with
@@ -16,6 +17,7 @@ export const tabIdFor = (path: string): string =>
 const TabBar: React.FC = () => {
   const { openFiles, currentFile, setCurrentFile, closeFile, closeOthers, closeToTheRight, closeSaved, closeAll } = useFiles();
   const { t } = useL10n();
+  const { isCollaborating, activeUsers } = useCollaboration();
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetPath: string } | null>(null);
 
   const getFileIcon = (file: FileState) => {
@@ -143,6 +145,21 @@ const TabBar: React.FC = () => {
 
             {file.isModified && (
               <div aria-hidden="true" className="w-[6px] h-[6px] rounded-full bg-white/40 shrink-0" />
+            )}
+
+            {isCollaborating && (
+              <div className="flex -space-x-1.5 ml-1">
+                {activeUsers
+                  .filter(u => u.user?.currentFile === file.path && u.user?.name !== "You")
+                  .map((u, i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full border border-[#141414] shadow-sm shrink-0"
+                      style={{ backgroundColor: u.user?.color || "#888" }}
+                      title={u.user?.name}
+                    />
+                  ))}
+              </div>
             )}
 
             <button

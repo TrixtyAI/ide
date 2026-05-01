@@ -170,8 +170,15 @@ const EditorArea: React.FC = () => {
   };
 
   // Collaborative Sync
-  const { isCollaborating, ydoc, provider } = useCollaboration();
+  const { isCollaborating, ydoc, provider, updatePresenceFile } = useCollaboration();
   const bindingRef = useRef<MonacoBinding | null>(null);
+
+  // Sync our current file path with peers
+  React.useEffect(() => {
+    if (isCollaborating) {
+      updatePresenceFile(currentFile?.path || null);
+    }
+  }, [isCollaborating, currentFile?.path, updatePresenceFile]);
 
   React.useEffect(() => {
     if (!isCollaborating || !ydoc || !provider || !editorRef.current || !currentFile) {
