@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use log::{error, info, warn};
+use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(unix)]
 use tokio::net::UnixStream;
-use uuid::Uuid;
-use log::{info, warn, error};
-use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::ClientOptions;
@@ -49,12 +49,16 @@ impl IpcStream {
             #[cfg(windows)]
             IpcStream::Windows(s) => {
                 s.write_all(&header).await.map_err(|e| e.to_string())?;
-                s.write_all(payload.as_bytes()).await.map_err(|e| e.to_string())?;
+                s.write_all(payload.as_bytes())
+                    .await
+                    .map_err(|e| e.to_string())?;
             }
             #[cfg(unix)]
             IpcStream::Unix(s) => {
                 s.write_all(&header).await.map_err(|e| e.to_string())?;
-                s.write_all(payload.as_bytes()).await.map_err(|e| e.to_string())?;
+                s.write_all(payload.as_bytes())
+                    .await
+                    .map_err(|e| e.to_string())?;
             }
         }
         Ok(())
@@ -80,11 +84,15 @@ impl IpcStream {
         match self {
             #[cfg(windows)]
             IpcStream::Windows(s) => {
-                s.read_exact(&mut payload).await.map_err(|e| e.to_string())?;
+                s.read_exact(&mut payload)
+                    .await
+                    .map_err(|e| e.to_string())?;
             }
             #[cfg(unix)]
             IpcStream::Unix(s) => {
-                s.read_exact(&mut payload).await.map_err(|e| e.to_string())?;
+                s.read_exact(&mut payload)
+                    .await
+                    .map_err(|e| e.to_string())?;
             }
         }
 
@@ -114,7 +122,7 @@ impl DiscordRpc {
                 match Self::try_connect(&client_id).await {
                     Ok(mut stream) => {
                         info!("[Discord] Connected and handshaked.");
-                        
+
                         let _ = Self::do_subscribe(&mut stream, "ACTIVITY_JOIN").await;
                         let _ = Self::do_subscribe(&mut stream, "ACTIVITY_SPECTATE").await;
                         let _ = Self::do_subscribe(&mut stream, "ACTIVITY_JOIN_REQUEST").await;
@@ -139,7 +147,7 @@ impl DiscordRpc {
                                             "nonce": Uuid::new_v4().to_string()
                                         }).to_string(),
                                     };
-                                    
+
                                     if let Err(e) = stream.send(OpCode::Frame, &payload).await {
                                         error!("[Discord] Send failed: {}", e);
                                         break;
@@ -225,14 +233,16 @@ impl DiscordRpc {
             "cmd": "SUBSCRIBE",
             "evt": evt,
             "nonce": Uuid::new_v4().to_string()
-        }).to_string();
+        })
+        .to_string();
         stream.send(OpCode::Frame, &payload).await?;
         Ok(())
     }
 
     pub fn set_activity(&self, activity: Option<Activity>) -> Result<(), String> {
         if let Some(tx) = &self.tx {
-            tx.send(RpcMessage::UpdateActivity(Box::new(activity))).map_err(|e| e.to_string())?;
+            tx.send(RpcMessage::UpdateActivity(Box::new(activity)))
+                .map_err(|e| e.to_string())?;
             Ok(())
         } else {
             Err("RPC not started".to_string())
@@ -241,7 +251,8 @@ impl DiscordRpc {
 
     pub fn accept_join_request(&self, user_id: String) -> Result<(), String> {
         if let Some(tx) = &self.tx {
-            tx.send(RpcMessage::AcceptJoin(user_id)).map_err(|e| e.to_string())?;
+            tx.send(RpcMessage::AcceptJoin(user_id))
+                .map_err(|e| e.to_string())?;
             Ok(())
         } else {
             Err("RPC not started".to_string())
@@ -250,7 +261,8 @@ impl DiscordRpc {
 
     pub fn reject_join_request(&self, user_id: String) -> Result<(), String> {
         if let Some(tx) = &self.tx {
-            tx.send(RpcMessage::RejectJoin(user_id)).map_err(|e| e.to_string())?;
+            tx.send(RpcMessage::RejectJoin(user_id))
+                .map_err(|e| e.to_string())?;
             Ok(())
         } else {
             Err("RPC not started".to_string())

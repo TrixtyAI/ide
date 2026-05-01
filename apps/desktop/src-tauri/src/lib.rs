@@ -1,13 +1,12 @@
 mod about;
 mod cli;
+mod discord_rpc;
 mod error;
 mod fs_atomic;
 mod fs_guard;
 mod fs_watcher;
 mod http;
 mod pty;
-mod discord_rpc;
-
 
 use error::redact_user_paths;
 

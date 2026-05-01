@@ -67,7 +67,7 @@ pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliResult {
                 seen_double_dash = true;
                 continue;
             }
-            
+
             // Handle Discord RPC join flag
             if arg == "--discord-rpc-join-secret" {
                 if let Some(val) = iter.next() {
@@ -101,12 +101,12 @@ pub fn parse_args(argv: &[String], cwd: Option<PathBuf>) -> CliResult {
                 workspace_candidate = Some(value.to_string());
                 continue;
             }
-            
+
             if arg.starts_with("--") {
                 continue;
             }
         }
-        
+
         if workspace_candidate.is_none() {
             workspace_candidate = Some(arg.clone());
         }
