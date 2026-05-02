@@ -32,6 +32,7 @@ const MonacoEditor = dynamic(
 // Marketplace is only reachable via the virtual `extensions` tab — no reason
 // to ship it in the initial bundle next to Monaco.
 const MarketplaceView = dynamic(() => import("./MarketplaceView"), { ssr: false });
+const BrowserView = dynamic(() => import("./BrowserView"), { ssr: false });
 
 // Bracket colorization and indent guides are expensive on very large buffers.
 // Above this threshold we disable both. Kept as a module constant so the memo
@@ -380,6 +381,12 @@ const EditorArea: React.FC = () => {
         return (
           <ErrorBoundary name="Marketplace">
             <MarketplaceView />
+          </ErrorBoundary>
+        );
+      case "virtual://browser":
+        return (
+          <ErrorBoundary name="Browser">
+            <BrowserView />
           </ErrorBoundary>
         );
       default:

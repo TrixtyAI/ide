@@ -21,8 +21,10 @@ use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use sysinfo::System;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
@@ -629,6 +631,15 @@ async fn get_system_health(
         cpu_usage,
         memory_usage,
     })
+}
+
+#[tauri::command]
+async fn check_port(port: u16) -> bool {
+    TcpStream::connect_timeout(
+        &format!("127.0.0.1:{}", port).parse().unwrap(),
+        Duration::from_millis(150),
+    )
+    .is_ok()
 }
 
 #[tauri::command]
@@ -2689,6 +2700,23 @@ fn delete_path(path: String, workspace: tauri::State<'_, WorkspaceState>) -> Res
     }
 }
 
+#[tauri::command]
+async fn open_browser_window(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    // Generate a unique label so we can open multiple browser windows
+    let label = format!("browser-{}", uuid::Uuid::new_v4());
+    let _ = tauri::WebviewWindowBuilder::new(
+        &app,
+        &label,
+        tauri::WebviewUrl::External(url.parse::<url::Url>().map_err(|e| e.to_string())?),
+    )
+    .title("Trixty Browser")
+    .inner_size(1200.0, 800.0)
+    .resizable(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize Sentry
@@ -2779,6 +2807,7 @@ pub fn run() {
         .manage::<InitialJoinSecret>(new_initial_join_secret(initial_join_secret))
         .manage(DiscordState(Arc::new(tokio::sync::Mutex::new(discord_rpc::DiscordRpc::new()))))
         .invoke_handler(tauri::generate_handler![
+            check_port,
             read_directory,
             read_file,
             write_file,
@@ -2852,7 +2881,8 @@ pub fn run() {
             set_discord_activity,
             accept_discord_join_request,
             reject_discord_join_request,
-            get_initial_join_secret
+            get_initial_join_secret,
+            open_browser_window
         ])
         .setup(|app| {
             // Main window is required — failing fast with a structured error beats
@@ -2995,6 +3025,9 @@ pub fn run() {
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
             });
+
+
+
 
             // Start Discord RPC background task
             let discord_state = app.handle().state::<DiscordState>();
