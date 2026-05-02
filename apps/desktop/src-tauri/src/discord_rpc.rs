@@ -1,11 +1,9 @@
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+#[cfg(unix)]
+use std::{env, path::PathBuf};
 
 use log::{error, info, warn};
-#[cfg(unix)]
-use std::env;
-#[cfg(unix)]
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(unix)]
