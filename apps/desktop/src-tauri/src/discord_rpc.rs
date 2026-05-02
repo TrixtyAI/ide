@@ -5,10 +5,6 @@ use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
-#[cfg(unix)]
-use std::env;
-#[cfg(unix)]
-use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(unix)]
 use tokio::net::UnixStream;
