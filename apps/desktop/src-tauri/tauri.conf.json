@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TrixtyIDE",
-  "version": "1.1.5",
+  "version": "0.0.0",
   "identifier": "trixty.ide",
   "build": {
     "frontendDist": "../out",
@@ -43,7 +43,7 @@
     ],
     "withGlobalTauri": false,
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost https://raw.githubusercontent.com; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost; font-src 'self' data:; frame-src *;"
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost https://raw.githubusercontent.com; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost; font-src 'self' data:; frame-src *; worker-src 'self' blob:;"
     }
   },
   "plugins": {
