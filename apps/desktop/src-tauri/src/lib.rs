@@ -41,7 +41,11 @@ use tracing_subscriber::prelude::*;
 /// supervisor lazily the first time you spawn.
 #[inline]
 fn silent_command(program: &str) -> Command {
+    #[cfg(target_os = "windows")]
     let mut cmd = Command::new(program);
+    #[cfg(not(target_os = "windows"))]
+    let cmd = Command::new(program);
+
     #[cfg(target_os = "windows")]
     {
         // `creation_flags` and `raw_arg` are inherent methods on
