@@ -13,67 +13,59 @@ const BrowserView: React.FC = () => {
   const [isChecking, setIsChecking] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const normalizePort = (value: string): string | null => {
+  // Pure helper to validate port numbers
+  const sanitizePort = (value: string): string | null => {
     const trimmed = value.trim();
-    if (!/^\d{1,5}$/.test(trimmed)) return null;
-    const numericPort = Number(trimmed);
-    if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) return null;
-    return String(numericPort);
+    if (!/^\d+$/.test(trimmed)) return null;
+    const num = parseInt(trimmed, 10);
+    if (num >= 1 && num <= 65535) return trimmed;
+    return null;
   };
 
-  const sanitizePort = useCallback((value: string): string | null => {
-    const normalizedPort = normalizePort(targetPort);
-    if (!normalizedPort) {
-    const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return null;
-    return String(parsed);
-  }, []);
-
   const checkServerStatus = useCallback(async (targetPort: string) => {
-    const safePort = sanitizePort(targetPort);
-      const up = await invoke<boolean>("check_port", { port: Number(normalizedPort) });
+    const validPort = sanitizePort(targetPort);
+    if (!validPort) {
       setIsServerUp(false);
       return false;
     }
-
+    
     setIsChecking(true);
     try {
-      // Use our native Rust command to check if the port is open
-      const up = await invoke<boolean>("check_port", { port: Number(safePort) });
+      const up = await invoke<boolean>("check_port", { port: parseInt(validPort, 10) });
       setIsServerUp(up);
       return up;
     } catch {
-    const normalizedPort = normalizePort(port);
-    const ok = normalizedPort ? await checkServerStatus(normalizedPort) : false;
-    if (ok && normalizedPort) {
-      setPort(normalizedPort);
-      setUrl(`http://localhost:${normalizedPort}`);
+      setIsServerUp(false);
+      return false;
+    } finally {
       setIsChecking(false);
     }
-  }, [sanitizePort]);
+  }, []);
 
   const confirmPort = async () => {
-    const safePort = sanitizePort(port);
-    const ok = safePort ? await checkServerStatus(safePort) : false;
-    if (ok && safePort) {
-      setUrl(`http://localhost:${safePort}`);
+    const validPort = sanitizePort(port);
+    if (!validPort) return;
+
+    const ok = await checkServerStatus(validPort);
+    if (ok) {
+      setUrl(`http://localhost:${validPort}`);
       setShowModal(false);
     } else {
-      // Stay in modal or show error state
       setUrl("");
       setShowModal(false);
     }
   };
 
   const handleReload = async () => {
-    const safePort = sanitizePort(port);
-    const ok = safePort ? await checkServerStatus(safePort) : false;
-    if (ok && safePort) {
-      const safeUrl = `http://localhost:${safePort}`;
+    const validPort = sanitizePort(port);
+    if (!validPort) return;
+
+    const ok = await checkServerStatus(validPort);
+    if (ok) {
       if (iframeRef.current && url) {
-        iframeRef.current.src = safeUrl;
+        iframeRef.current.src = url;
       } else {
-        setUrl(safeUrl);
+        setUrl(`http://localhost:${validPort}`);
       }
     } else {
       setUrl("");
@@ -82,10 +74,11 @@ const BrowserView: React.FC = () => {
 
   const handleToolbarPortChange = async (newPort: string) => {
     setPort(newPort);
-    if (newPort && parseInt(newPort) > 0) {
-      const ok = await checkServerStatus(newPort);
+    const validPort = sanitizePort(newPort);
+    if (validPort) {
+      const ok = await checkServerStatus(validPort);
       if (ok) {
-        setUrl(`http://localhost:${newPort}`);
+        setUrl(`http://localhost:${validPort}`);
       } else {
         setUrl("");
       }
@@ -94,9 +87,8 @@ const BrowserView: React.FC = () => {
     }
   };
 
-  // Initial check if we have a default port
   useEffect(() => {
-    if (port && showModal === false) {
+    if (port && !showModal) {
       checkServerStatus(port);
     }
   }, [port, showModal, checkServerStatus]);
@@ -114,9 +106,9 @@ const BrowserView: React.FC = () => {
         }
       `}</style>
 
-      {/* Ultra-Minimalist Command Bar */}
+      {/* Command Bar Modal */}
       {showModal && (
-                  onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))}
+        <div className="absolute inset-0 z-50 flex flex-col items-center pt-[10vh] bg-black/40 backdrop-blur-[2px]">
           <div className="w-full max-w-sm px-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-[#111] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,1)] flex items-center p-1.5 gap-3">
               <div className="pl-3 text-white/20">
@@ -124,8 +116,8 @@ const BrowserView: React.FC = () => {
               </div>
               <div className="flex items-center flex-1 font-mono text-sm">
                 <span className="text-white/20 mr-1">localhost:</span>
-                <input
-                  type="number"
+                <input 
+                  type="number" 
                   value={port}
                   onChange={(e) => setPort(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && confirmPort()}
@@ -134,7 +126,7 @@ const BrowserView: React.FC = () => {
                   className="bg-transparent border-none outline-none text-white w-full placeholder:text-white/5"
                 />
               </div>
-              <button
+              <button 
                 onClick={confirmPort}
                 disabled={isChecking}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all uppercase tracking-tight disabled:opacity-50"
@@ -150,17 +142,21 @@ const BrowserView: React.FC = () => {
       {/* Browser Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a1a] bg-[#0d0d0d]">
         <div className="flex items-center gap-0.5">
-              onChange={(e) => handleToolbarPortChange(e.target.value.replace(/\D/g, ""))}
-          <button onClick={() => setShowModal(true)} className="p-1.5 rounded hover:bg-white/5 text-white/40" title="Settings"><Settings2 size={12} /></button>
+          <button onClick={handleReload} className="p-1.5 rounded hover:bg-white/5 text-white/40 disabled:opacity-20" disabled={isChecking} title="Reload">
+            <RotateCw size={12} className={isChecking ? "animate-spin" : ""} />
+          </button>
+          <button onClick={() => setShowModal(true)} className="p-1.5 rounded hover:bg-white/5 text-white/40" title="Settings">
+            <Settings2 size={12} />
+          </button>
         </div>
-
+        
         <div className="flex-1 flex items-center bg-[#141414] border border-white/5 rounded-md px-2.5 py-0.5 gap-2 focus-within:border-white/10 transition-colors">
           <Globe size={10} className={isServerUp ? "text-green-500/40" : "text-white/10"} />
           <div className="flex items-center flex-1 text-[11px] font-mono">
             <span className="text-white/10">http://localhost:</span>
-            <input
-              type="number"
-              value={port}
+            <input 
+              type="number" 
+              value={port} 
               onChange={(e) => handleToolbarPortChange(e.target.value)}
               placeholder="----"
               className="bg-transparent border-none outline-none text-white/40 flex-1 ml-0.5 placeholder:text-white/5"
@@ -169,13 +165,15 @@ const BrowserView: React.FC = () => {
           {isChecking && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
         </div>
 
-        <button onClick={() => url && open(url)} className="p-1.5 rounded hover:bg-white/5 text-white/20 disabled:opacity-10" disabled={!url}><ExternalLink size={12} /></button>
+        <button onClick={() => url && open(url)} className="p-1.5 rounded hover:bg-white/5 text-white/20 disabled:opacity-10" disabled={!url}>
+          <ExternalLink size={12} />
+        </button>
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 bg-black relative flex flex-col items-center justify-center overflow-hidden">
         {(url && isServerUp) ? (
-          <iframe
+          <iframe 
             ref={iframeRef}
             src={url}
             className="w-full h-full border-none bg-white animate-in fade-in duration-700"
@@ -198,14 +196,14 @@ const BrowserView: React.FC = () => {
             </div>
             <div className="text-center space-y-1">
               <h3 className="text-white/40 text-sm font-medium tracking-tight">
-                {isChecking ? "Verificando puerto..." : (port ? `Servidor en puerto ${port} inactivo` : "Puerto no configurado")}
+                {isChecking ? "Verificando puerto..." : (sanitizePort(port) ? `Servidor en puerto ${port} inactivo` : "Puerto no configurado")}
               </h3>
               <p className="text-white/10 text-[11px] font-mono">
                 {isChecking ? "Intentando establecer conexión TCP..." : "Asegúrate de que tu servidor local esté corriendo"}
               </p>
             </div>
             {!isChecking && (
-              <button
+              <button 
                 onClick={handleReload}
                 className="mt-2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-white/40 text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 hover:text-white/60 transition-all active:scale-95"
               >
