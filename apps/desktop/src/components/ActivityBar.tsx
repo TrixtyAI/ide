@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Settings, Package } from "lucide-react";
+import { Settings, Package, Globe } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { useFiles } from "@/context/FilesContext";
 import { trixty, WebviewView } from "@/api/trixty";
@@ -36,6 +36,11 @@ const ActivityBar: React.FC = () => {
     // Extensions opens a virtual tab directly, not a sidebar panel
     if (id === "extensions") {
       openFile("virtual://extensions", t('extensions.title'), "", "virtual");
+      return;
+    }
+
+    if (id === "browser") {
+      openFile("virtual://browser", t('browser.title'), "", "virtual");
       return;
     }
 
@@ -87,6 +92,18 @@ const ActivityBar: React.FC = () => {
         );
       })}
       <div className="mt-auto flex flex-col gap-1 items-center">
+        <button
+          role="tab"
+          aria-selected={false}
+          aria-label={t('browser.title')}
+          onClick={() => handleTabClick("browser")}
+          className="w-[40px] h-[40px] flex items-center justify-center rounded-lg text-subtle-fg hover:text-white/80 hover:bg-white/5 transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          title={t('browser.title')}
+        >
+          <Globe size={18} strokeWidth={1.5} />
+          <Tooltip label={t('browser.title')} />
+        </button>
+
         <button
           role="tab"
           aria-selected={false}

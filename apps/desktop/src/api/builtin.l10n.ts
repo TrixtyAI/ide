@@ -94,6 +94,16 @@ export function registerBuiltinTranslations() {
         'marketplace.view_install': 'View & Install',
         'marketplace.installed_badge': 'Installed',
 
+        'browser.title': 'Browser',
+        'browser.back': 'Back',
+        'browser.forward': 'Forward',
+        'browser.reload': 'Reload',
+        'browser.address_placeholder': 'Enter URL...',
+        'browser.open_external': 'Open in External Browser',
+        'browser.open_native': 'Open in Native Window',
+        'browser.native_mode_active': 'Native Engine Active (No Restrictions)',
+        'browser.security_note': 'Some sites may block embedding for security.',
+
         'git.no_repo': 'No Repository',
         'git.no_repo_desc': 'Initialize a Git repository to begin',
         'git.init_button': 'git init',
@@ -612,6 +622,16 @@ export function registerBuiltinTranslations() {
         'marketplace.no_extensions': 'No se encontraron extensiones.',
         'marketplace.view_install': 'Ver e Instalar',
         'marketplace.installed_badge': 'Instalada',
+
+        'browser.title': 'Navegador',
+        'browser.back': 'Atrás',
+        'browser.forward': 'Adelante',
+        'browser.reload': 'Recargar',
+        'browser.address_placeholder': 'Ingrese URL...',
+        'browser.open_external': 'Abrir en navegador externo',
+        'browser.open_native': 'Abrir en ventana nativa',
+        'browser.native_mode_active': 'Motor nativo activo (sin restricciones)',
+        'browser.security_note': 'Algunos sitios pueden bloquear su inserción por seguridad.',
 
         'git.no_repo': 'Sin Repositorio',
         'git.no_repo_desc': 'Inicializa un repositorio Git para empezar',
