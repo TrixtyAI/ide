@@ -13,8 +13,17 @@ const BrowserView: React.FC = () => {
   const [isChecking, setIsChecking] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const normalizePort = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!/^\d{1,5}$/.test(trimmed)) return null;
+    const numericPort = Number(trimmed);
+    if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) return null;
+    return String(numericPort);
+  };
+
   const sanitizePort = useCallback((value: string): string | null => {
-    if (!/^\d{1,5}$/.test(value)) return null;
+    const normalizedPort = normalizePort(targetPort);
+    if (!normalizedPort) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return null;
     return String(parsed);
@@ -22,7 +31,7 @@ const BrowserView: React.FC = () => {
 
   const checkServerStatus = useCallback(async (targetPort: string) => {
     const safePort = sanitizePort(targetPort);
-    if (!safePort) {
+      const up = await invoke<boolean>("check_port", { port: Number(normalizedPort) });
       setIsServerUp(false);
       return false;
     }
@@ -34,9 +43,11 @@ const BrowserView: React.FC = () => {
       setIsServerUp(up);
       return up;
     } catch {
-      setIsServerUp(false);
-      return false;
-    } finally {
+    const normalizedPort = normalizePort(port);
+    const ok = normalizedPort ? await checkServerStatus(normalizedPort) : false;
+    if (ok && normalizedPort) {
+      setPort(normalizedPort);
+      setUrl(`http://localhost:${normalizedPort}`);
       setIsChecking(false);
     }
   }, [sanitizePort]);
@@ -105,7 +116,7 @@ const BrowserView: React.FC = () => {
 
       {/* Ultra-Minimalist Command Bar */}
       {showModal && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center pt-[10vh] bg-black/40 backdrop-blur-[2px]">
+                  onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))}
           <div className="w-full max-w-sm px-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-[#111] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,1)] flex items-center p-1.5 gap-3">
               <div className="pl-3 text-white/20">
@@ -139,7 +150,7 @@ const BrowserView: React.FC = () => {
       {/* Browser Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a1a] bg-[#0d0d0d]">
         <div className="flex items-center gap-0.5">
-          <button onClick={handleReload} className="p-1.5 rounded hover:bg-white/5 text-white/40 disabled:opacity-20" disabled={isChecking} title="Reload"><RotateCw size={12} className={isChecking ? "animate-spin" : ""} /></button>
+              onChange={(e) => handleToolbarPortChange(e.target.value.replace(/\D/g, ""))}
           <button onClick={() => setShowModal(true)} className="p-1.5 rounded hover:bg-white/5 text-white/40" title="Settings"><Settings2 size={12} /></button>
         </div>
 
