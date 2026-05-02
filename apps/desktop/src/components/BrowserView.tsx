@@ -13,8 +13,16 @@ const BrowserView: React.FC = () => {
   const [isChecking, setIsChecking] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const sanitizePort = useCallback((value: string): string | null => {
+    if (!/^\d{1,5}$/.test(value)) return null;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return null;
+    return String(parsed);
+  }, []);
+
   const checkServerStatus = useCallback(async (targetPort: string) => {
-    if (!targetPort || parseInt(targetPort) <= 0) {
+    const safePort = sanitizePort(targetPort);
+    if (!safePort) {
       setIsServerUp(false);
       return false;
     }
@@ -22,7 +30,7 @@ const BrowserView: React.FC = () => {
     setIsChecking(true);
     try {
       // Use our native Rust command to check if the port is open
-      const up = await invoke<boolean>("check_port", { port: parseInt(targetPort) });
+      const up = await invoke<boolean>("check_port", { port: Number(safePort) });
       setIsServerUp(up);
       return up;
     } catch {
@@ -31,12 +39,13 @@ const BrowserView: React.FC = () => {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [sanitizePort]);
 
   const confirmPort = async () => {
-    const ok = await checkServerStatus(port);
-    if (ok) {
-      setUrl(`http://localhost:${port}`);
+    const safePort = sanitizePort(port);
+    const ok = safePort ? await checkServerStatus(safePort) : false;
+    if (ok && safePort) {
+      setUrl(`http://localhost:${safePort}`);
       setShowModal(false);
     } else {
       // Stay in modal or show error state
@@ -46,12 +55,14 @@ const BrowserView: React.FC = () => {
   };
 
   const handleReload = async () => {
-    const ok = await checkServerStatus(port);
-    if (ok) {
+    const safePort = sanitizePort(port);
+    const ok = safePort ? await checkServerStatus(safePort) : false;
+    if (ok && safePort) {
+      const safeUrl = `http://localhost:${safePort}`;
       if (iframeRef.current && url) {
-        iframeRef.current.src = url;
+        iframeRef.current.src = safeUrl;
       } else {
-        setUrl(`http://localhost:${port}`);
+        setUrl(safeUrl);
       }
     } else {
       setUrl("");
