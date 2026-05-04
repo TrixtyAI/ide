@@ -64,8 +64,8 @@ export default function RootLayout({
       <head>
         <Script
           defer
-          src="https://analytics.unsetsoft.com/script.js"
-          data-website-id="bb80e239-d19d-42ae-937a-9b0a2acb1b61"
+          src={process.env.NEXT_PUBLIC_UMAMI_URL}
+          data-website-id={process.env.NEXT_PUBLIC_UMAMI_ID}
         />
       </head>
       <body className="min-h-full flex flex-col bg-black text-white">{children}</body>
