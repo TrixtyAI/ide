@@ -125,6 +125,7 @@ async function run() {
     execSync(`git tag v${nextVersion}`, { stdio: 'inherit' });
 
     console.log('📤 Pusheando a GitHub...');
+    execSync('git push origin dev', { stdio: 'inherit' });
     execSync('git push origin main', { stdio: 'inherit' });
     execSync(`git push origin v${nextVersion}`, { stdio: 'inherit' });
 
