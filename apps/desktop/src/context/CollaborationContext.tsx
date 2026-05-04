@@ -42,7 +42,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
   const [joinSecret, setJoinSecret] = useState<string | null>(null);
   const [activeUsers, setActiveUsers] = useState<AwarenessState[]>([]);
   const { systemSettings } = useSettings();
-  
+
   const ydoc = useMemo(() => new Y.Doc(), []);
   const [provider, setProvider] = useState<WebrtcProvider | null>(null);
 
@@ -57,8 +57,14 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     }
   }, [provider]);
 
+  function securePassword() {
+    const suffix = window.crypto.getRandomValues(new Uint32Array(1))[0] * Math.pow(2, -32);
+    const password = "t-" + suffix;
+    return password
+  }
+
   const startHostSession = useCallback(() => {
-    const secret = `trixty-room-${Math.random().toString(36).substring(7)}`;
+    const secret = securePassword();
     setJoinSecret(secret);
     setRole("host");
     setIsCollaborating(true);
@@ -125,7 +131,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
     // Set local awareness state
     const colors = ["#f87171", "#fb923c", "#fbbf24", "#34d399", "#22d3ee", "#818cf8", "#c084fc", "#f472b6"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
+
     // In a real app we'd get this from Discord, for now we use a placeholder or random name
     webrtcProvider.awareness.setLocalStateField("user", {
       name: systemSettings.discord?.enabled ? "You" : `User-${Math.floor(Math.random() * 1000)}`,
@@ -152,7 +158,7 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
       const enabled = systemSettings.discord?.enabled;
       const allowJoin = systemSettings.discord?.allowCollaboration;
       const shouldHost = enabled && allowJoin;
-      
+
       if (shouldHost && !isCollaborating) {
         setTimeout(() => startHostSession(), 0);
       } else if (!shouldHost && isCollaborating && role === "host") {
