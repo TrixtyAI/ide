@@ -272,10 +272,23 @@ impl DiscordRpc {
     }
 }
 
+use serde_repr::{Deserialize_repr, Serialize_repr};
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ActivityType {
+    Playing = 0,
+    Streaming = 1,
+    Listening = 2,
+    Watching = 3,
+    Custom = 4,
+    Competing = 5,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Activity {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub type_: Option<u32>,
+    pub type_: Option<ActivityType>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

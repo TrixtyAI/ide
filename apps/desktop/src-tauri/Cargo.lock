@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "TrixtyIDE"
-version = "0.0.0"
+version = "1.1.8"
 dependencies = [
  "dirs 5.0.1",
  "grep-regex",
@@ -22,6 +22,7 @@ dependencies = [
  "sentry-tracing",
  "serde",
  "serde_json",
+ "serde_repr",
  "sysinfo",
  "tauri",
  "tauri-build",

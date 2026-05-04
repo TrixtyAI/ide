@@ -49,7 +49,7 @@ export function useDiscordRPC() {
 
         await invoke("set_discord_activity", {
           activity: {
-            type: 3, // 3 = Watching (Viendo)
+            type: 0, // 0 = Playing (Jugando)
             details,
             state,
             timestamps: {
