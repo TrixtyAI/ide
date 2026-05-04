@@ -9,7 +9,9 @@
     "build": "turbo run build",
     "desktop": "pnpm --filter @trixty/desktop tauri",
     "version:sync": "node scripts/sync-version.mjs",
-    "gh:publish": "node scripts/publish.mjs"
+    "gh:publish": "node scripts/publish.mjs",
+    "web:dev": "pnpm --filter @trixty/landing dev",
+    "web:build": "pnpm --filter @trixty/landing build"
   },
   "devDependencies": {
     "turbo": "^2",
