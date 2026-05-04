@@ -115,7 +115,7 @@ export function Hero() {
             <div className="flex flex-col items-center gap-4">
               <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
                 <a
-                  href="https://github.com/TrixtyAI"
+                  href="https://github.com/TrixtyAI/ide"
                   target="_blank"
                   className="hover:text-white transition-colors flex items-center gap-2"
                 >
@@ -125,7 +125,7 @@ export function Hero() {
               </div>
 
               <p className="text-[10px] text-gray-600 uppercase tracking-widest">
-                By using Trixty IDE, you agree to its <a href="#" className="text-gray-400 hover:text-white transition-colors underline underline-offset-4">license</a>.
+                By using Trixty IDE, you agree to its <a href="https://raw.githubusercontent.com/TrixtyAI/ide/refs/heads/dev/LICENSE.md" className="text-gray-400 hover:text-white transition-colors underline underline-offset-4">license</a>.
               </p>
             </div>
           </motion.div>
