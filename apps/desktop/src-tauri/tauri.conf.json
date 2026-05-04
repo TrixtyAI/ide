@@ -43,7 +43,7 @@
     ],
     "withGlobalTauri": false,
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost https://raw.githubusercontent.com; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost; font-src 'self' data:; frame-src *; worker-src 'self' blob:;"
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost https://raw.githubusercontent.com https://*.sentry.io; script-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https://*.sentry.io https://o4505655594844160.ingest.us.sentry.io; font-src 'self' data: https://cdn.jsdelivr.net; frame-src *; worker-src 'self' blob:;"
     }
   },
   "plugins": {
