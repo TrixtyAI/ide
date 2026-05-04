@@ -21,7 +21,7 @@ const StatusBar: React.FC = () => {
 
   const { rootPath } = useWorkspace();
   const { t } = useL10n();
-  const { isCollaborating, activeUsers, role, provider } = useCollaboration();
+  const { isCollaborating, activeUsers, role } = useCollaboration();
   const [branch, setBranch] = useState<string | null>(null);
 
   // Fetch the active git branch whenever the workspace root changes. The
@@ -70,7 +70,7 @@ const StatusBar: React.FC = () => {
             className="flex items-center gap-1.5 px-1.5 h-full text-indigo-400 border-x border-white/5 bg-indigo-500/5 group relative"
           >
             <Users size={12} strokeWidth={1.5} />
-            <span className="font-medium">{activeUsers.length}</span>
+            <span className="font-medium">{activeUsers.filter(u => u.user && !u.user.isLocal).length}</span>
 
             {/* Collaborators Hover List */}
             <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg shadow-2xl p-2 animate-in slide-in-from-bottom-1 duration-200 z-[100]">
@@ -81,7 +81,7 @@ const StatusBar: React.FC = () => {
                   <span className="text-[11px] text-white">You ({role === 'host' ? 'Host' : 'Guest'})</span>
                 </div>
                 {activeUsers
-                  .filter(u => u.user && u.user.clientId !== (provider?.awareness?.clientID))
+                  .filter(u => u.user && !u.user.isLocal)
                   .map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white/5 transition-colors">
                       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: u.user?.color }} />

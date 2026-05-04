@@ -63,7 +63,7 @@ export function useDiscordRPC() {
             },
             party: discord.allowCollaboration ? {
               id: "trixty-session",
-              size: [activeUsers.length + 1, 5],
+              size: [Math.max(1, activeUsers.length), 5],
             } : undefined,
             secrets: discord.allowCollaboration ? {
               spectate: `dummy-spectate-${startTime}`,

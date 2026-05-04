@@ -13,6 +13,7 @@ export interface CollaborationUser {
   color: string;
   clientId: number;
   currentFile?: string | null;
+  isLocal?: boolean;
 }
 
 export interface AwarenessState {
@@ -137,11 +138,15 @@ export function CollaborationProvider({ children }: { children: React.ReactNode 
       name: systemSettings.discord?.enabled ? "You" : `User-${Math.floor(Math.random() * 1000)}`,
       color: randomColor,
       clientId: webrtcProvider.awareness.clientID,
+      isLocal: true,
     });
 
-    webrtcProvider.awareness.on("change", () => {
+    const updateUsers = () => {
       setActiveUsers(Array.from(webrtcProvider.awareness.getStates().values()));
-    });
+    };
+
+    webrtcProvider.awareness.on("change", updateUsers);
+    updateUsers(); // Initialize immediately
 
     const timer = setTimeout(() => setProvider(webrtcProvider), 0);
 

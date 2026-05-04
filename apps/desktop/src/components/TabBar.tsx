@@ -150,7 +150,7 @@ const TabBar: React.FC = () => {
             {isCollaborating && (
               <div className="flex -space-x-1.5 ml-1">
                 {activeUsers
-                  .filter(u => u.user?.currentFile === file.path && u.user?.name !== "You")
+                  .filter(u => u.user?.currentFile === file.path && !u.user?.isLocal)
                   .map((u, i) => (
                     <div
                       key={i}
