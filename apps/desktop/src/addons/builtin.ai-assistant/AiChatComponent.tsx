@@ -1324,7 +1324,7 @@ const AiChatComponent: React.FC = () => {
                   const keyMissing =
                     meta.kind === "cloud" &&
                     !aiSettings.providerKeys[pid as Exclude<typeof pid, "ollama">];
-                  
+
                   if (keyMissing) return null;
 
                   return (
@@ -1698,7 +1698,7 @@ const AiChatComponent: React.FC = () => {
       {/* Mode Switcher */}
       <div className="px-4 py-2 flex gap-1 bg-[#0a0a0a] border-t border-[#1a1a1a]">
         {[
-          { id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true },
+          //{ id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true },
           { id: 'planner', icon: Sparkles, label: t('ai.mode.planner'), requiresFolder: true },
           { id: 'ask', icon: MessageSquare, label: t('ai.mode.ask'), requiresFolder: false }
         ].map((mode) => {
