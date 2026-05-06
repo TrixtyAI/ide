@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/react";
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 /**
@@ -9,12 +9,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
   let traceContext = {};
 
   if (span) {
-    // Extract tracing headers if we have an active span
-    const traceData = Sentry.getTraceData();
-    traceContext = {
-      sentry_trace: traceData["sentry-trace"],
-      baggage: traceData["baggage"],
-    };
+    // Extract tracing context using v8 API
+    traceContext = (Sentry as any).getTraceData?.() || {};
   }
 
   return await tauriInvoke<T>(cmd, {

@@ -1,23 +1,20 @@
-"use client";
+
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { lazy } from "react";
 import { AlertTriangle, FileText, Terminal, Save, Sparkles } from "lucide-react";
 import { safeInvoke as invoke } from "@/api/tauri";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { logger } from "@/lib/logger";
 
 // Monaco's DiffEditor pulls ~1.5 MB of language workers the first time it
-// mounts. Keep it off the AI-chat boot path via `next/dynamic` — the
+// mounts. Keep it off the AI-chat boot path via React.lazy — the
 // approval panel only shows up after the model decides to call a tool.
-const DiffEditor = dynamic(
-  async () => {
-    const mod = await import("@monaco-editor/react");
-    mod.loader.config({ paths: { vs: "/vs" } });
-    return mod.DiffEditor;
-  },
-  { ssr: false },
-);
+const DiffEditor = lazy(async () => {
+  const mod = await import("@monaco-editor/react");
+  mod.loader.config({ paths: { vs: "/vs" } });
+  return { default: mod.DiffEditor };
+});
 
 export type ToolArgs = Record<string, string | number | boolean | string[]>;
 

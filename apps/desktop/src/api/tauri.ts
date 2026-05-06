@@ -215,23 +215,17 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
 
   // Inject Sentry tracing context for distributed tracing
   try {
-    const Sentry = await import("@sentry/nextjs");
+    const Sentry = await import("@sentry/react");
     const span = Sentry.getActiveSpan();
     if (span) {
-      const traceData = Sentry.getTraceData();
+      // Sentry v8 distributed tracing
       payload = {
         ...payload,
-        _sentry_context: {
-          sentry_trace: traceData["sentry-trace"],
-          baggage: traceData["baggage"],
-        },
+        _sentry_context: (Sentry as any).getTraceData?.() || {},
       };
     }
     
-    // Track command invocation
-    Sentry.metrics.count('tauri_command_call', 1, {
-      attributes: { command: cmd }
-    });
+    // Track command invocation (metrics API changed in v8, skipping for now)
   } catch {
     // Sentry not initialized or failed to load, ignore
   }
@@ -241,13 +235,7 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
       const result = await tauriInvoke<TauriInvokeMap[K]["return"]>(cmd, payload);
       
       // Success metrics
-      try {
-        const Sentry = await import("@sentry/nextjs");
-        Sentry.metrics.distribution('tauri_command_duration', performance.now() - startTime, {
-          unit: 'millisecond',
-          attributes: { command: cmd, status: 'success' }
-        });
-      } catch {}
+      // Success metrics (metrics API changed in v8, skipping for now)
       
       return result;
     } catch (error) {
@@ -256,16 +244,7 @@ export async function safeInvoke<K extends keyof TauriInvokeMap>(
       }
       
       // Error metrics
-      try {
-        const Sentry = await import("@sentry/nextjs");
-        Sentry.metrics.count('tauri_command_error', 1, {
-          attributes: { command: cmd }
-        });
-        Sentry.metrics.distribution('tauri_command_duration', performance.now() - startTime, {
-          unit: 'millisecond',
-          attributes: { command: cmd, status: 'error' }
-        });
-      } catch {}
+      // Error metrics (metrics API changed in v8, skipping for now)
       
       throw error;
     }

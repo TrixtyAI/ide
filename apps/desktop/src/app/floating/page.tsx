@@ -1,7 +1,7 @@
-"use client";
+
 
 import React, { Suspense, useEffect, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "react-router-dom";
 import { trixty, type WebviewView } from "@/api/trixty";
 import FloatingTitleBar from "@/components/FloatingTitleBar";
 import BottomPanel from "@/components/BottomPanel";
@@ -48,8 +48,8 @@ function LoadingShell() {
 }
 
 function FloatingViewBody() {
-  const params = useSearchParams();
-  const viewId = params.get("view");
+  const [searchParams] = useSearchParams();
+  const viewId = searchParams.get("view");
   const view = useRegisteredView(viewId);
   const { t } = useL10n();
   const [bootError, setBootError] = useState<string | null>(null);
@@ -209,9 +209,9 @@ function FloatingViewBody() {
 }
 
 export default function FloatingViewPage() {
-  // Next 16 requires `useSearchParams()` to live under a Suspense boundary so
-  // the route can prerender without bailing out of CSR. The body component
-  // owns the search-param read; the boundary stays at the route entry.
+  // In Vite SPA with react-router-dom, useSearchParams() is standard.
+  // The body component owns the search-param read; the boundary stays at
+  // the route entry.
   return (
     <Suspense fallback={<LoadingShell />}>
       <FloatingViewBody />

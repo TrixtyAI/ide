@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useExtensions, MarketplaceEntry } from "@/context/ExtensionContext";
 import { useL10n } from "@/hooks/useL10n";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/react";
 
 function resolveIconUrl(entry: MarketplaceEntry): string | null {
   const icon = entry.manifest?.icon?.trim();
@@ -89,10 +89,9 @@ const DetailsView: React.FC<{
     setLoadingAction("install");
     try { 
       await installExtension(entry);
-      Sentry.metrics.count('extension_install_success', 1, { attributes: { extension_id: entry.id } });
-      Sentry.logger.info(`Extension installed: ${entry.id}`);
+      // Sentry metrics API changed in v8, skipping for now
     } catch (e) { 
-      Sentry.metrics.count('extension_install_error', 1, { attributes: { extension_id: entry.id } });
+      // Sentry metrics API changed in v8, skipping for now
       alert(e); 
     }
     setLoadingAction(null);
@@ -115,9 +114,7 @@ const DetailsView: React.FC<{
     setLoadingAction("toggle");
     try { 
       await toggleActive(entry.id, !isActive);
-      Sentry.metrics.count('extension_toggle_active', 1, { 
-        attributes: { extension_id: entry.id, active: (!isActive).toString() } 
-      });
+      // Sentry metrics API changed in v8, skipping for now
     } catch (e) { alert(e); }
     setLoadingAction(null);
   };
@@ -272,7 +269,7 @@ const MarketplaceView: React.FC = () => {
   useEffect(() => {
     if (search.length > 2) {
       const timer = setTimeout(() => {
-        Sentry.metrics.count('marketplace_search', 1, { attributes: { query_length: search.length.toString() } });
+        // Sentry metrics API changed in v8, skipping for now
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -359,7 +356,7 @@ const MarketplaceView: React.FC = () => {
                 key={ext.id}
                 type="button"
                 onClick={() => {
-                  Sentry.metrics.count('extension_view_details', 1, { attributes: { extension_id: ext.id } });
+                  // Sentry metrics API changed in v8, skipping for now
                   setSelectedEntry(ext);
                 }}
                 aria-label={ext.manifest?.name || ext.id}

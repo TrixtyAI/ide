@@ -1,0 +1,6 @@
+﻿src/addons/builtin.ai-assistant/AiChatComponent.tsx(1317,28): error TS2322: Type 'void' is not assignable to type 'Promise<void>'.
+src/addons/builtin.ai-assistant/AiChatComponent.tsx(1324,28): error TS2322: Type 'void' is not assignable to type 'Promise<void>'.
+src/api/tauri.ts(224,33): error TS2339: Property 'getTraceContext' does not exist on type '{ default: typeof import("E:/proyects/trixty-ide/node_modules/.pnpm/@sentry+react@8.55.2_react@19.2.4/node_modules/@sentry/react/build/types/index"); init: (options: BrowserOptions) => Client<...> | undefined; ... 143 more ...; metrics: Metrics; }'.
+src/lib/sentry.ts(13,27): error TS2339: Property 'getTraceContext' does not exist on type 'typeof import("E:/proyects/trixty-ide/node_modules/.pnpm/@sentry+react@8.55.2_react@19.2.4/node_modules/@sentry/react/build/types/index")'.
+undefined
+ÔÇëERR_PNPM_RECURSIVE_EXEC_FIRST_FAILÔÇë Command failed with exit code 2: tsc --noEmit --pretty false

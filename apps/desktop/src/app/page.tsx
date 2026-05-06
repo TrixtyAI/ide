@@ -1,7 +1,7 @@
-"use client";
+
 
 import React, { useEffect, useRef, useSyncExternalStore } from "react";
-import dynamic from "next/dynamic";
+import { lazy } from "react";
 import ActivityBar from "@/components/ActivityBar";
 import LeftSidebarSlot from "@/components/slots/LeftSidebarSlot";
 import WelcomeScreen from "@/components/WelcomeScreen";
@@ -42,21 +42,18 @@ const NOOP_LAYOUT_STORAGE: LayoutStorage = {
 
 // Code-split heavy panels so Monaco, xterm, Marketplace, AI chat, and the
 // Settings modal aren't downloaded until the user actually opens them.
-// `ssr: false` skips the RSC attempt — this app is always client-rendered
-// inside Tauri, and several of these components touch `window` at module
-// scope.
-const EditorArea = dynamic(() => import("@/components/EditorArea"), { ssr: false });
-const BottomPanel = dynamic(() => import("@/components/BottomPanel"), { ssr: false });
-const RightPanelSlot = dynamic(() => import("@/components/slots/RightPanelSlot"), { ssr: false });
+const EditorArea = lazy(() => import("@/components/EditorArea"));
+const BottomPanel = lazy(() => import("@/components/BottomPanel"));
+const RightPanelSlot = lazy(() => import("@/components/slots/RightPanelSlot"));
 // The Reviewer pulls in Monaco's DiffEditor through ToolApprovalPanel, so
 // keep it off the boot path. It only mounts when a destructive tool
 // approval is pending and the viewport has room, which is rare enough that
 // async-loading is an obvious win.
-const ReviewerPanel = dynamic(() => import("@/components/ReviewerPanel"), { ssr: false });
-const SettingsView = dynamic(() => import("@/components/SettingsView"), { ssr: false });
+const ReviewerPanel = lazy(() => import("@/components/ReviewerPanel"));
+const SettingsView = lazy(() => import("@/components/SettingsView"));
 // Onboarding only renders during first-run and pulls ~50 KB of framer-motion
 // behind it. Dynamic-load it so returning users never pay for the module.
-const OnboardingWizard = dynamic(() => import("@/components/OnboardingWizard"), { ssr: false });
+const OnboardingWizard = lazy(() => import("@/components/OnboardingWizard"));
 
 export default function Home() {
   const {

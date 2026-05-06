@@ -44,6 +44,7 @@ const baseParams = {
       providerModels: { ollama: [], openai: [], anthropic: [], gemini: [], openrouter: [] },
       activeProvider: "ollama" as const,
       lastModelByProvider: {},
+      providerKeysConfigured: {},
     },
     editor: {
       fontSize: 14,

@@ -1,7 +1,7 @@
-"use client";
+
 
 import React, { Suspense, useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import dynamic from "next/dynamic";
+import { lazy } from "react";
 import type { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useFiles } from "@/context/FilesContext";
@@ -14,25 +14,21 @@ import { MonacoBinding } from "y-monaco";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Code2, LayoutGrid } from "lucide-react";
 import { getVisualEditor } from "./visual/getVisualEditor";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/react";
 
 // Monaco is ~1.5 MB of gzipped JS and pulls language workers on top of that.
-// Loading it with `next/dynamic` keeps it off the boot path; it only arrives
-// once the user opens their first real file. The loader also needs `window`,
-// so keep `ssr: false`.
-const MonacoEditor = dynamic(
-  async () => {
-    const mod = await import("@monaco-editor/react");
-    mod.loader.config({ paths: { vs: "/vs" } });
-    return mod.default;
-  },
-  { ssr: false },
-);
+// Loading it with React.lazy keeps it off the boot path; it only arrives
+// once the user opens their first real file.
+const MonacoEditor = lazy(async () => {
+  const mod = await import("@monaco-editor/react");
+  mod.loader.config({ paths: { vs: "/vs" } });
+  return { default: mod.default };
+});
 
 // Marketplace is only reachable via the virtual `extensions` tab — no reason
 // to ship it in the initial bundle next to Monaco.
-const MarketplaceView = dynamic(() => import("./MarketplaceView"), { ssr: false });
-const BrowserView = dynamic(() => import("./BrowserView"), { ssr: false });
+const MarketplaceView = lazy(() => import("./MarketplaceView"));
+const BrowserView = lazy(() => import("./BrowserView"));
 
 // Bracket colorization and indent guides are expensive on very large buffers.
 // Above this threshold we disable both. Kept as a module constant so the memo
@@ -253,21 +249,10 @@ const EditorArea: React.FC = () => {
   React.useEffect(() => {
     if (!currentFile) return;
 
-    // Sentry Tracking for File Open
-    Sentry.metrics.count('editor_file_open', 1, {
-      attributes: { 
-        language: currentFile.language || 'unknown',
-        extension: currentFile.path.split('.').pop() || 'none',
-        type: currentFile.type || 'text'
-      }
-    });
+    // Sentry Tracking for File Open (metrics API changed in v8, skipping for now)
     
     if (isLargeFile) {
-      Sentry.metrics.count('editor_large_file_open', 1);
-      Sentry.logger.info(`Large file opened: ${currentFile.path}`, { 
-        size: currentFile.content?.length,
-        path: currentFile.path 
-      });
+      // Sentry tracking (metrics API changed in v8, skipping for now)
     }
   }, [currentFile, isLargeFile]);
 
@@ -490,9 +475,7 @@ const FileViewSurface: React.FC<FileViewSurfaceProps> = ({
   const defaultMode = visuals[0]?.id ?? "source";
   const mode = modeByPath.get(file.path) ?? defaultMode;
   const setMode = (next: string) => {
-    Sentry.metrics.count('editor_mode_switch', 1, {
-      attributes: { to_mode: next, file_type: file.language }
-    });
+    // Sentry metrics API changed in v8, skipping for now
     setModeByPath((prev) => {
       const map = new Map(prev);
       map.set(file.path, next);

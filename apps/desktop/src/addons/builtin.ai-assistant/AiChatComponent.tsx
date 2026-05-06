@@ -6,7 +6,7 @@ import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useFiles } from "@/context/FilesContext";
 import { useChat } from "@/context/ChatContext";
-import { useSettings } from "@/context/SettingsContext";
+import { useSettings, type ProviderId } from "@/context/SettingsContext";
 import { useAgent } from "@/context/AgentContext";
 import { useReview, isReviewerEligible } from "@/context/ReviewContext";
 import ReactMarkdown from "react-markdown";
@@ -258,7 +258,7 @@ const AiChatComponent: React.FC = () => {
   // If Cloud Providers is enabled, strictly move away from Ollama.
   useEffect(() => {
     if (aiSettings.allowProviderKeys && activeProvider === "ollama") {
-      const firstValid = (Object.keys(aiSettings.providerModels) as ProviderId[])
+      const firstValid = PROVIDER_IDS
         .find(pid => pid !== 'ollama' && !!aiSettings.providerKeysConfigured[pid] && (aiSettings.providerModels[pid]?.length ?? 0) > 0);
       
       const target = firstValid || 'openai';
@@ -1298,6 +1298,10 @@ const AiChatComponent: React.FC = () => {
   const isCloudUnconfigured = aiSettings.allowProviderKeys && !hasAnyConfiguredCloudProvider;
   const isConfigLocked = isCloudUnconfigured;
 
+  // isAgentBlocked was previously used to block chat when no workspace was open
+  // but it's not currently defined. For now we use isConfigLocked.
+  const isAgentBlocked = false; 
+
   if ((ollamaStatus === 'not_found' && activeProvider === "ollama") || isConfigLocked) {
     let title = t('ai.ollama_error.title');
     let desc = t('ai.ollama_error.desc');
@@ -1310,14 +1314,14 @@ const AiChatComponent: React.FC = () => {
       title = t('ai.config_required.title');
       desc = t('ai.config_required.desc');
       buttonLabel = t('ai.config_required.button');
-      buttonAction = () => setSettingsOpen(true);
+      buttonAction = async () => setSettingsOpen(true);
       icon = <Sparkles size={40} className="text-blue-400 opacity-80" />;
       iconBg = "bg-blue-500/10 border-blue-500/20 shadow-blue-500/5";
     } else if (isCloudUnconfigured) {
       title = t('ai.config_required.title');
       desc = t('ai.config_required.desc');
       buttonLabel = t('ai.config_required.button');
-      buttonAction = () => setSettingsOpen(true);
+      buttonAction = async () => setSettingsOpen(true);
       icon = <AlertCircle size={40} className="text-yellow-400 opacity-80" />;
       iconBg = "bg-yellow-500/10 border-yellow-500/20 shadow-yellow-500/5";
     }

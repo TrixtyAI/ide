@@ -95,16 +95,7 @@ const BrowserView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] text-[#ccc] select-none relative overflow-hidden">
-      <style jsx>{`
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type=number] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
+
 
       {/* Command Bar Modal */}
       {showModal && (
