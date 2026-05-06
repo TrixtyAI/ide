@@ -26,16 +26,18 @@ const CLOUD_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
  * settings file still owns the curated model list and the active
  * provider — only the secret material moved.
  */
+// Ephemeral in-memory cache to prevent state loss during UI re-renders/re-mounts.
+// This is never persisted to disk (only the OS Keychain is used for that).
+const ephemeralKeyCache: Partial<Record<SecretProvider, string>> = {};
+
 export const ProviderKeysPanel: React.FC = () => {
   const { aiSettings, updateAISettings } = useSettings();
   const { t } = useL10n();
   const [revealedKey, setRevealedKey] = useState<ProviderId | null>(null);
   const [draftModels, setDraftModels] = useState<Record<string, string>>({});
-  // Keys live in component state instead of `aiSettings.providerKeys`
-  // — they're loaded once from the keychain on mount, mutated locally
-  // as the user types, and persisted to the keychain on blur. The
-  // settings file never sees the secret material.
-  const [keys, setKeys] = useState<Partial<Record<SecretProvider, string>>>({});
+  
+  // Initialize from the ephemeral cache to survive re-mounts.
+  const [keys, setKeys] = useState<Partial<Record<SecretProvider, string>>>(ephemeralKeyCache);
   const [keyLoadDone, setKeyLoadDone] = useState(false);
   // Tracks which providers have a key stored in the keychain right now.
   // Mirrors the on-disk truth so the "Key set" pill stays accurate even
@@ -56,7 +58,17 @@ export const ProviderKeysPanel: React.FC = () => {
         flags[provider as SecretProvider] = secret.length > 0;
       }
       if (!alive) return;
-      setKeys(initial);
+      setKeys((prev) => {
+        const next = { ...prev };
+        for (const [p, s] of Object.entries(initial)) {
+          // Only overwrite if local is empty and keychain has a real value
+          if (s && !next[p as SecretProvider]) {
+            next[p as SecretProvider] = s;
+          }
+        }
+        Object.assign(ephemeralKeyCache, next);
+        return next;
+      });
       setConfigured(flags);
       setKeyLoadDone(true);
     })();
@@ -84,7 +96,11 @@ export const ProviderKeysPanel: React.FC = () => {
   const setKey = (provider: ProviderId, value: string) => {
     if (provider === "ollama") return;
     const sp = provider as SecretProvider;
-    setKeys((prev) => ({ ...prev, [sp]: value }));
+    setKeys((prev) => {
+      const next = { ...prev, [sp]: value };
+      ephemeralKeyCache[sp] = value;
+      return next;
+    });
     if (writeTimers.current[sp]) clearTimeout(writeTimers.current[sp]);
     writeTimers.current[sp] = setTimeout(() => {
       void persistKey(sp, value);
@@ -95,9 +111,21 @@ export const ProviderKeysPanel: React.FC = () => {
     if (value) {
       await setProviderSecret(provider, value);
       setConfigured((flags) => ({ ...flags, [provider]: true }));
+      updateAISettings((prev) => ({
+        providerKeysConfigured: {
+          ...(prev.providerKeysConfigured ?? {}),
+          [provider]: true,
+        },
+      }));
     } else {
       await clearProviderSecret(provider);
       setConfigured((flags) => ({ ...flags, [provider]: false }));
+      updateAISettings((prev) => ({
+        providerKeysConfigured: {
+          ...(prev.providerKeysConfigured ?? {}),
+          [provider]: false,
+        },
+      }));
     }
   };
 
@@ -114,27 +142,28 @@ export const ProviderKeysPanel: React.FC = () => {
   const addModel = (provider: ProviderId) => {
     const draft = (draftModels[provider] ?? "").trim();
     if (!draft) return;
-    const existing = aiSettings.providerModels[provider] ?? [];
-    if (existing.includes(draft)) {
-      setDraftModels((d) => ({ ...d, [provider]: "" }));
-      return;
-    }
-    updateAISettings({
-      providerModels: {
-        ...aiSettings.providerModels,
-        [provider]: [...existing, draft],
-      },
+    updateAISettings((prev) => {
+      const existing = prev.providerModels[provider] ?? [];
+      if (existing.includes(draft)) return {};
+      return {
+        providerModels: {
+          ...prev.providerModels,
+          [provider]: [...existing, draft],
+        },
+      };
     });
     setDraftModels((d) => ({ ...d, [provider]: "" }));
   };
 
   const removeModel = (provider: ProviderId, model: string) => {
-    const existing = aiSettings.providerModels[provider] ?? [];
-    updateAISettings({
-      providerModels: {
-        ...aiSettings.providerModels,
-        [provider]: existing.filter((m) => m !== model),
-      },
+    updateAISettings((prev) => {
+      const existing = prev.providerModels[provider] ?? [];
+      return {
+        providerModels: {
+          ...prev.providerModels,
+          [provider]: existing.filter((m) => m !== model),
+        },
+      };
     });
   };
 
@@ -153,7 +182,7 @@ export const ProviderKeysPanel: React.FC = () => {
         const meta = PROVIDERS[provider];
         const sp = provider as SecretProvider;
         const key = keys[sp] ?? "";
-        const isConfigured = configured[sp] ?? false;
+        const isConfigured = !!aiSettings.providerKeysConfigured[provider as ProviderId];
         const models = aiSettings.providerModels[provider] ?? [];
         const isRevealed = revealedKey === provider;
         return (

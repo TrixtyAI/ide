@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock, ClipboardCheck } from "lucide-react";
+import { X, Send, Sparkles, Brain, Code2, ChevronDown, History, Plus, Trash2, MessageSquare, Save, Square, Download, Lock, ClipboardCheck, AlertCircle, Settings as SettingsIcon } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useFiles } from "@/context/FilesContext";
@@ -54,7 +54,7 @@ type OllamaChatMessage =
 
 
 const AiChatComponent: React.FC = () => {
-  const { setRightPanelOpen } = useUI();
+  const { setRightPanelOpen, setSettingsOpen } = useUI();
   const { rootPath } = useWorkspace();
   const { openFiles, currentFile } = useFiles();
   const {
@@ -230,12 +230,12 @@ const AiChatComponent: React.FC = () => {
     const current = aiSettingsRef.current;
     const last = current.lastModelByProvider?.[activeProvider];
     if (last === selectedModel) return;
-    updateAISettingsRef.current({
+    updateAISettingsRef.current((prev) => ({
       lastModelByProvider: {
-        ...(current.lastModelByProvider ?? {}),
+        ...(prev.lastModelByProvider ?? {}),
         [activeProvider]: selectedModel,
       },
-    });
+    }));
   }, [selectedModel, activeProvider]);
 
   // When the user switches providers, restore that provider's last
@@ -254,6 +254,24 @@ const AiChatComponent: React.FC = () => {
       setSelectedModel("");
     }
   }, [activeProvider]);
+  
+  // If Cloud Providers is enabled, strictly move away from Ollama.
+  useEffect(() => {
+    if (aiSettings.allowProviderKeys && activeProvider === "ollama") {
+      const firstValid = (Object.keys(aiSettings.providerModels) as ProviderId[])
+        .find(pid => pid !== 'ollama' && !!aiSettings.providerKeysConfigured[pid] && (aiSettings.providerModels[pid]?.length ?? 0) > 0);
+      
+      const target = firstValid || 'openai';
+      updateAISettings({ activeProvider: target });
+    }
+  }, [aiSettings.allowProviderKeys, activeProvider, aiSettings.providerKeysConfigured, aiSettings.providerModels, updateAISettings]);
+
+  // If Cloud Providers is disabled, strictly move back to Ollama.
+  useEffect(() => {
+    if (!aiSettings.allowProviderKeys && activeProvider !== "ollama") {
+      updateAISettings({ activeProvider: 'ollama' });
+    }
+  }, [aiSettings.allowProviderKeys, activeProvider, updateAISettings]);
 
   // Close provider menu on outside click.
   useEffect(() => {
@@ -1251,7 +1269,7 @@ const AiChatComponent: React.FC = () => {
   };
 
   const toggleDeepMode = () => {
-    updateAISettings({ ...aiSettings, deepMode: !aiSettings.deepMode });
+    updateAISettings((prev) => ({ deepMode: !prev.deepMode }));
   };
 
 
@@ -1269,29 +1287,65 @@ const AiChatComponent: React.FC = () => {
   // actually trying to use Ollama. With provider keys enabled and a
   // cloud provider active, the chat keeps working even if Ollama is
   // absent.
-  if (ollamaStatus === 'not_found' && activeProvider === "ollama") {
+  // Configuration validation for the blocking UI.
+  const hasAnyConfiguredCloudProvider = PROVIDER_IDS.some(pid => {
+    if (pid === 'ollama') return false;
+    const hasKey = !!aiSettings.providerKeysConfigured[pid as ProviderId];
+    const hasModels = (aiSettings.providerModels[pid]?.length ?? 0) > 0;
+    return hasKey && hasModels;
+  });
+
+  const isCloudUnconfigured = aiSettings.allowProviderKeys && !hasAnyConfiguredCloudProvider;
+  const isConfigLocked = isCloudUnconfigured;
+
+  if ((ollamaStatus === 'not_found' && activeProvider === "ollama") || isConfigLocked) {
+    let title = t('ai.ollama_error.title');
+    let desc = t('ai.ollama_error.desc');
+    let buttonLabel = t('ai.ollama_error.download');
+    let buttonAction = () => openExternal('https://ollama.com');
+    let icon = <Brain size={40} className="text-red-400 opacity-80" />;
+    let iconBg = "bg-red-500/10 border-red-500/20 shadow-red-500/5";
+
+    if (isAgentBlocked) {
+      title = t('ai.config_required.title');
+      desc = t('ai.config_required.desc');
+      buttonLabel = t('ai.config_required.button');
+      buttonAction = () => setSettingsOpen(true);
+      icon = <Sparkles size={40} className="text-blue-400 opacity-80" />;
+      iconBg = "bg-blue-500/10 border-blue-500/20 shadow-blue-500/5";
+    } else if (isCloudUnconfigured) {
+      title = t('ai.config_required.title');
+      desc = t('ai.config_required.desc');
+      buttonLabel = t('ai.config_required.button');
+      buttonAction = () => setSettingsOpen(true);
+      icon = <AlertCircle size={40} className="text-yellow-400 opacity-80" />;
+      iconBg = "bg-yellow-500/10 border-yellow-500/20 shadow-yellow-500/5";
+    }
+
     return (
       <div className="bg-[#0e0e0e] flex flex-col h-full items-center justify-center p-8 text-center animate-in fade-in duration-500">
-        <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/5">
-          <Brain size={40} className="text-red-400 opacity-80" />
+        <div className={`w-20 h-20 ${iconBg} rounded-3xl flex items-center justify-center mb-6 border shadow-2xl transition-all duration-700`}>
+          {icon}
         </div>
-        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">{t('ai.ollama_error.title')}</h2>
+        <h2 className="text-xl font-bold text-white mb-2 tracking-tight">{title}</h2>
         <p className="text-[13px] text-[#555] max-w-[280px] leading-relaxed mb-8">
-          {t('ai.ollama_error.desc')}
+          {desc}
         </p>
         <button
-          onClick={() => openExternal('https://ollama.com')}
+          onClick={buttonAction}
           className="flex items-center gap-2 px-6 py-2.5 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-lg"
         >
-          <Download size={16} />
-          {t('ai.ollama_error.download')}
+          {isAgentBlocked || isCloudUnconfigured ? <SettingsIcon size={16} /> : <Download size={16} />}
+          {buttonLabel}
         </button>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 text-[11px] text-[#444] hover:text-white transition-colors underline underline-offset-4"
-        >
-          {t('ai.status.relaunching')}
-        </button>
+        {!isAgentBlocked && !isCloudUnconfigured && (
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 text-[11px] text-[#444] hover:text-white transition-colors underline underline-offset-4"
+          >
+            {t('ai.status.relaunching')}
+          </button>
+        )}
       </div>
     );
   }
@@ -1319,11 +1373,11 @@ const AiChatComponent: React.FC = () => {
                 role="menu"
                 className="absolute top-full left-0 mt-2 w-52 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
               >
-                {PROVIDER_IDS.map((pid) => {
+                {PROVIDER_IDS.filter(pid => !aiSettings.allowProviderKeys || pid !== 'ollama').map((pid) => {
                   const meta = PROVIDERS[pid];
                   const keyMissing =
                     meta.kind === "cloud" &&
-                    !aiSettings.providerKeys[pid as Exclude<typeof pid, "ollama">];
+                    !aiSettings.providerKeysConfigured[pid as ProviderId];
 
                   if (keyMissing) return null;
 
@@ -1355,7 +1409,8 @@ const AiChatComponent: React.FC = () => {
             aria-haspopup="listbox"
             aria-expanded={showModelMenu}
             aria-controls="ai-model-listbox"
-            className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/5 transition-all group"
+            disabled={isConfigLocked}
+            className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all group ${isConfigLocked ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/5'}`}
           >
             <div className="flex flex-col items-start translate-y-[1px]">
               <span className="text-[11px] font-bold text-white/90 group-hover:text-white transition-colors uppercase tracking-tight leading-none">
@@ -1371,7 +1426,7 @@ const AiChatComponent: React.FC = () => {
           </button>
 
           {showModelMenu && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className={`absolute top-full mt-2 w-64 bg-[#0a0a09]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${showProviderUI ? 'left-1/2 -translate-x-1/2' : 'left-0'}`}>
               <div className="p-2 border-b border-white/5 flex items-center justify-between">
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-2">{t('ai.models.local_title')}</span>
                 <span className="text-[9px] text-white/20 px-2">{t('ai.models.found', { count: models.length.toString() })}</span>
@@ -1443,12 +1498,16 @@ const AiChatComponent: React.FC = () => {
                         const existing =
                           aiSettings.providerModels[activeProvider] ?? [];
                         if (!existing.includes(id)) {
-                          updateAISettings({
+                        updateAISettings((prev) => {
+                          const existing = prev.providerModels[activeProvider] ?? [];
+                          if (existing.includes(id)) return {};
+                          return {
                             providerModels: {
-                              ...aiSettings.providerModels,
+                              ...prev.providerModels,
                               [activeProvider]: [...existing, id],
                             },
-                          });
+                          };
+                        });
                         }
                         setSelectedModel(id);
                         setDraftCloudModel("");
@@ -1698,11 +1757,11 @@ const AiChatComponent: React.FC = () => {
       {/* Mode Switcher */}
       <div className="px-4 py-2 flex gap-1 bg-[#0a0a0a] border-t border-[#1a1a1a]">
         {[
-          { id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true },
-          { id: 'planner', icon: Sparkles, label: t('ai.mode.planner'), requiresFolder: true },
-          { id: 'ask', icon: MessageSquare, label: t('ai.mode.ask'), requiresFolder: false }
+          { id: 'agent', icon: Brain, label: t('ai.mode.agent'), requiresFolder: true, requiresCloud: true },
+          { id: 'planner', icon: Sparkles, label: t('ai.mode.planner'), requiresFolder: true, requiresCloud: true },
+          { id: 'ask', icon: MessageSquare, label: t('ai.mode.ask'), requiresFolder: false, requiresCloud: false }
         ].map((mode) => {
-          const isLocked = mode.requiresFolder && !rootPath;
+          const isLocked = (mode.requiresFolder && !rootPath) || (mode.requiresCloud && !aiSettings.allowProviderKeys);
           return (
             <button
               key={mode.id}
@@ -1725,7 +1784,7 @@ const AiChatComponent: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#0a0a0a] border-t border-[#1a1a1a] shrink-0">
+      <div className="p-4 bg-[#0a0a0a] border-t border-[#1a1a1a] shrink-0 relative">
         <div className="relative group">
           <textarea
             ref={inputRef}

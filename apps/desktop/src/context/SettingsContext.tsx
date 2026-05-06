@@ -82,6 +82,9 @@ export interface AISettings {
   /** Last selected model per provider so switching providers restores
    *  the user's previous pick instead of resetting to the first entry. */
   lastModelByProvider: ProviderLastModelMap;
+  /** Tracks whether a key is set in the OS keychain per provider.
+   *  Updated by ProviderKeysPanel and used by Chat UI for gating. */
+  providerKeysConfigured: Partial<Record<ProviderId, boolean>>;
 }
 
 export interface EditorSettings {
@@ -98,7 +101,7 @@ interface SettingsContextType {
   systemSettings: SystemSettings;
   locale: string;
   isInitialLoadComplete: boolean;
-  updateAISettings: (settings: Partial<AISettings>) => void;
+  updateAISettings: (settings: Partial<AISettings> | ((prev: AISettings) => Partial<AISettings>)) => void;
   updateEditorSettings: (settings: Partial<EditorSettings>) => void;
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
   setLocale: (locale: string) => Promise<void>;
@@ -257,6 +260,7 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   providerModels: DEFAULT_PROVIDER_MODELS,
   activeProvider: "ollama",
   lastModelByProvider: {},
+  providerKeysConfigured: {},
 };
 
 export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
@@ -356,6 +360,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setAiSettings((prev) => ({ ...prev, systemPrompt: trixty.l10n.t("ai.system_prompt") }));
         }
 
+        // Probe keychain presence for the "configured" flags (issue #267)
+        (async () => {
+          const { hasProviderSecret, SECRET_PROVIDERS } = await import("@/api/providerSecrets");
+          const flags: Partial<Record<ProviderId, boolean>> = {};
+          for (const pid of SECRET_PROVIDERS) {
+            flags[pid] = await hasProviderSecret(pid);
+          }
+          updateAISettings({ providerKeysConfigured: flags });
+        })();
+
         const savedLocale = await trixtyStore.getVersioned<string | null>(
           "trixty-locale",
           LOCALE_VERSION,
@@ -444,6 +458,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setAiSettings((prev) => ({
         ...prev,
         providerKeys: { ...DEFAULT_PROVIDER_KEYS },
+        providerKeysConfigured: {
+          ...prev.providerKeysConfigured,
+          ...Object.fromEntries(entries.map(([p]) => [p, true])),
+        },
       }));
       logger.debug(
         `[SettingsContext] migrated ${entries.length} provider key(s) from settings.json to OS keychain.`,
@@ -489,8 +507,39 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearTimeout(handle);
   }, [systemSettings, isInitialLoadComplete]);
 
-  const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
-    setAiSettings((prev) => ({ ...prev, ...newSettings }));
+  const updateAISettings = useCallback((newSettings: Partial<AISettings> | ((prev: AISettings) => Partial<AISettings>)) => {
+    setAiSettings((prev) => {
+      const nextPartial = typeof newSettings === "function" ? newSettings(prev) : newSettings;
+      
+      // 1. Start with a shallow merge of the top-level fields
+      const nextState = { ...prev, ...nextPartial };
+      
+      // 2. Perform explicit deep-ish merges for maps to prevent clobbering other providers.
+      // Even if the caller already did a spread, re-merging here is a safe guard
+      // against stale closures in components.
+      if (nextPartial.providerModels) {
+        nextState.providerModels = { 
+          ...prev.providerModels, 
+          ...nextPartial.providerModels 
+        };
+      }
+      
+      if (nextPartial.providerKeysConfigured) {
+        nextState.providerKeysConfigured = { 
+          ...prev.providerKeysConfigured, 
+          ...nextPartial.providerKeysConfigured 
+        };
+      }
+      
+      if (nextPartial.lastModelByProvider) {
+        nextState.lastModelByProvider = { 
+          ...prev.lastModelByProvider, 
+          ...nextPartial.lastModelByProvider 
+        };
+      }
+      
+      return nextState;
+    });
   }, []);
 
   const updateEditorSettings = useCallback((newSettings: Partial<EditorSettings>) => {

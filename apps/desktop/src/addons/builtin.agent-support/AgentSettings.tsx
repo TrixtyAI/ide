@@ -330,9 +330,9 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   </div>
                   <button
                     onClick={() =>
-                      updateAISettings({
-                        allowProviderKeys: !aiSettings.allowProviderKeys,
-                      })
+                      updateAISettings((prev) => ({
+                        allowProviderKeys: !prev.allowProviderKeys,
+                      }))
                     }
                     className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
                       aiSettings.allowProviderKeys
@@ -397,7 +397,7 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                     <p className="text-[11px] text-[#555] max-w-sm">{t('agent.configuration.loadonstartup_desc')}</p>
                   </div>
                   <button
-                    onClick={() => updateAISettings({ loadOnStartup: !aiSettings.loadOnStartup })}
+                    onClick={() => updateAISettings((prev) => ({ loadOnStartup: !prev.loadOnStartup }))}
                     className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
                       aiSettings.loadOnStartup ? "bg-blue-600 shadow-lg shadow-blue-900/40" : "bg-[#1a1a1a] border border-white/5"
                     }`}
@@ -439,12 +439,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                   </div>
                   <button
                     onClick={() =>
-                      updateAISettings({
+                      updateAISettings((prev) => ({
                         inlineCompletions: {
-                          ...aiSettings.inlineCompletions,
-                          enabled: !aiSettings.inlineCompletions.enabled,
+                          ...prev.inlineCompletions,
+                          enabled: !prev.inlineCompletions.enabled,
                         },
-                      })
+                      }))
                     }
                     className={`w-12 h-6 rounded-full relative transition-all duration-300 ${
                       aiSettings.inlineCompletions.enabled
@@ -476,12 +476,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                         placeholder={t('agent.configuration.model_override_placeholder')}
                         value={aiSettings.inlineCompletions.model}
                         onChange={(e) =>
-                          updateAISettings({
+                          updateAISettings((prev) => ({
                             inlineCompletions: {
-                              ...aiSettings.inlineCompletions,
+                              ...prev.inlineCompletions,
                               model: e.target.value,
                             },
-                          })
+                          }))
                         }
                         className="bg-[#0a0a0a] border border-[#1a1a1a] rounded px-2 py-1.5 text-[12px] text-white focus:border-blue-500/50 outline-none transition-colors"
                       />
@@ -503,12 +503,12 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ activeTab }) => {
                         onChange={(e) => {
                           const val = e.target.valueAsNumber;
                           if (Number.isFinite(val) && val >= 50) {
-                            updateAISettings({
+                            updateAISettings((prev) => ({
                               inlineCompletions: {
-                                ...aiSettings.inlineCompletions,
+                                ...prev.inlineCompletions,
                                 debounceMs: val,
                               },
-                            });
+                            }));
                           }
                         }}
                         className="bg-[#0a0a0a] border border-[#1a1a1a] rounded px-2 py-1.5 text-[12px] text-white focus:border-blue-500/50 outline-none transition-colors"
