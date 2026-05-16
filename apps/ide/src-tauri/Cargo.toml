@@ -38,7 +38,7 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 log = "0.4"
-tauri = { version = "2.10.3", features = [ "image-ico", "image-png", "tray-icon"] }
+tauri = { version = "2.11.1", features = [ "image-ico", "image-png", "tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2.0.0"
 tauri-plugin-store = "2.0.0"
