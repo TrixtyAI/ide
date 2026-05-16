@@ -50,6 +50,6 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
         with:
-          projectPath: './apps/desktop'
+          projectPath: './apps/ide'
           # tagName and releaseId omitted to only build without uploading
           args: ''

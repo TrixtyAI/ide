@@ -15,7 +15,7 @@ updates:
       - "security"
 
   - package-ecosystem: "cargo"
-    directory: "/apps/desktop/src-tauri"
+    directory: "/apps/ide/src-tauri"
     schedule:
       interval: "daily"
     groups:

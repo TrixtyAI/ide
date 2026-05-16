@@ -1,13 +1,13 @@
 {
-  "name": "trixty-ide",
+  "name": "trixty-app",
   "private": true,
   "repository": {
-    "url": "https://github.com/TrixtyAI/ide",
+    "url": "https://github.com/TrixtyAI/app",
     "type": "git"
   },
   "scripts": {
     "build": "turbo run build",
-    "desktop": "pnpm --filter @trixty/desktop tauri",
+    "ide": "pnpm --filter @trixty/ide tauri",
     "version:sync": "node scripts/sync-version.mjs",
     "gh:publish": "node scripts/publish.mjs",
     "web:dev": "pnpm --filter @trixty/landing dev",
